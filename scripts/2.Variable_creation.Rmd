@@ -76,35 +76,45 @@ dat <- dat %>%
 ```
 
 
-```{r}
+```{r Mixed presentation}
 dat <- dat %>%
   mutate(
-    combined_eating_disorders =
+    mixed_eating_disorders =
       case_when(
-        ~ AN_only,
-        ~ BN_only,
-        ~ BED_only,
-        ~ AN_BN
-        ~ AN_BED,
-        ~ BN_BED,
-        ~ AN_BN_BED
+        anorexia_nervosa == "Anorexia nervosa" ~ "AN",
+        
+        bulimia_nervosa == "Bulimia nervosa" ~ "BN",
+        
+        binge_eating_disorder == "Binge-eating disorder" ~ "BED",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" ~ "AN & BN",
+       
+        anorexia_nervosa == "Anorexia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BED",
+      
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "BN & BED",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BN & BED"
       )
   )
 ```
 
 
 
-
 ```{r}
 dat <- dat %>%
-  top_n(n = 100)
+  head()
 
 dat %>% 
   dim
 ```
 
 
-```{r}
+```{r demographics}
 exclude_columns_from_pivoting <-
   c(
     "ID",
@@ -135,12 +145,15 @@ dat_demographics <- dat %>%
     dem.pack_year,
     mhd.eating_disorder_received_treatment,
     
-    # Algorithm
-#    "ed.DSM5_AN_binary",
-    "ed.DSM5_AN_restricting_binary",
-    "ed.DSM5_AN_binge_purge_binary",
-    "ed.DSM5_BED_binary"    
-  ) %>%
+    # Diagnosis
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder
+  )
+
+
+
+dat_demographics_long <- dat_demographics %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
 #    names_to = "Old_variable",
@@ -150,11 +163,12 @@ dat_demographics <- dat %>%
     -name
   )
 
-dat_demographics
+dat_demographics_long %>%
+  head()
 ```
 
 
-```{r}
+```{r demographics rds file}
 dat_demographics %>%
 write_rds(file = paste0(filepath_cleaned_data, "demographics.rds"))
 ```
@@ -175,3 +189,98 @@ age_sex_distribution <- dat %>%
          dem.dob_age, 
          dem.sex)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r Psychiatric comorbidities}
+exclude_columns_from_pivoting <-
+  c(
+    "ID",
+    
+    "mhd.depression_and_anxiety",
+    "mhd.depressive_disorders",
+    "mhd.anxiety_disorders",   
+    "mhd.ptsd_numeric",
+    
+    "mhd.obsessive_compulsive_disorders",
+    
+    "mhd.personality_disorder_diagnosed_numeric",
+    
+    "mhd.bipolar_and_schizophrenia",
+    "mhd.psychotic_disorders",
+    "mhd.bipolar_disorder_numeric",
+    
+    "mhd.autism_spectrum_disorder",
+    "mhd.addadhd_numeric"
+  )
+
+
+dat_psych_dx <- dat %>%
+  select(
+    all_of(exclude_columns_from_pivoting),
+
+    # Diagnosis
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder
+  )
+
+dat_psych_dx_longer <- dat_psych_dx %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+
+dat_psych_dx_longer %>%
+  head()
+```
+
