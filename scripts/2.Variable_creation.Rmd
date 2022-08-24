@@ -75,6 +75,91 @@ dat <- dat %>%
                        mhd.bed_numeric == 1 ~ "Binge-eating disorder"))
 ```
 
+
+```{r}
+dat <- dat %>%
+  mutate(
+    combined_eating_disorders =
+      case_when(
+        ~ AN_only,
+        ~ BN_only,
+        ~ BED_only,
+        ~ AN_BN
+        ~ AN_BED,
+        ~ BN_BED,
+        ~ AN_BN_BED
+      )
+  )
+```
+
+
+
+
+```{r}
+dat <- dat %>%
+  top_n(n = 100)
+
+dat %>% 
+  dim
+```
+
+
+```{r}
+exclude_columns_from_pivoting <-
+  c(
+    "ID",
+    "dem.sex",
+    "demographics.what_gender_do_you_identify_with",
+    "dem.do_you_identify_as_transgender",
+    "dem.what_is_your_sexual_orientation",
+    "dem.what_is_your_ethnic_origin",
+    "dem.highest_education_finegrained",
+    "dem.what_is_your_current_employment_status",
+    "dem.what_is_your_current_maritalrelationship_status",
+    "dem.pack_year",
+    "mhd.eating_disorder_received_treatment"
+  )
+
+
+dat_demographics <- dat %>%
+  select(
+    ID,
+    dem.sex,
+    demographics.what_gender_do_you_identify_with,
+    dem.do_you_identify_as_transgender,
+    dem.what_is_your_sexual_orientation,
+    dem.what_is_your_ethnic_origin,
+    dem.highest_education_finegrained,
+    dem.what_is_your_current_employment_status,
+    dem.what_is_your_current_maritalrelationship_status,
+    dem.pack_year,
+    mhd.eating_disorder_received_treatment,
+    
+    # Algorithm
+#    "ed.DSM5_AN_binary",
+    "ed.DSM5_AN_restricting_binary",
+    "ed.DSM5_AN_binge_purge_binary",
+    "ed.DSM5_BED_binary"    
+  ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+dat_demographics
+```
+
+
+```{r}
+dat_demographics %>%
+write_rds(file = paste0(filepath_cleaned_data, "demographics.rds"))
+```
+
+
 # Table:  Age distribution of EDGI UK sample by age range and sex
 ```{r select age distribution data}
 age_sex_distribution <- dat %>%
