@@ -60,6 +60,24 @@ names(dat)
 
 
 ```{r}
-
+dat %>%
+  select(
+    ID,
+    dem.sex,
+    dem.which_gender_do_you_identify_with,
+    dem.do_you_identify_as_transgender,
+    dem.what_is_your_sexual_orientation,
+    dem.what_is_your_ethnic_origin,
+    dem.highest_education_finegrained,
+    dem.what_is_your_current_employment_status,
+    dem.what_is_your_current_maritalrelationship_status,
+    dem.pack_year,
+    mhd.eating_disorder_received_treatment
+  ) %>%
+  pivot_longer(
+    !ID,
+    names_to = "Disorder",
+    values_to = "value"
+    )
 ```
 

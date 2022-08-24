@@ -57,11 +57,23 @@ dat <- read_rds(
 names(dat)
 ```
 
+```{r}
+dat_summary_table <- dat %>%
+  select(
+    ed.DSM5_AN_binary,
+    ed.DSM5_BED_binary,
+    dem.which_gender_do_you_identify_with,
+    dem.what_is_your_sexual_orientation,
+    dem.do_you_identify_as_transgender
+  )
+  
+```
+
 
 ```{r format table}
 summary_table <-
   gtsummary::tbl_strata(
-    data = dat, 
+    data = dat_summary_table, 
     strata = ed.DSM5_AN_binary,
     .tbl_fun =
       ~ .x %>%
