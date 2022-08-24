@@ -1,0 +1,65 @@
+---
+title: "Demographics"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Clear Global Environment
+
+```{r clear global environment}
+rm(list = ls(all.names = TRUE)) 
+```
+
+Read in file with path to data channel
+```{r Read in file with path to data channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the imp_check function - used to check variables for implausible values
+```{r Read in functions}
+source(file = paste0("functions/add_numeric.R"))
+source(file = paste0("functions/remove_duplicates.R"))
+source(file = paste0("functions/package_check.R"))
+```
+
+Load packages
+
+```{r Load packages}
+library(tidyverse)
+library(gtsummary)
+```
+
+Set current date
+
+```{r current date}
+date <- Sys.Date()
+```
+
+Load data
+
+```{r Load data}
+dat <- read_rds(
+  file = paste0(filepath_cleaned_data, "merged_dat.rds")
+)
+```
+
+Overview variables
+
+```{r Overview variables}
+names(dat)
+```
+
+
+```{r}
+
+```
+
