@@ -34,6 +34,7 @@ source(file = paste0("functions/package_check.R"))
 Load packages
 ```{r Load packages}
 library(tidyverse)
+library(summarytools)
 library(gtsummary)
 ```
 
@@ -83,33 +84,36 @@ dat <- dat %>%
   mutate(
     mixed_eating_disorders =
       case_when(
-        anorexia_nervosa == "Anorexia nervosa" ~ "AN",
-        
-        bulimia_nervosa == "Bulimia nervosa" ~ "BN",
-        
-        binge_eating_disorder == "Binge-eating disorder" ~ "BED",
-        
         anorexia_nervosa == "Anorexia nervosa" &
-        bulimia_nervosa == "Bulimia nervosa" ~ "AN & BN",
-       
-        anorexia_nervosa == "Anorexia nervosa" &
-        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BED",
-      
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BN & BED",
+        
         bulimia_nervosa == "Bulimia nervosa" &
         binge_eating_disorder == "Binge-eating disorder" ~ "BN & BED",
         
         anorexia_nervosa == "Anorexia nervosa" &
-        bulimia_nervosa == "Bulimia nervosa" &
-        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BN & BED"
+        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BED",
+      
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" ~ "AN & BN",
+       
+        anorexia_nervosa == "Anorexia nervosa" ~ "AN",
+        
+        bulimia_nervosa == "Bulimia nervosa" ~ "BN",
+        
+        binge_eating_disorder == "Binge-eating disorder" ~ "BED"
       )
   )
 ```
 
+```{r}
+dat %>%
+  freq(mixed_eating_disorders)
+```
+
+
 
 ```{r}
-dat <- dat %>%
-  head()
-
 dat %>% 
   dim
 ```
@@ -119,7 +123,6 @@ dat %>%
 ```{r demographics}
 exclude_columns_from_pivoting <-
   c(
-    "ID",
     "dem.sex",
     "demographics.what_gender_do_you_identify_with",
     "dem.do_you_identify_as_transgender",
@@ -135,7 +138,7 @@ exclude_columns_from_pivoting <-
 
 dat_demographics <- dat %>%
   select(
-    ID,
+    mixed_eating_disorders,
     dem.sex,
     demographics.what_gender_do_you_identify_with,
     dem.do_you_identify_as_transgender,
@@ -145,19 +148,16 @@ dat_demographics <- dat %>%
     dem.what_is_your_current_employment_status,
     dem.what_is_your_current_maritalrelationship_status,
     dem.pack_year,
-    mhd.eating_disorder_received_treatment,
-    
-
-    # Diagnosis
-    anorexia_nervosa,
-    bulimia_nervosa,
-    binge_eating_disorder
+    mhd.eating_disorder_received_treatment
   )
 
 
 
-dat_demographics_long <- dat_demographics %>%
-
+dat_demographics_long <- dat %>%
+  select(
+    
+  all_of(exclude_columns_from_pivoting),
+  
     # Disorder
     anorexia_nervosa,
     bulimia_nervosa,
@@ -177,28 +177,24 @@ dat_demographics_long %>%
 ```
 
 
-```{r demographics rds file}
-dat_demographics %>%
-write_rds(file = paste0(filepath_cleaned_data, "demographics.rds"))
-```
-
 # Table:  Age distribution of EDGI UK sample by age range and sex
 ```{r select age distribution data}
 age_sex_distribution <- dat %>%
-  select(ID,
+  select(
+    mixed_eating_disorders,
          dem.dob_age, 
          dem.sex)
 
 # Long format
 exclude_columns_from_pivoting <-
   c(
-    "ID",
     "dem.dob_age",
     "dem.sex"
-  )
+    )
 
 age_sex_distribution_long <- dat %>%
-  select(all_of(exclude_columns_from_pivoting),
+  select(
+    all_of(exclude_columns_from_pivoting),
          
         # Disorder
         anorexia_nervosa,
@@ -220,7 +216,7 @@ age_sex_distribution_long
 # Table: Self-report and algorithm derived eating disorder diagnosis distribution in EDGI UK sample, split by sex
 ```{r select age distribution data}
 selfreport_algo_sex <- dat %>%
-  select(ID,
+  select(
          dem.sex,
          # Algorithm-derived
          ed.DSM5_AN_binary,
@@ -247,7 +243,6 @@ selfreport_algo_sex <- dat %>%
 # Long format
 exclude_columns_from_pivoting <-
   c(
-    "ID",
     "dem.sex",
      "ed.DSM5_AN_binary",
      "ed.DSM5_AN_restricting_binary",
@@ -272,12 +267,8 @@ exclude_columns_from_pivoting <-
   )
 
 selfreport_algo_sex_long <- dat %>%
-  select(all_of(exclude_columns_from_pivoting),
-         
-        # Disorder
-        anorexia_nervosa,
-        bulimia_nervosa,
-        binge_eating_disorder
+  select(
+    all_of(exclude_columns_from_pivoting),
         ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
@@ -297,8 +288,6 @@ selfreport_algo_sex_long
 ```{r Psychiatric comorbidities}
 exclude_columns_from_pivoting <-
   c(
-    "ID",
-    
     "mhd.depression_and_anxiety",
     "mhd.depressive_disorders",
     "mhd.anxiety_disorders",   
@@ -317,17 +306,24 @@ exclude_columns_from_pivoting <-
   )
 
 
+# mixed 
 dat_psych_dx <- dat %>%
   select(
-    all_of(exclude_columns_from_pivoting),
+    mixed_eating_disorders,
+    
+    all_of(exclude_columns_from_pivoting)
+  )
 
+dat_psych_dx_longer <- dat_psych_dx %>%
+  select(
+    
+    all_of(exclude_columns_from_pivoting),
+    
     # Diagnosis
     anorexia_nervosa,
     bulimia_nervosa,
     binge_eating_disorder
   )
-
-dat_psych_dx_longer <- dat_psych_dx %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
 #    names_to = "Old_variable",
@@ -342,4 +338,9 @@ dat_psych_dx_longer %>%
   head()
 ```
 
+
+
+```{r}
+save.image(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+```
 

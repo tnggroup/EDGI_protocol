@@ -52,19 +52,24 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 
 
 ```{r}
-names(dat_demographics)
+names(age_sex_distribution)
 ```
+
 
 
 ```{r format table}
 summary_table <-
-  dat_demographics %>%
-  gtsummary::tbl_summary(
+  gtsummary::tbl_strata(
+    data = dat_summary_table, 
+    strata = ed.DSM5_AN_binary,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(
         
-        by =  mixed_eating_disorders,
+        by =  ed.DSM5_BED_binary,
         
         label = list(
-        demographics.what_gender_do_you_identify_with ~
+        dem.which_gender_do_you_identify_with ~
           "Gender",
         dem.what_is_your_sexual_orientation ~
           "Sexual Orientation",
@@ -72,13 +77,12 @@ summary_table <-
           "Transgender"
         ),
                 
-          type = list(demographics.what_gender_do_you_identify_with ~ 
+          type = list(dem.which_gender_do_you_identify_with ~ 
             "categorical",
           dem.what_is_your_sexual_orientation ~
             "categorical",
           dem.do_you_identify_as_transgender ~
-            "categorical"
-          ),
+            "categorical"),
 
           statistic = list(
                              
@@ -92,48 +96,8 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
+  )
 ```
-
-
-```{r format table}
-summary_table <-
-  dat_demographics_long %>%
-  gtsummary::tbl_summary(
-        
-        by =  Disorder,
-        
-        label = list(
-        demographics.what_gender_do_you_identify_with ~
-          "Gender",
-        dem.what_is_your_sexual_orientation ~
-          "Sexual Orientation",
-        dem.do_you_identify_as_transgender ~
-          "Transgender"
-        ),
-                
-          type = list(demographics.what_gender_do_you_identify_with ~ 
-            "categorical",
-          dem.what_is_your_sexual_orientation ~
-            "categorical",
-          dem.do_you_identify_as_transgender ~
-            "categorical"
-          ),
-
-          statistic = list(
-                             
-            all_categorical() ~ "{n} ({p}%)",
-            
-            all_continuous2() ~ c("{mean} ({sd})",
-                                  "{median} ({p25}, {p75})",
-                                  "{min}, {max}"
-                                  )
-                ), 
-              
-              missing = "always")  %>% 
-  add_n()
-```
-
-
 
 Add bold labels to table
 

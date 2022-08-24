@@ -1,0 +1,67 @@
+---
+title: "Double splot"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r format table}
+summary_table <-
+  dat_demographics %>%
+  select(
+    -ID
+  ) %>%
+  gtsummary::tbl_strata(
+    strata = dem.sex,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(
+        
+        by =  anorexia_nervosa,
+        
+        label = list(
+        demographics.what_gender_do_you_identify_with ~
+          "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender",
+        dem.diabetes_type_1_late_onset_numeric ~
+          "Diabetes type 1 "
+        ),
+                
+          type = list(demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical",
+          dem.diabetes_type_1_late_onset_numeric ~
+          "categorical"
+          
+          ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+  )
+```
+
