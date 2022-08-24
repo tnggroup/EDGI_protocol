@@ -70,6 +70,7 @@ sex_gender_sexuality <- sex_gender_sexuality %>%
          dem.what_is_your_sexual_orientation,
          dem.do_you_identify_as_transgender)
 ```
+
 # Read in 'Ethnicity'
 ```{r read in ethnicity}
 ethnicity <- readRDS(file = paste0(filepath_edgi_cleaned,
@@ -85,7 +86,6 @@ ethnicity %>%
 # Select variables we need 
 ethnicity <- ethnicity %>%
   select(ID,
-         sample, 
          dem.what_is_your_ethnic_origin)
 ```
 
@@ -104,7 +104,6 @@ education %>%
 # Select variables we need 
 education <- education %>%
   select(ID,
-         sample, 
          dem.highest_education_finegrained)
 ```
 
@@ -122,7 +121,6 @@ years_of_education %>%
 # Select variables we need 
 years_of_education <- years_of_education %>%
   select(ID,
-         sample, 
          dem.years_schoolplease_include_preschool.txt)
 ```
 
@@ -141,7 +139,6 @@ employment %>%
 # Select variables we need 
 employment <- employment %>%
   select(ID,
-         sample, 
          dem.what_is_your_current_employment_status)
 ```
 
@@ -160,7 +157,6 @@ relationship_status %>%
 # Select variables we need 
 relationship_status <- relationship_status %>%
   select(ID,
-         sample, 
          dem.what_is_your_current_maritalrelationship_status)
 ```
 
@@ -180,7 +176,6 @@ smoking_status %>%
 # Select variables we need 
 smoking_status <- smoking_status %>%
   select(ID,
-         sample, 
          dem.pack_year)
 ```
 
@@ -201,10 +196,6 @@ treatment %>%
 treatment <- treatment %>%
   select(ID = externalDataReference,
          mhd.eating_disorder_received_treatment)
-
-treatment <- treatment %>%
-  mutate(sample =
-           case_when(!is.na(ID) ~ "EDGI"))
 ```
 
 # Age
@@ -222,7 +213,6 @@ age %>%
 # Select variables we need 
 age <- age %>%
   select(ID,
-         sample, 
          dem.how_old_are_you_now.txt,
          dem.dob_age,
          dem.age_category)
@@ -243,7 +233,6 @@ eating_disorder_algorithm %>%
 # Select variables we need 
 eating_disorder_algorithm <- eating_disorder_algorithm %>%
   select(ID,
-         sample, 
          ed.DSM5_AN_binary,
          ed.DSM5_AN_restricting_binary,
          ed.DSM5_AN_binge_purge_binary,
@@ -262,6 +251,12 @@ mhd %>%
 
 mhd %>%
   dim()
+
+# Select columns
+mhd <- mhd %>%
+  select(-endDate,
+           -startDate,
+           -sample)
 ```
 
 # Somatic comorbidity
@@ -275,10 +270,16 @@ somatic %>%
 
 somatic %>%
   dim()
+
+# Select columns
+somatic <- somatic %>%
+  select(-endDate,
+           -startDate,
+           -sample)
 ```
 
 # Age at diagnosis
-```{r read in age at diagnosis data}
+```{r read in age at diagnosis data, eval=FALSE, include=FALSE}
 age_at_diagnosis <- readRDS(file = paste0(filepath_edgi_cleaned,
                                      "demographics/age_at_diagnosis_edgi_clean.rds"))
   
@@ -292,23 +293,43 @@ age_at_diagnosis %>%
 
 # Merge all data
 ```{r}
-dat_list <-list(age_at_diagnosis,
-                somatic,
-                sex_gender_sexuality,
+dat <- list(sex_gender_sexuality,
                 ethnicity,
                 education,
                 years_of_education,
                 employment,
-                relationship_stats,
+                relationship_status,
                 smoking_status,
                 treatment,
                 age,
                 eating_disorder_algorithm,
                 mhd,
-                somatic,
-                age_at_diagnosis)
+                somatic
+                ) %>%
+               # age_at_diagnosis) %>%
+  reduce(full_join,
+         by = "ID")
 ```
 
+# Look at the data
+```{r view table}
+skimr::skim(dat)
+
+dat %>%
+  colnames()
+
+dat %>%
+  dim()
+```
+
+# Save the data
+```{r save the merged data}
+dat %>% 
+  saveRDS(
+    file = paste0(filepath_cleaned_data, "merged_dat.rds")
+    )
+
+```
 
 
 
