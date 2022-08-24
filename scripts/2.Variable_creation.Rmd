@@ -59,21 +59,23 @@ names(dat)
 ```{r deriving self-report and algorithm-derived ED diagnosis}
 # Anorexia nervosa
 dat <- dat %>%
-  mutate(anorexia_nervosa =
-           case_when(ed.DSM5_AN_binary == "DSM5 AN" |
-                       mhd.an_numeric == 1 ~ "Anorexia nervosa"))
-
-# Bulimia nervosa
-dat <- dat %>%
-  mutate(bulimia_nervosa =
-           case_when(ed.DSM5_BN_binary == "DSM-5 BN" |
-                       mhd.bn_numeric == 1 ~ "Bulimia nervosa"))
-
-# Binge-eating disorder
-dat <- dat %>%
-  mutate(binge_eating_disorder =
-           case_when(ed.DSM5_BED_binary == "DSM-5 BED" |
-                       mhd.bed_numeric == 1 ~ "Binge-eating disorder"))
+  mutate(
+    anorexia_nervosa =
+      case_when(
+        ed.DSM5_AN_binary == "DSM5 AN" |
+          mhd.an_numeric == 1 ~ "Anorexia nervosa"),
+    
+    bulimia_nervosa =
+      case_when(
+        ed.DSM5_BN_binary == "DSM-5 BN" |
+          mhd.bn_numeric == 1 ~ "Bulimia nervosa"),
+    
+    binge_eating_disorder =
+           case_when(
+             ed.DSM5_BED_binary == "DSM-5 BED" |
+               mhd.bed_numeric == 1 ~ "Binge-eating disorder")
+    
+    )
 ```
 
 
@@ -314,7 +316,7 @@ dat_psych_dx <- dat %>%
     all_of(exclude_columns_from_pivoting)
   )
 
-dat_psych_dx_longer <- dat_psych_dx %>%
+dat_psych_dx_longer <- dat %>%
   select(
     
     all_of(exclude_columns_from_pivoting),
@@ -323,7 +325,7 @@ dat_psych_dx_longer <- dat_psych_dx %>%
     anorexia_nervosa,
     bulimia_nervosa,
     binge_eating_disorder
-  )
+  ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
 #    names_to = "Old_variable",
@@ -335,6 +337,107 @@ dat_psych_dx_longer <- dat_psych_dx %>%
 
 
 dat_psych_dx_longer %>%
+  head()
+```
+
+
+```{r Somatic dx exlcude from pivoting}
+exclude_columns_from_pivoting <-
+  c(
+    "dem.epilepsy_or_convulsions"                                        
+ ,"dem.migraines"                                                      
+ ,"dem.multiple_sclerosis"                                             
+ ,"dem.parkinsons_disease"                                             
+ ,"dem.severe_memory_loss"                                             
+ ,"dem.neurological_none"                                              
+ ,"dem.neurological_dont_know"                                         
+ ,"dem.neurological_prefer_not_to_answer"                              
+ ,"dem.hay_fever"                                                      
+ ,"dem.drug_allergy"                                                   
+ ,"dem.drug_allergy_txt"                                               
+ ,"dem.food_allergy"                                                   
+ ,"dem.food_allergy_txt"                                               
+ ,"dem.other_allergy"                                                  
+ ,"dem.other_allergy_txt"                                              
+ ,"dem.osteoporosis"                                                   
+ ,"dem.osteoarthritis"                                                 
+ ,"dem.rheumatoid_arthritis"                                           
+ ,"dem.other_arthritis"                                                
+ ,"dem.other_arthritis_txt"                                            
+ ,"dem.allergy_none"                                                   
+ ,"dem.allergy_prefer_not_to_answer"                                   
+ ,"dem.allergy_dont_know"                                              
+ ,"dem.asthma"                                                         
+ ,"dem.emphysema_or_chronic_bronchitis"                                
+ ,"dem.heart_attack_or_angina"                                         
+ ,"dem.high_blood_cholesterol"                                         
+ ,"dem.high_blood_pressure"                                            
+ ,"dem.atrial_fibrillation"                                            
+ ,"dem.stroke"                                                         
+ ,"dem.respiratory_none"                                               
+ ,"dem.respiratory_prefer_not_to_answer"                               
+ ,"dem.respiratory_dont_know"                                          
+ ,"dem.crohns_disease"                                                 
+ ,"dem.ulcerative_colitis"                                             
+ ,"dem.coeliac_disease"                                                
+ ,"dem.diabetes_type_1"                                                
+ ,"dem.diabetes_type_2"                                                
+ ,"dem.pain_due_to_diabetes"                                           
+ ,"dem.pain_due_to_virus"                                              
+ ,"dem.digestive_none"                                                 
+ ,"dem.digestive_dont_know"                                            
+ ,"dem.digestive_prefer_not_to_answer"                                 
+ ,"dem.breast_cancer"                                                  
+ ,"dem.lung_cancer"                                                    
+ ,"dem.stomach_cancer"                                                 
+ ,"dem.colon_cancer"                                                   
+ ,"dem.uterus_cancer"                                                  
+ ,"dem.prostate_cancer"
+ ,"dem.cancer_none"
+ ,"dem.cancer_dont_know"
+ ,"dem.cancer_prefer_not_to_answer"
+ ,"dem.psoriasis"
+ ,"dem.vitiligo"
+ ,"dem.eczema"
+ ,"dem.thyroid_disease"
+ ,"dem.thyroid_disease_txt"
+ ,"dem.skin_none"
+ ,"dem.skin_dont_know"
+ ,"dem.skin_prefer_not_to_answer"
+  )
+```
+
+
+```{r Somatic comorbidities}
+# mixed 
+dat_somatic_dx <- dat %>%
+  select(
+    mixed_eating_disorders,
+    
+    all_of(exclude_columns_from_pivoting)
+  )
+
+dat_somatic_dx_longer <- dat %>%
+  select(
+    
+    all_of(exclude_columns_from_pivoting),
+    
+    # Diagnosis
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder
+  ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+
+dat_somatic_dx_longer %>%
   head()
 ```
 
