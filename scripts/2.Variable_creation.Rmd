@@ -76,7 +76,7 @@ dat <- dat %>%
 ```
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat <- dat %>%
   mutate(
     combined_eating_disorders =
@@ -92,9 +92,6 @@ dat <- dat %>%
   )
 ```
 
-
-
-
 ```{r}
 dat <- dat %>%
   top_n(n = 100)
@@ -102,7 +99,6 @@ dat <- dat %>%
 dat %>% 
   dim
 ```
-
 
 ```{r}
 exclude_columns_from_pivoting <-
@@ -135,12 +131,11 @@ dat_demographics <- dat %>%
     dem.pack_year,
     mhd.eating_disorder_received_treatment,
     
-    # Algorithm
-#    "ed.DSM5_AN_binary",
-    "ed.DSM5_AN_restricting_binary",
-    "ed.DSM5_AN_binge_purge_binary",
-    "ed.DSM5_BED_binary"    
-  ) %>%
+    # Disorder
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder
+    ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
 #    names_to = "Old_variable",
@@ -153,12 +148,10 @@ dat_demographics <- dat %>%
 dat_demographics
 ```
 
-
 ```{r}
 dat_demographics %>%
 write_rds(file = paste0(filepath_cleaned_data, "demographics.rds"))
 ```
-
 
 # Table:  Age distribution of EDGI UK sample by age range and sex
 ```{r select age distribution data}
@@ -166,12 +159,111 @@ age_sex_distribution <- dat %>%
   select(ID,
          dem.dob_age, 
          dem.sex)
+
+# Long format
+exclude_columns_from_pivoting <-
+  c(
+    "ID",
+    "dem.dob_age",
+    "dem.sex"
+  )
+
+age_sex_distribution_long <- dat %>%
+  select(all_of(exclude_columns_from_pivoting),
+         
+        # Disorder
+        anorexia_nervosa,
+        bulimia_nervosa,
+        binge_eating_disorder
+        ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+age_sex_distribution_long
 ```
 
-# Table: Distribution of lifetime eating disorders in EDGI Sample by gender and report type split by eating disorder diagnosis
+# Table: Self-report and algorithm derived eating disorder diagnosis distribution in EDGI UK sample, split by sex
 ```{r select age distribution data}
-age_sex_distribution <- dat %>%
+selfreport_algo_sex <- dat %>%
   select(ID,
-         dem.dob_age, 
-         dem.sex)
+         dem.sex,
+         # Algorithm-derived
+         ed.DSM5_AN_binary,
+         ed.DSM5_AN_restricting_binary,
+         ed.DSM5_AN_restricting_binary,
+         ed.DSM5_BED_binary, 
+         ed.DSM5_BN_binary,
+         # Add purging, NES, and all atypical disorder (AN, BN, BED) algorithms
+         # Self-report
+         mhd.an_numeric,                                                    
+         mhd.atypical_an_numeric,                                  
+         mhd.bn_numeric,                                                
+         mhd.bed_numeric,                                                
+         mhd.atypical_bn_numeric,                                         
+         mhd.atypical_bed_numeric,                                         
+         mhd.purging_disorder_numeric,                                
+         mhd.nighteating_syndrome_numeric,                                 
+         mhd.pica_numeric,                                      
+         mhd.avoidantrestrictive_food_intake_disorder_numeric,              
+         mhd.rumination_disorder_numeric,                          
+         mhd.feeding_eating_disorder_numeric,                              
+         mhd.other_eating_disorder_numeric)
+         
+# Long format
+exclude_columns_from_pivoting <-
+  c(
+    "ID",
+    "dem.sex",
+     "ed.DSM5_AN_binary",
+     "ed.DSM5_AN_restricting_binary",
+     "ed.DSM5_AN_restricting_binary",
+     "ed.DSM5_BED_binary", 
+     "ed.DSM5_BN_binary",
+      # +++Add purging, NES, and all atypical disorder (AN, BN, BED) algorithms
+      # Self-report
+     "mhd.an_numeric",                                                    
+     "mhd.atypical_an_numeric",                                  
+     "mhd.bn_numeric",                                                
+     "mhd.bed_numeric",                                                
+     "mhd.atypical_bn_numeric",                                         
+     "mhd.atypical_bed_numeric",                                         
+     "mhd.purging_disorder_numeric",                                
+     "mhd.nighteating_syndrome_numeric",                                 
+     "mhd.pica_numeric",                                      
+     "mhd.avoidantrestrictive_food_intake_disorder_numeric",              
+     "mhd.rumination_disorder_numeric",                          
+     "mhd.feeding_eating_disorder_numeric",                              
+     "mhd.other_eating_disorder_numeric"
+  )
+
+selfreport_algo_sex_long <- dat %>%
+  select(all_of(exclude_columns_from_pivoting),
+         
+        # Disorder
+        anorexia_nervosa,
+        bulimia_nervosa,
+        binge_eating_disorder
+        ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+selfreport_algo_sex_long
 ```
+
+
+
+                 
+                        
+
