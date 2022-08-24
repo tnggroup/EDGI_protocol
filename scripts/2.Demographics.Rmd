@@ -1,0 +1,79 @@
+---
+title: "Demographics"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Load packages}
+library(tidyverse)
+library(gtsummary)
+```
+
+Load data
+
+```{r Load data}
+dat <- 
+```
+
+
+```{r format table}
+summary_table <- 
+  gtsummary::tbl_strata(
+    data = arfid_profile,
+    strata = asd_diagnosis,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(
+        
+        by =  patients_biological_sex,
+        
+        label = list(
+          pardi.parent.pre.sensory_sensitivities_numeric ~ 
+               "Avoidance of food based on sensory sensitivities", 
+          pardi.parent.pre.lack_of_interest_numeric ~
+               "Lack of interest in eating and food", 
+          pardi.parent.pre.fear_of_aversive_consequences_numeric ~
+               "Fear of aversive consequences of eating",
+          child.parent.pre.age_yrs_dec_coalesced ~ 
+                 "Patient's age in years"),
+                
+          type = list(pardi.parent.pre.sensory_sensitivities_numeric ~ 
+            "continuous2",
+          pardi.parent.pre.lack_of_interest_numeric ~
+            "continuous2",
+          pardi.parent.pre.fear_of_aversive_consequences_numeric ~
+            "continuous2", 
+          child.parent.pre.age_yrs_dec_coalesced ~ 
+            "continuous2"),
+
+          statistic = all_continuous2() ~ c(
+            "{mean} ({sd})",
+            "{median} ({p25}, {p75})"), 
+              
+              missing = "always")  %>% 
+  add_n()
+  )
+```
+
+Add bold labels to table
+
+```{r table with bold labels}
+summary_table %>% 
+  bold_labels() 
+```
+
+Save as a word document
+
+```{r table as word document}
+summary_table %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../results/ARFID_ASD_sex.docx"
+  )
+```
