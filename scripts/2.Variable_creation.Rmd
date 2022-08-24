@@ -32,20 +32,17 @@ source(file = paste0("functions/package_check.R"))
 ```
 
 Load packages
-
 ```{r Load packages}
 library(tidyverse)
 library(gtsummary)
 ```
 
 Set current date
-
 ```{r current date}
 date <- Sys.Date()
 ```
 
 Load data
-
 ```{r Load data}
 dat <- read_rds(
   file = paste0(filepath_cleaned_data, "merged_dat.rds")
@@ -53,13 +50,43 @@ dat <- read_rds(
 ```
 
 Overview variables
-
 ```{r Overview variables}
 names(dat)
 ```
 
+# Self-report and algorithm-derived ED diagnosis
+```{r deriving self-report and algorithm-derived ED diagnosis}
+# Anorexia nervosa
+dat <- dat %>%
+  mutate(anorexia_nervosa =
+           case_when(ed.DSM5_AN_binary == "DSM5 AN" |
+                       mhd.an_numeric == 1 ~ "Anorexia nervosa"))
 
-```{r}
+# Bulimia nervosa
+dat <- dat %>%
+  mutate(bulimia_nervosa =
+           case_when(ed.DSM5_BN_binary == "DSM-5 BN" |
+                       mhd.bn_numeric == 1 ~ "Bulimia nervosa"))
 
+# Binge-eating disorder
+dat <- dat %>%
+  mutate(binge_eating_disorder =
+           case_when(ed.DSM5_BED_binary == "DSM-5 BED" |
+                       mhd.bed_numeric == 1 ~ "Binge-eating disorder"))
 ```
 
+# Table:  Age distribution of EDGI UK sample by age range and sex
+```{r select age distribution data}
+age_sex_distribution <- dat %>%
+  select(ID,
+         dem.dob_age, 
+         dem.sex)
+```
+
+# Table: Distribution of lifetime eating disorders in EDGI Sample by gender and report type split by eating disorder diagnosis
+```{r select age distribution data}
+age_sex_distribution <- dat %>%
+  select(ID,
+         dem.dob_age, 
+         dem.sex)
+```
