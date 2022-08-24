@@ -126,7 +126,7 @@ dat_demographics <- dat %>%
   ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
-#    names_to = "Disorder",
+#    names_to = "Old_variable",
     values_to = "Disorder"
     ) %>%
   select(
@@ -138,6 +138,7 @@ dat_demographics
 
 
 ```{r}
-
+dat_demographics %>%
+write_rds(file = paste0(filepath_cleaned_data, "demographics.rds"))
 ```
 
