@@ -111,71 +111,7 @@ Save as a word document
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../results/ARFID_ASD_sex.docx"
+    path = "../results/EDGI_psychiatric_dx.docx"
   )
 ```
 
-
-
-
-Label variables for table and select type of data
-
-```{r tbl_summary}
-summary_table <- summary %>% 
-  tbl_summary(
-              label = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "Patient's biological sex",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "Age in years",
-                 asd_diagnosis ~ 
-                  "Comorbid autism spectrum disorder diagnosis",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "BMI-for-age z-score",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "A1: Weight loss or difficulty maintaining weight/growth", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "A2: Nutritional deficiency", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "A3: Enteral feeding or oral supplement", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "A4: Psychosocial impairment"),
-              
-              
-              type = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "categorical",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "continuous2",
-                 asd_diagnosis ~
-                  "categorical",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "continuous2",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "categorical"), 
-              
-              statistic = list(
-                all_categorical() ~ "{n} ({p}%)",
-                all_continuous2() ~ c("{mean} ({sd})",
-                                      "{median} ({p25}, {p75})",
-                                      "{min}, {max}")
-                ), 
-              
-              missing = "no"
-    ) 
-```
-
-```{r modify labls and run table}
-summary_table %>% 
-  modify_caption("**Table 1. Patient Characteristics**") %>%  
-  modify_footnote(all_stat_cols() ~ "n(%) or Mean(SD)") %>% 
-  bold_labels() %>% 
-  add_n() %>% 
-  modify_header(label ~ "**Variable**") 
-```
