@@ -58,14 +58,10 @@ names(dat_psych_dx)
 
 ```{r format table}
 summary_table <-
-  gtsummary::tbl_strata(
-    data = dat_psych_dx, 
-    strata = ed.DSM5_AN_binary,
-    .tbl_fun =
-      ~ .x %>%
-      tbl_summary(
-        
-        by =  ed.DSM5_BED_binary,
+  dat %>%
+  gtsummary::tbl_summary(
+    
+    by =  ed.DSM5_BED_binary,
         
         label = list(
         mhd.depression_and_anxiety ~
@@ -90,7 +86,8 @@ summary_table <-
         "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
          ),
                 
-          type = list(mhd.depression_and_anxiety ~
+          type = list(
+            mhd.depression_and_anxiety ~
             "categorical",
           mhd.depressive_disorders ~
            "categorical",
@@ -124,7 +121,6 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
-  )
 ```
 
 Add bold labels to table
