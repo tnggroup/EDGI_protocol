@@ -1,0 +1,156 @@
+---
+title: "Demographics"
+author: "Shannon Bristow, Christopher Huebel, Helena Davies, Dina Monssen"
+date: '2022-09-07'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Clear Global Environment
+
+```{r clear global environment}
+rm(list = ls(all.names = TRUE)) 
+```
+
+Read in file with path to data channel
+```{r Read in file with path to data channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the imp_check function - used to check variables for implausible values
+```{r Read in functions}
+source(file = paste0("functions/add_numeric.R"))
+source(file = paste0("functions/remove_duplicates.R"))
+source(file = paste0("functions/package_check.R"))
+```
+
+Load packages
+
+```{r Load packages}
+library(tidyverse)
+library(gtsummary)
+library(sm)
+```
+
+Set current date
+
+```{r current date}
+date <- Sys.Date()
+```
+
+Load data
+
+```{r Load data}
+load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+```
+
+
+```{r}
+names(dat_demographics)
+```
+
+# Figures:  Age distribution of EDGI UK sample by age range and sex
+```{r select age distribution data}
+age_sex_distribution <- dat %>%
+  select(
+    mixed_eating_disorders,
+         dem.dob_age, 
+         dem.sex)
+
+age_sex_distribution %>%
+  names()
+```
+
+There is a problem in the age cleaning script. It creates lots of IDs that do not have matching IDs
+
+```{r}
+dat %>%
+  filter(
+    is.na(dem.sex)
+  )
+```
+
+
+
+
+```{r}
+dat %>%
+  summarytools::freq(dem.sex)
+```
+
+
+```{r}
+dat %>%
+  filter(
+    !is.na(dem.sex)
+  ) %>%
+  ggplot(aes (x = dem.dob_age, fill = dem.sex)) + 
+  geom_density()
+```
+
+
+
+```{r}
+dat %>%
+  sm.density.compare(
+    x = dem.dob_age,
+    group = dem.sex
+    )
+```
+
+
+```{r}
+# Long format
+exclude_columns_from_pivoting <-
+  c(
+    "dem.dob_age",
+    "dem.sex"
+    )
+
+age_sex_distribution_long <- dat %>%
+  select(
+    all_of(exclude_columns_from_pivoting),
+         
+        # Disorder
+        anorexia_nervosa,
+        bulimia_nervosa,
+        binge_eating_disorder
+        ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+age_sex_distribution_long
+```
+
+
+
+Add bold labels to table
+
+```{r table with bold labels}
+summary_table %>% 
+  bold_labels() 
+```
+
+Save as a word document
+
+```{r table as word document}
+summary_table %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../results/EDGI_demographics.docx"
+  )
+```
+

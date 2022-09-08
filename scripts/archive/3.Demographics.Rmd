@@ -1,7 +1,7 @@
 ---
 title: "Demographics"
-author: "Christopher Huebel, Helena Davies, Dina Monssen, Shannon Bristow"
-date: "2022-09-01"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-08-24"
 output: html_document
 ---
 
@@ -64,45 +64,19 @@ summary_table <-
         by =  mixed_eating_disorders,
         
         label = list(
-       #dem sex is missing. is this a mistake?
-          demographics.what_gender_do_you_identify_with ~
+        demographics.what_gender_do_you_identify_with ~
           "Gender",
         dem.what_is_your_sexual_orientation ~
           "Sexual Orientation",
         dem.do_you_identify_as_transgender ~
           "Transgender"
-        dem.what_is_your_ethnic_origin, ~
-          "Ethnic Origin"
-        dem.highest_education_finegrained ~
-          "Highest Education Level"
-        #there was a gap between these in other script. do i need one here?
-        dem.what_is_your_current_employment_status ~
-          "Current Employment Status"
-        dem.what_is_your_current_maritalrelationship_status ~
-          "Current Marital/Relationship Status"
-        dem.pack_year ~ # is this smoking?
-          "Smoking status"
-        mhd.eating_disorder_received_treatment ~
-            "Received Treatment"
         ),
-        
+                
           type = list(demographics.what_gender_do_you_identify_with ~ 
             "categorical",
           dem.what_is_your_sexual_orientation ~
             "categorical",
           dem.do_you_identify_as_transgender ~
-            "categorical"
-          dem.what_is_your_ethnic_origin ~
-            "categorical"
-          dem.highest_education_finegrained ~
-            "categorical"
-          dem.what_is_your_current_employment_status ~
-            "categorical"
-          dem.what_is_your_current_maritalrelationship_status ~
-            "categorical"          
-          dem.pack_year ~ # is this smoking?
-            "categorical"
-          mhd.eating_disorder_received_treatment ~
             "categorical"
           ),
 
@@ -135,20 +109,7 @@ summary_table <-
           "Sexual Orientation",
         dem.do_you_identify_as_transgender ~
           "Transgender"
-      dem.what_is_your_ethnic_origin, ~
-          "Ethnic Origin"
-        dem.highest_education_finegrained ~
-          "Highest Education Level"
-        #there was a gap between these in other script. do i need one here?
-        dem.what_is_your_current_employment_status ~
-          "Current Employment Status"
-        dem.what_is_your_current_maritalrelationship_status ~
-          "Current Marital/Relationship Status"
-        dem.pack_year ~ # is this smoking?
-          "Smoking status"
-        mhd.eating_disorder_received_treatment ~
-            "Received Treatment"
-          ),
+        ),
                 
           type = list(demographics.what_gender_do_you_identify_with ~ 
             "categorical",
@@ -156,19 +117,7 @@ summary_table <-
             "categorical",
           dem.do_you_identify_as_transgender ~
             "categorical"
-         dem.what_is_your_ethnic_origin ~
-            "categorical"
-          dem.highest_education_finegrained ~
-            "categorical"
-          dem.what_is_your_current_employment_status ~
-            "categorical"
-          dem.what_is_your_current_maritalrelationship_status ~
-            "categorical"          
-          dem.pack_year ~ # is this smoking?
-            "categorical"
-          mhd.eating_disorder_received_treatment ~
-            "categorical"
-           ),
+          ),
 
           statistic = list(
                              
