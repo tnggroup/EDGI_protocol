@@ -58,10 +58,10 @@ names(dat_psych_dx)
 
 ```{r format table}
 summary_table <-
-  dat %>%
+  dat_psych_dx %>%
   gtsummary::tbl_summary(
     
-    by =  ed.DSM5_BED_binary,
+    by =  mixed_eating_disorders,
         
         label = list(
         mhd.depression_and_anxiety ~
@@ -83,7 +83,7 @@ summary_table <-
         mhd.bipolar_disorder_numeric ~
         "Bipolar Disorder",
         mhd.autism_spectrum_disorder ~
-        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
+        "ASD" # do we want consistency in whether we are spelling out in full or abbreviating?
          ),
                 
           type = list(
