@@ -1,0 +1,342 @@
+---
+title: "Demographics"
+author: "Christopher Huebel, Helena Davies, Shannon Bristow, Dina Monssen"
+date: "2022-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Clear Global Environment
+
+```{r clear global environment}
+rm(list = ls(all.names = TRUE)) 
+```
+
+Read in file with path to data channel
+```{r Read in file with path to data channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the imp_check function - used to check variables for implausible values
+```{r Read in functions}
+source(file = paste0("functions/add_numeric.R"))
+source(file = paste0("functions/remove_duplicates.R"))
+source(file = paste0("functions/package_check.R"))
+```
+
+Load packages
+
+```{r Load packages}
+library(tidyverse)
+library(gtsummary)
+```
+
+Set current date
+
+```{r current date}
+date <- Sys.Date()
+```
+
+Load data
+
+```{r Load data}
+load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+```
+
+
+```{r}
+names(dat_somatic_dx)
+```
+
+
+```{r format table}
+summary_table <-
+  gtsummary::tbl_strata(
+    data = dat_summary_table, 
+    strata = ed.DSM5_AN_binary,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(
+        
+        by =  ed.DSM5_BED_binary,
+        
+        label = list(
+        dem.epilepsy_or_convulsions ~
+          "Epilepsy or Convulsions",
+        dem.migraines ~
+          "Migraines",
+        dem.multiple_sclerosis ~
+          "Multiple Sclerosis",
+        dem.parkinsons_disease ~
+          "Parkinsons Disease",
+        dem.severe_memory_loss ~
+          "Severe Memory Loss",
+        dem.neurological_none ~
+          "No Neurological Condition", # is this naming ok?
+        dem.neurological_dont_know ~
+          "Neurological Condition Unknown", # is this naming ok?
+        dem.neurological_prefer_not_to_answer ~ 
+          "Neurological Prefer Not to answer",
+        dem.hay_fever ~
+          "Hay Fever",
+        dem.drug_allergy ~                                                 
+          "Drug Allergy",                                               
+        dem.food_allergy ~
+          "Food Allergy",
+        dem.food_allergy_txt ~ # do we want to keep the free text responses?
+          "Other Food Allergy", #not sure if this is the right wording?
+        dem.other_allergy ~
+          "Other Allergies",
+#        dem.other_allergy_txt # do we want to keep the free text responses?                                          
+        dem.osteoporosis ~
+          "Osteoporosis",
+        dem.osteoarthritis ~
+          "Osteoarthriris",
+        dem.rheumatoid_arthritis ~
+          "Rheumatoid Arthritis",
+        dem.other_arthritis ~
+          "Any Other Arthritis",
+        dem.other_arthritis_txt ~ # do we want the free text response?
+          "Any Other Arthritis Free Text",
+        dem.allergy_none ~
+          "No Allergies",
+        dem.allergy_prefer_not_to_answer ~
+          "Allergy Prefer Not to Answer",
+        dem.allergy_dont_know ~    
+          "Allergies Unknown",
+        dem.asthma ~
+          "Asthma",
+        dem.emphysema_or_chronic_bronchitis ~
+          "Emphysema or Chronic Bronchitis",
+        dem.heart_attack_or_angina ~
+          "Heart Attack or Angina",
+        dem.high_blood_cholesterol ~
+          "High Cholesterol",
+        dem.high_blood_pressure ~   
+          "High Blood Pressure",
+        dem.atrial_fibrillation ~
+          "Atrial Fibrillation",
+        dem.stroke ~
+          "Stroke",
+        dem.respiratory_none ~
+          "No Respiratory Condition",
+        dem.respiratory_prefer_not_to_answer ~    
+          "Respiratory Prefer Not to Answer",
+        dem.respiratory_dont_know ~
+          "Respiratory Condition Unknown",
+        dem.crohns_disease ~
+          "Chron's Disease",
+        dem.ulcerative_colitis ~
+          "Ulcerative Colitis",
+        dem.coeliac_disease ~
+          "Coeliac disease",
+        dem.diabetes_type_1 ~
+          "Diabetes Type 1",
+        dem.diabetes_type_2 ~   
+          "Diabetes Type 2",
+        dem.pain_due_to_diabetes ~
+          "Diabetic-related Pain",
+        dem.pain_due_to_virus ~
+            "Viral-related pain",
+        dem.digestive_none ~
+          "No Digestive Conditions",
+        dem.digestive_dont_know ~
+          "Digestive Condition Unknown",
+        dem.digestive_prefer_not_to_answer ~
+          "Digestive prefer not to answer",
+        dem.breast_cancer ~
+          "Breast Cancer",
+        dem.lung_cancer ~
+          "Lung Cancer",
+        dem.stomach_cancer ~
+          "Stomach Cancer",
+        dem.colon_cancer ~
+          "Colon Cancer",
+        dem.uterus_cancer ~
+          "Uterus Cancer",
+        dem.prostate_cancer ~
+          "Prostate Cancer",
+        dem.cancer_none ~
+          "No Cancer",
+        dem.cancer_dont_know ~
+          "Cancer Unknown",
+        dem.cancer_prefer_not_to_answer ~
+          "Cancer Prefer Not to Answer",
+        dem.psoriasis ~
+          "Psoriasis",
+        dem.vitiligo ~
+          "Vitiligo",
+        dem.eczema ~
+          "Eczema",
+        dem.thyroid_disease ~
+          "Thyroid Disease",
+        dem.thyroid_disease_txt ~
+          "Thyroid Disease Free Text Responses",
+        dem.skin_none ~
+          "No Dermatological Conditions",
+        dem.skin_dont_know ~
+          "Dermatological Conditions Unknown",
+        dem.skin_prefer_not_to_answer ~
+          "Dermatological Prefer Not to Answer",
+        ),
+                
+          type = listdem.epilepsy_or_convulsions ~
+          "categorical",
+        dem.migraines ~
+          "categorical",
+        dem.multiple_sclerosis ~
+          "categorical",
+        dem.parkinsons_disease ~
+          "categorical",
+        dem.severe_memory_loss ~
+          "categorical",
+        dem.neurological_none ~
+          "categorical", # is this naming ok?
+        dem.neurological_dont_know ~
+          "categorical", # is this naming ok?
+        dem.neurological_prefer_not_to_answer ~ 
+          "categorical",
+        dem.hay_fever ~
+          "categorical",
+        dem.drug_allergy ~                                                 
+          "categorical",                                               
+        dem.food_allergy ~
+          "categorical",
+        dem.food_allergy_txt ~ # do we want to keep the free text responses?
+          "categorical", #not sure if this is the right wording?
+        dem.other_allergy ~
+          "categorical",
+#        dem.other_allergy_txt # do we want to keep the free text responses?                                          
+        dem.osteoporosis ~
+          "categorical",
+        dem.osteoarthritis ~
+          "categorical",
+        dem.rheumatoid_arthritis ~
+          "categorical",
+        dem.other_arthritis ~
+          "categorical",
+        dem.other_arthritis_txt ~ # do we want the free text response?
+          "categorical",
+        dem.allergy_none ~
+          "categorical",
+        dem.allergy_prefer_not_to_answer ~
+          "categorical",
+        dem.allergy_dont_know ~    
+          "categorical",
+        dem.asthma ~
+          "categorical",
+        dem.emphysema_or_chronic_bronchitis ~
+          "categorical",
+        dem.heart_attack_or_angina ~
+          "categorical",
+        dem.high_blood_cholesterol ~
+          "categorical",
+        dem.high_blood_pressure ~   
+          "categorical",
+        dem.atrial_fibrillation ~
+          "categorical",
+        dem.stroke ~
+          "categorical",
+        dem.respiratory_none ~
+          "categorical",
+        dem.respiratory_prefer_not_to_answer ~    
+          "categorical",
+        dem.respiratory_dont_know ~
+          "categorical",
+        dem.crohns_disease ~
+          "categorical",
+        dem.ulcerative_colitis ~
+          "categorical",
+        dem.coeliac_disease ~
+          "categorical",
+        dem.diabetes_type_1 ~
+          "categorical",
+        dem.diabetes_type_2 ~   
+          "categorical",
+        dem.pain_due_to_diabetes ~
+          "categorical",
+        dem.pain_due_to_virus ~
+            "categorical",
+        dem.digestive_none ~
+          "categorical",
+        dem.digestive_dont_know ~
+          "categorical",
+        dem.digestive_prefer_not_to_answer ~
+          "categorical",
+        dem.breast_cancer ~
+          "categorical",
+        dem.lung_cancer ~
+          "categorical",
+        dem.stomach_cancer ~
+          "categorical",
+        dem.colon_cancer ~
+          "categorical",
+        dem.uterus_cancer ~
+          "categorical",
+        dem.prostate_cancer ~
+          "categorical",
+        dem.cancer_none ~
+          "categorical",
+        dem.cancer_dont_know ~
+          "categorical",
+        dem.cancer_prefer_not_to_answer ~
+          "categorical",
+        dem.psoriasis ~
+          "categorical",
+        dem.vitiligo ~
+          "categorical",
+        dem.eczema ~
+          "categorical",
+        dem.thyroid_disease ~
+          "categorical",
+        dem.thyroid_disease_txt ~
+          "categorical",
+        dem.skin_none ~
+          "categorical",
+        dem.skin_dont_know ~
+          "categorical",
+        dem.skin_prefer_not_to_answer ~
+          "categorical",
+        ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+  )
+```
+
+Add bold labels to table
+
+```{r table with bold labels}
+summary_table %>% 
+  bold_labels() 
+```
+
+Save as a word document
+
+```{r table as word document}
+summary_table %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../results/EDGI_somatic_dx.docx"
+  )
+```
+
+
+

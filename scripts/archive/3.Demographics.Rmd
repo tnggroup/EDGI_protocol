@@ -1,6 +1,6 @@
 ---
 title: "Demographics"
-author: "Christopher Huebel, Helena Davies, Shannon Bristow, Dina Monssen"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
 date: "2022-08-24"
 output: html_document
 ---
@@ -52,65 +52,33 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 
 
 ```{r}
-names(dat_psych_dx)
+names(dat_demographics)
 ```
 
 
 ```{r format table}
 summary_table <-
-  gtsummary::tbl_strata(
-    data = dat_psych_dx, 
-    strata = ed.DSM5_AN_binary,
-    .tbl_fun =
-      ~ .x %>%
-      tbl_summary(
+  dat_demographics %>%
+  gtsummary::tbl_summary(
         
-        by =  ed.DSM5_BED_binary,
+        by =  mixed_eating_disorders,
         
         label = list(
-        mhd.depression_and_anxiety ~
-        "Depression and Anxiety",
-        mhd.depressive_disorders ~
-        "Depressive Disorders",
-        mhd.anxiety_disorders ~
-        "Anxiety Disorders",
-        mhd.ptsd_numeric~
-        "PTSD",
-        mhd.obsessive_compulsive_disorders ~
-        "Obessive Compulsive Disorders",
-        mhd.personality_disorder_diagnosed_numeric ~
-        "Personality Disorder",
-        mhd.bipolar_and_schizophrenia ~
-        "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
-        mhd.psychotic_disorders ~
-        "Psychotic Disorders",
-        mhd.bipolar_disorder_numeric ~
-        "Bipolar Disorder",
-        mhd.autism_spectrum_disorder ~
-        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
-         ),
-                
-          type = list(mhd.depression_and_anxiety ~
-            "categorical",
-          mhd.depressive_disorders ~
-           "categorical",
-          mhd.anxiety_disorders ~
-            "categorical",
-          mhd.ptsd_numeric~
-            "categorical",
-          mhd.obsessive_compulsive_disorders ~
-            "categorical",
-        mhd.personality_disorder_diagnosed_numeric ~
-            "categorical",
-        mhd.bipolar_and_schizophrenia ~
-            "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
-        mhd.psychotic_disorders ~
-            "categorical",
-        mhd.bipolar_disorder_numeric ~
-            "categorical",
-        mhd.autism_spectrum_disorder ~
-            "categorical" # do we want consistency in whether we are spelling out in full or abbreviating?
+        demographics.what_gender_do_you_identify_with ~
+          "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender"
         ),
+                
+          type = list(demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical"
+          ),
 
           statistic = list(
                              
@@ -124,8 +92,48 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
-  )
 ```
+
+
+```{r format table}
+summary_table <-
+  dat_demographics_long %>%
+  gtsummary::tbl_summary(
+        
+        by =  Disorder,
+        
+        label = list(
+        demographics.what_gender_do_you_identify_with ~
+          "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender"
+        ),
+                
+          type = list(demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical"
+          ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+```
+
+
 
 Add bold labels to table
 
@@ -140,7 +148,7 @@ Save as a word document
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../results/EDGI_psychiatric_dx.docx"
+    path = "../results/EDGI_demographics.docx"
   )
 ```
 
