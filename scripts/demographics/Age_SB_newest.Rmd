@@ -1,0 +1,862 @@
+---
+title: "Age_SBnew"
+author: "Shannon Bristow"
+date: '2022-09-30'
+output: html_document
+---
+title: "Age (GLAD & EDGI sign-ups)"
+author: "Abigail ter Kuile & Jessica Mundy"
+date: "28/06/2021"
+output: html_document
+---
+
+# Set up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      comment=NA,
+                      prompt=FALSE,
+                      cache=FALSE)
+```
+
+## Delete everything in your global environment
+```{r Delete everything in your global environment}
+remove(list = ls())
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = "scripts/functions/add_numeric.R")
+source(file = "scripts/functions/remove_duplicates.R")
+source(file = "scripts/functions/sumscores.R")
+source(file = "scripts/functions/package_check.R")
+source(file = "scripts/functions/imp_check.R")
+```
+
+Note: always load tidyverse last
+```{r Install load dependencies}
+packages = c(
+  "summarytools",
+  "sjlabelled",
+  "data.table",
+  "Amelia",
+  "lubridate",
+  "gtsummary",
+  "tidyverse"
+  )
+package_check(packages)
+```
+
+## Retrieve the recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date = Sys.Date()
+date
+```
+
+## Read in file with path to ilovedata channel on Teams
+```{r Read in file with path to ilovedata channel on Teams}
+source(file = "../credentials/paths.R")
+```
+
+# Read in the data: Demographics
+
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")
+  )
+  
+# check variable names in dataframe
+glad_dat %>%
+  colnames()
+
+# Inspect dimensions of dataframe (number of rows and columns)
+glad_dat %>%
+  dim()
+```
+
+
+Select & rename relevant columns (will be a function at some point)
+```{r GLAD select & rename relevant columns}
+glad_dat_id <- glad_dat %>% # new dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "GLAD", 
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference,# ID
+         sample,
+         startDate,
+         endDate,
+         dem.how_old_are_you_now.txt, #self-reported age at GLAD sign up
+         dem.day, # day of birth
+         dem.month, # month of birth
+         dem.year # year of birth
+         )  %>% 
+   
+  rename_with( ~ paste(.x, "unc", sep = "_"), starts_with("dem"))
+ 
+# Inspect colnames
+glad_dat_id %>%
+  colnames()
+```
+Look at number of people excluded
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1]-dim(glad_dat)[1]
+glad_excluded
+
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+ glad_miss_map <- glad_dat_id %>% 
+   missmap()
+ glad_miss_map
+```
+
+Check missing N for age variables needed to caluclate DOB age at sign up 
+```{r GLAD check missing N variables}
+glad_dat_id %>%
+  select(dem.year_unc,
+         dem.month_unc,
+         dem.day_unc,
+         endDate) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+## EDGI data
+Please do not change the name of the object so it remains universal
+```{r EDGI read in data}
+edgi_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+  
+# Check variable names in dataframe
+edgi_dat %>%
+  colnames()
+
+# Inspect dimensions of dataframe 
+edgi_dat %>%
+  dim()
+```
+Find differences between colnames of GLAD and EDGI dataframes
+```{r Check colnames}
+setdiff(colnames(glad_dat), colnames(edgi_dat))
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select & rename relevant columns}
+
+edgi_dat_id <- edgi_dat %>% # New dataset with ID
+  drop_na(externalDataReference) %>% # # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference,# ID
+         sample,
+         startDate,
+         endDate,
+         dem.how_old_are_you_now.txt, # age at sign-up (self-reported)
+         dem.day, # day of birth
+         dem.month, # month of birth
+         dem.year # year of birth
+         ) %>% 
+   
+  rename_with( ~ paste(.x, "unc", sep = "_"), starts_with("dem"))
+  
+# Inspect colnames
+edgi_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+edgi_excluded <- dim(edgi_dat_id)[1]-dim(edgi_dat)[1]
+edgi_excluded
+
+```
+
+Check missingness by missmap
+```{r EDGI inspect missingness}
+ edgi_miss_map <- edgi_dat_id %>% 
+   missmap()
+edgi_miss_map
+```
+
+
+
+## Bind rows of EDGI and GLAD data for cleaning 
+
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id)
+#Check
+dat %>% glimpse()
+```
+
+# Clean GLAD & EGDI age variables
+
+## GLAD & EDGI age at sign-up (self-reported)
+
+### GLAD & EDGI Inspect age variable
+```{r GLAD & EDGI check values}
+dat %>%
+  freq(dem.how_old_are_you_now.txt_unc)
+```
+
+###Convert negative values of age to positive values and convert to numeric (this helps bind all datatsets at the end)
+```{r GLAD & EDGI dem.how_old_are_you_now.txt_unc conversion to positive value}
+dat <- dat %>%
+  mutate(
+    dem.how_old_are_you_now.txt_unc =
+      abs(
+        as.numeric(
+        dem.how_old_are_you_now.txt_unc)
+      )
+  )
+#Check
+dat %>%
+  
+  freq(dem.how_old_are_you_now.txt_unc)
+```
+Age outliers: 
+- Lower: The data set should not have individuals younger than 16 (requirement of GLAD)
+- Upper: The oldest person in the world is 117 years.
+
+### GLAD & EDGI Set age limits
+```{r GLAD & EDGI current age define limits}
+age_lower_limit = 16
+age_upper_limit = 117
+```
+
+### GLAD & EDGI Check for number of outliers in age variable
+```{r GLAD & EDGI age outlier count}
+dat %>%
+  filter(
+    dem.how_old_are_you_now.txt_unc > age_upper_limit | # older than the age limit
+      dem.how_old_are_you_now.txt_unc < age_lower_limit # younger than the age limit
+    ) %>%
+  nrow()
+```
+
+### GLAD & EDGI Recode age outliers to -666
+```{r GLAD & EDGI age Recode outliers to -666}
+dat <- dat %>%
+    mutate(
+      dem.how_old_are_you_now.txt = # remove "_unc" from the end to show that it is now cleaned
+        if_else(
+          dem.how_old_are_you_now.txt_unc > age_upper_limit |
+            dem.how_old_are_you_now.txt_unc < age_lower_limit,
+          true = -666,
+          false = dem.how_old_are_you_now.txt_unc,
+          missing = NA_real_
+        )
+    )
+```
+
+### GLAD & EDGI Inspect clean age variable
+```{r GLAD & EDGI age after recoding to -666}
+dat %>%
+  freq(dem.how_old_are_you_now.txt)
+```
+
+## GLAD & EDGI age at sign up (based on DOB)
+
+### GLAD & EDGI Inspect variables
+```{r GLAD & EDGI Inspect variables}
+dat %>% 
+  freq(dem.day_unc)
+
+dat %>% 
+  freq(dem.month_unc)
+
+dat %>% 
+  freq(dem.year_unc)
+```
+###Convert day, month, year to numeric and negative values to positive values (this helps bind datatsets)
+Day conversion numeric and positive values
+```{r GLAD & EDGI dem.day.unc conversion to positive values and numeric}
+dat <- dat %>%
+  mutate(
+    dem.day_unc =
+      abs(
+        as.numeric(
+        dem.day_unc)
+      )
+  )
+#Check
+dat %>%
+  freq(dem.day_unc)
+```
+
+Month conversion numeric and positive values
+```{r GLAD & EDGI dem.month_unc conversion to positive values and numeric}
+dat <- dat %>%
+  mutate(
+    dem.month_unc =
+      abs(
+        as.numeric(
+        dem.month_unc)
+      )
+  )
+#Check
+dat %>%
+  freq(dem.month_unc)
+```
+
+Year conversion numeric and positive values
+```{r GLAD & EDGI dem.year_unc conversion to positive values and numeric}
+dat <- dat %>%
+  mutate(
+    dem.year_unc =
+      abs(
+        as.numeric(
+        dem.year_unc)
+      )
+  )
+#Check
+dat %>%
+  freq(dem.year_unc) 
+```
+
+### GLAD & EDGI Add values to birthyear 
+
+Note: GLAD and EDGI dem.year is coded differently. 1 = 1900 in GLAD, and 1 = 1920 in EDGI. Check frequencies separately and compare once converted in next chunk 
+```{r year GLAD EDGI check frequencies separatly}
+dat %>%
+  group_by(sample) %>%
+  freq(dem.year_unc)
+```
+
+### GLAD & EDGI Add values to birthyear 
+GLAD: values are given as e.g. 1-119 which needs to be converted to 1901-2019 (add 1899 years)
+EDGI: values are given as 1-101 which needs to be converted to 1920-2020 (add 1919 years)
+```{r GLAD & EDGI Add years to birthyear}
+#add values to birth year
+dat <- dat %>%
+  mutate(dem.year_unc = if_else(sample == "GLAD",
+                                dem.year_unc + 1899,
+                                dem.year_unc + 1919)) ##if GLAD add 1899, if EDGI add 1919
+
+# check GLAD
+dat %>%
+  filter(sample == "GLAD") %>%
+  freq(dem.year_unc)
+# check EDGI
+dat %>%
+  filter(sample == "EDGI") %>%
+  freq(dem.year_unc)
+  
+```
+### GLAD & EDGI set minimum and maximum values
+```{r GLAD & EDGI set minimum and maximum values}
+# Day
+day.min.scale = 1
+day.max.scale = 31
+
+# Month
+month.min.scale = 1
+month.max.scale = 12
+
+# Year
+year.min.scale = 1899
+year.max.scale = 2021 # note max age set later in age_upper_limit
+```
+
+### GLAD & EDGI Clean dem.day
+```{r GLAD & EDGI Clean dem.day}
+dat <- dat %>% 
+  mutate(dem.day_unc_clean =
+           case_when(dem.day_unc < day.min.scale | dem.day_unc > day.max.scale ~ -666, # implausible value
+                     TRUE ~ dem.day_unc)
+         ) # leave as is
+
+
+# Check for implausible values
+dat_day_imp_n <- dat %>% 
+  filter(dem.day_unc_clean == -666) %>% 
+  nrow()
+
+# Check
+dat_day_imp_n
+
+# If statement
+if (dat_day_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD day of birth variable is ", dat_day_imp_n, ". This is fine."))
+  setnames(dat,
+         old = "dem.day_unc_clean",
+         new = "dem.day")
+} else {
+  print(paste0("The number of implausible values in the GLAD day of birth variable is ", dat_day_imp_n, ". Please investigate."))
+  setnames(dat,
+         old = "dem.day_unc_clean",
+         new = "dem.day")
+}
+
+# Check
+colnames(dat)
+
+# Check cleaned variable
+dat %>% 
+  freq(dem.day) 
+```
+There is one implausible value (59) in the EDGI dem data set which has been recoded to -666
+
+### GLAD & EDGI Clean dem.month
+```{r GLAD & EDGI Clean dem.month}
+dat <- dat %>% 
+  mutate(dem.month_unc_clean =
+           case_when(dem.month_unc < month.min.scale | dem.month_unc > month.max.scale ~ -666, # implausible value
+                     TRUE ~ dem.month_unc)
+         ) # leave as is
+
+# Check for implausible values
+dat_month_imp_n <- dat %>% 
+  filter(dem.month_unc_clean == -666) %>% 
+  nrow()
+
+# Check
+dat_month_imp_n
+
+# If statement
+if (dat_month_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD month of birth variable is ", dat_month_imp_n, ". This is fine."))
+  setnames(dat,
+         old = "dem.month_unc_clean",
+         new = "dem.month")
+} else {
+  print(paste0("The number of implausible values in the GLAD month of birth variable is ", dat_month_imp_n, ". Please investigate."))
+  setnames(dat,
+         old = "dem.month_unc_clean",
+         new = "dem.month")
+}
+
+# Check
+colnames(dat)
+
+# Check clean variable
+dat %>% 
+  freq(dem.month)
+```
+The month variable should now be clean.
+
+### GLAD & EDGI Clean dem.year
+```{r GLAD & EDGI dem Clean dem.year}
+dat <- dat %>% 
+  mutate(dem.year_unc_clean =
+           case_when(dem.year_unc < year.min.scale | dem.year_unc > year.max.scale ~ -666,  # implausible value
+                     TRUE ~ dem.year_unc)
+         )
+
+# Check for implausible values
+glad_edgi_year_imp_n <- dat %>% 
+  filter(dem.year_unc_clean == -666) %>% 
+  nrow()
+
+# Check
+glad_edgi_year_imp_n
+
+# If statement
+if (glad_edgi_year_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD year of birth variable is ", glad_edgi_year_imp_n, ". This is fine."))
+  setnames(dat,
+         old = "dem.year_unc_clean",
+         new = "dem.year")
+} else {
+  print(paste0("The number of implausible values in the GLAD year of birth variable is ", glad_edgi_year_imp_n, ". Please investigate."))
+  setnames(dat,
+         old = "dem.year_unc_clean",
+         new = "dem.year")
+}
+
+# Check
+dat %>% 
+  freq(dem.year)
+
+
+```
+There is one implausible value (year 2034) in the EDGI dem year data set which has been recoded to -666
+
+dat = clean data set, all implausible values are set to -666
+However, we need to drop these values to NA in order to calculate DOB (needed for the next steps)
+
+# GLAD & EDGI Create a new data set where implausible values are dropped to NA
+
+## GLAD & EDGI Drop all -666 to NA
+```{r GLAD & EDGI Drop all -666 to NA }
+dat_no_imps <- dat %>%
+  mutate_if(is.numeric, ~na_if(., -666)) # Implausible value
+```
+
+## GLAD & EDGI Drop all variables with "_unc" on the end
+```{r GLAD & EDGI Drop all variables with "_unc" on the end}
+dat_clean <- dat_no_imps %>% 
+  select(!contains("_unc")) # selects ID, sample and drops all uncleaned variables
+
+# Check (there should be no variables with "_unc" in the name now)
+colnames(dat_clean)
+```
+
+### GLAD & EDGI Create age variable
+Use lubridate for this:
+```{r GLAD & EDGI make birth date}
+dat_clean <- dat_clean %>%
+  mutate(dem.dob = make_date(dem.year, dem.month, dem.day))
+
+# check
+dat_clean %>% 
+  select(dem.day,
+         dem.month,
+         dem.year,
+         dem.dob) %>% 
+  head()
+```
+
+### GLAD & EDGI calculate age from birth date and startdate
+note: using startdate instead of enddate and this increases N (only slightly in GLAD and EDGI, but in NBR it increases by ~2k). It also matched self-report age at sign up more closely (increases the match between self-report age and dob age slightly)
+This will be their age at the time they did the questionnaire
+```{r GLAD & EDGI calculate age from birth date and startdate}
+dat_clean$dem.dob_age <- interval(
+    start = dat_clean$dem.dob,
+    end = dat_clean$startDate) %/% # use modulo to round down by %/%
+        duration(num = 1, units = "years")
+
+
+# check GLAD 
+dat_clean %>%
+  filter(sample == "GLAD") %>% 
+  select(dem.dob,
+         dem.dob_age,
+         dem.how_old_are_you_now.txt) %>% 
+  head()
+
+# check EDGI 
+dat_clean %>%
+  filter(sample == "EDGI") %>% 
+  select(dem.dob,
+         dem.dob_age,
+         dem.how_old_are_you_now.txt) %>% 
+  head()
+  
+```
+#Inspect difference self-report age and DOB age
+```{r difference self-report age and DOB age}
+# check GLAD 
+dat_clean %>%
+  filter(
+    dem.dob_age != dem.how_old_are_you_now.txt, sample == "GLAD") %>% 
+  select(dem.dob,
+         dem.dob_age,
+         dem.how_old_are_you_now.txt,
+         dem.year) 
+
+# check EDGI
+dat_clean %>%
+  filter(
+    dem.dob_age != dem.how_old_are_you_now.txt, sample == "EDGI") %>% 
+  select(dem.dob,
+         dem.dob_age,
+         dem.how_old_are_you_now.txt,
+         dem.year) 
+```
++++ATK: do we want to do something about those who's dob ages don't match their self-report ages?
+
+### GLAD & EDGI Convert dem.dob_age to numeric and negative values to positive values (this helps bind all datatsets at the end)
+```{r GLAD & EDGI dem.dob_age conversion to positive values and numeric}
+dat_clean <- dat_clean %>%
+  mutate(
+    dem.dob_age =
+      abs(
+        as.numeric(
+        dem.dob_age)
+      )
+  )
+#Check
+dat_clean %>%
+  freq(dem.dob_age)
+```
+
+### GLAD & EDGI Check for number of outliers in DOB age at sign up variable using age limits
+Same age limit as used in earlier chunk for self-reported age:
+age_lower_limit = 16
+age_upper_limit = 117
+```{r GLAD & EDGI DOB age at sign up outlier count}
+dat_clean %>%
+  filter(
+    dem.dob_age > age_upper_limit | # older than the age limit
+      dem.dob_age < age_lower_limit # younger than the age limit
+    ) %>%
+  nrow()
+```
+
+### GLAD & EDGI Recode DOB age at sign up at sign up outliers to -666
+```{r GLAD & EDGI DOB age at sign up Recode outliers to -666}
+dat_clean <- dat_clean %>%
+    mutate(
+      dem.dob_age = 
+        if_else(
+          dem.dob_age > age_upper_limit |
+            dem.dob_age < age_lower_limit,
+          true = -666,
+          false = dem.dob_age,
+          missing = NA_real_
+        )
+    )
+```
+
+### GLAD & EDGI Inspect clean DOB age at sign up at sign up variable
+```{r GLAD & EDGI DOB age at sign up after recoding to -666}
+dat_clean %>%
+  freq(dem.dob_age)
+```
+# Deal with missing age data and ages that do not match up
+```{r Get frequencies of whether the two age variables match}
+dat_clean <- dat_clean %>% 
+  mutate(dem.age_match =
+           case_when(!is.na(dem.how_old_are_you_now.txt) 
+                     & dem.how_old_are_you_now.txt != -666 
+                     & dem.how_old_are_you_now.txt == dem.dob_age 
+                     & !is.na(dem.dob_age) 
+                     & dem.dob_age != -666 ~ "Present ages match",
+                     
+                     !is.na(dem.how_old_are_you_now.txt) 
+                     & dem.how_old_are_you_now.txt != -666 
+                     & dem.how_old_are_you_now.txt != dem.dob_age 
+                     & !is.na(dem.dob_age)
+                     & dem.dob_age != -666 ~ "Present ages do not match",
+                     
+                     !is.na(dem.how_old_are_you_now.txt)
+                     & dem.how_old_are_you_now.txt != -666
+                     & (is.na(dem.dob_age) | dem.dob_age == -666) ~ "Missing DOB-derived age",
+                     
+                     (is.na(dem.how_old_are_you_now.txt) 
+                     | dem.how_old_are_you_now.txt == -666)
+                     & !is.na(dem.dob_age) & dem.dob_age != -666 ~ "Missing self-reported age",
+                     
+                     (is.na(dem.how_old_are_you_now.txt) 
+                     | dem.how_old_are_you_now.txt == -666) 
+                     & (is.na(dem.dob_age) | dem.dob_age == -666) ~ "Both ages missing")
+         )
+
+# check
+dat_clean %>% 
+  freq(dem.age_match)
+```
+```{r Look at data for participants who having missing age}
+dat_clean %>% 
+  filter(dem.age_match == "Missing DOB-derived age" 
+         | dem.age_match == "Missing self-reported age") %>% 
+  select(dem.how_old_are_you_now.txt,
+         dem.dob_age)
+```
+They all look like reasonable ages.
+
+Now need to create a variable which provides the more realistic age for participants if their self-reported age and DOB-derived age don't match up.
+```{r Create variable for "likely" age}
+dat_clean <- dat_clean %>% 
+  mutate(dem.age_likely = 
+           case_when(dem.age_match == "Present ages match" ~ dem.how_old_are_you_now.txt,
+                     
+                     dem.age_match == "Both ages missing" ~ NA_real_,
+                     
+                     dem.age_match == "Missing DOB-derived age" ~ dem.how_old_are_you_now.txt,
+                     
+                     dem.age_match == "Missing self-reported age" ~ dem.dob_age,
+                     
+                     dem.age_match == "Present ages do not match" 
+                     & dem.how_old_are_you_now.txt < dem.dob_age ~ dem.how_old_are_you_now.txt, # choose lower of the two ages
+                     
+                     dem.age_match == "Present ages do not match"
+                     & dem.how_old_are_you_now.txt > dem.dob_age ~ dem.dob_age) # choose lower of the two ages
+         )
+
+# check
+dat_clean %>% 
+  freq(dem.age_likely)
+```
+
+
+
+#Categorise age into groups (GLAD, EDGI and NBR) 
+In RAMP, age is indicated categorically: 16-18, 19-25, 26-35, 36-45, 46-55, 56-65, 66-70, 71-75, 76-80, 81-85, 86-90, 91-100, 100+
+Age categories in GLAD, EDGI and NBR have been created to reflect this. 
+Age at sign-up calculated from DOB has been used for consistency as NBR does have self-reported age at sign up. 
+
+## GLAD & EDGI categorise age groups
+```{r GLAD & EDGI Create age groups per 10 years categories and add numeric}
+dat_clean <- dat_clean %>%
+  mutate(
+    dem.age_category_numeric =
+      case_when(
+          dem.age_likely >= 16 & dem.age_likely <= 18 ~ "1",
+          dem.age_likely >= 19 & dem.age_likely <= 25 ~ "2",
+          dem.age_likely >= 26 & dem.age_likely <= 35 ~ "3",
+          dem.age_likely >= 36 & dem.age_likely <= 45 ~ "4",
+          dem.age_likely >= 46 & dem.age_likely <= 55 ~ "5",
+          dem.age_likely >= 56 & dem.age_likely <= 65 ~ "6",
+          dem.age_likely >= 66 & dem.age_likely <= 70 ~ "7",
+          dem.age_likely >= 71 & dem.age_likely <= 75 ~ "8",
+          dem.age_likely >= 76 & dem.age_likely <= 80 ~ "9",
+          dem.age_likely >= 81 & dem.age_likely <= 85 ~ "10",
+          dem.age_likely >= 86 & dem.age_likely <= 90 ~ "11",
+          dem.age_likely >= 91 & dem.age_likely <= 100 ~ "12",
+          dem.age_likely >= 101 & dem.age_likely <= 120 ~ "13" # oldest person in the world is 117 years
+                )
+    )
+```
+
+GLAD & EDGI convert to numeric and positive values for binding datasets
+```{r GLAD & EDGI Conversion dem.age_category_numeric to numeric and positive value for binding}
+dat_clean <- dat_clean %>%
+  mutate(
+    dem.age_category_numeric =
+      abs(
+        as.numeric(
+          dem.age_category_numeric)
+      )
+  )
+#Check
+dat_clean %>%
+  freq(dem.age_category_numeric)
+```
+
+GLAD & EDGI create categorical age groups and recode as factors from dem.age_category_numeric
+```{r GLAD & EDGI categorical recode factors}
+
+dat_clean <- dat_clean %>%
+    mutate(
+      dem.age_category =
+        recode_factor(
+          dem.age_category_numeric, 
+          "1" = "16-18",
+          "2" = "19-25",
+          "3" = "26-35",
+          "4" = "36-45",
+          "5" = "46-55",
+          "6" = "56-65",
+          "7" = "66-70",
+          "8" = "71-75",
+          "9" = "76-80",
+          "10" = "81-85",
+          "11" = "86-90",
+          "12" = "91-100",
+          "13" = "+100"
+        )
+    )
+dat_clean %>%
+  freq(dem.age_category)
+
+```
+
+# Save cleaned data
+
+Check colnames before exporting final dataset
+```{r check colnames}
+dat_clean %>% 
+  colnames()
+```
+
+Save variables for exporting in clean dataset - note: DOB variables have been excluded as they contain identifiable information
+```{r Save COPING variables for export}
+export_variables <- dat_clean %>% 
+  select(ID,
+         startDate,
+         endDate,
+         sample,
+         dem.how_old_are_you_now.txt,
+         dem.dob_age,
+         dem.age_match,
+         dem.age_likely,
+         dem.age_category,
+         dem.age_category_numeric) %>%
+  colnames()
+```
+
+Combined object for excluded participants
+```{r GLAD EDGI save excluded participants}
+glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
+glad_edgi_excluded
+```
+# GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  select(all_of(export_variables)) %>% 
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/age_glad_clean.rds")
+    )
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  select(all_of(export_variables)) %>%
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/age_edgi_clean.rds")
+    )
+```
+
+# GLAD EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  select(all_of(export_variables)) %>%
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/age_glad_edgi_clean.rds")
+    )
+```
+
+
+## SAVED FOR INTERNAL USE ONLY (contains dob)
+# GLAD
+```{r INTERNAL ONLY Write cleaned GLAD variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/age_glad_clean_INTERNAL_ONLY.rds")
+    )
+```
+
+# EDGI
+```{r INTERNAL ONLY Write cleaned EDGI variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/age_edgi_clean_INTERNAL_ONLY.rds")
+    )
+```
+
+# GLAD EDGI
+```{r INTERNAL ONLY Write cleaned GLAD & EDGI variables to a .rds file}
+dat_clean %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/age_glad_edgi_clean_INTERNAL_ONLY.rds")
+    )
+```
+
+
+
+
+
+
