@@ -1,0 +1,375 @@
+---
+title: "Employment_SB"
+author: "Shannon Bristow"
+date: '2022-09-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+---
+title: "Employment"
+author: "Alish Palmos"
+date: "24/08/2021"
+output: html_document
+---
+
+All arguments should be in their own row, including the first argument
+Closing bracket should have its own row
+Functions with a single argument can have this on the same line
+One argument can be hashed out per line for debugging errors
+
+Chunk names should be all lower case except:
+Study name (e.g. GLAD/EDGI/NBR) all caps
+Capitalised first word
+
+Ensure that you have deleted/untracked .DS_Store before your initial commit
+Ensure that your  .gitignore contains "**/.DS_Store" before your initial commit
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = "scripts/functions/add_numeric.R")
+source(file = "scripts/functions/remove_duplicates.R")
+source(file = "scripts/functions/sumscores.R")
+source(file = "scripts/functions/package_check.R")
+source(file = "scripts/functions/imp_check.R")
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("summarytools", "sjlabelled", "Amelia", "gtsummary", "tidyverse")
+package_check(packages)
+```
+
+Retrieve recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in file with path to ilovedata channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+# Read in the data: Employment         
+Change this heading to the name of your questionnaire/demographic
+Load GLAD data first, then EDGI, then NBR, then RAMP
+
+Do not change variable names from the NLP names that are produced by the extraction
+EXCEPT in exceptional circumstances
+Document ANY changes to variable names in the issues spreadsheet "https://docs.google.com/spreadsheets/d/1a2gL8c0eH2pZXNTbnPzkDYQGeeVXbLKU8BUpYM0moe8/edit?usp=sharing"
+
+- For variable names, use ONLY 'questionnaire.variable_name'
+- For dataset, only use snake_case naming
+- When using pipe operator '%>%', each function should begin on a new line
+- Do not add empty lines at the beginning or end of a chunk
+- Use only tidyverse functions wherever possible
+- When naming chunks, begin with the name of the dataset (GLAD, EDGI, NBR, RAMP)
+
+
+# Read in data
+
+## GLAD data
+```{r GLAD load data}
+glad_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw//2022-09-16/glad/dem_glad.rds")
+  )
+  
+# Check variable names in dataframe
+glad_dat %>%
+  colnames()
+# Inspect dimensions of dataframe 
+glad_dat %>%
+  dim()
+```
+
+Specify columns to be excluded from add_numeric function
+Continuous variables should be excluded, as they are already numeric
+```{r GLAD Specify columns to be excluded from add_numeric function}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate"
+  )
+```
+
+Select & rename relevant columns
+```{r GLAD Select & rename relevant columns}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  distinct(externalDataReference,
+           .keep_all = TRUE) %>% 
+  add_column(sample = "GLAD",
+             .after = "externalDataReference") %>% #create new column with sample
+  select(
+         ID = externalDataReference, # ID
+         startDate,
+         endDate,
+         sample,
+         dem.what_is_your_current_employment_status
+         ) %>% 
+  add_numeric(exclude = exclude_cols_numeric)
+# Inspect colnames
+colnames(glad_dat_id)
+```
+
+
+```{r GLAD Look at number of people excluded}
+# Inspect dimensions
+glad_dat_id %>% 
+  dim()
+#Differences
+glad_excluded <- dim(glad_dat)[1]-dim(glad_dat_id)[1]
+glad_excluded
+```
+
+Inspect numeric variables
+Add summary table with questions as columns, factor levels as rows, with absolute frequencies
+```{r GLAD inspect numeric variables}
+glad_dat_id %>%
+  select(
+    all_of(
+      ends_with("numeric")
+      )
+    ) %>%
+  freq()
+```
+
+Check missingness by missmap
+Save all plots at end of script into one object
+```{r GLAD inspect missingness}
+glad_miss_map <- glad_dat_id %>% 
+  missmap()
+glad_miss_map
+```
+
+
+## EDGI data
+Note: this is an optional questionnaire in EDGI.
+```{r EDGI data}
+edgi_dat <- readRDS(
+  file = paste0(ilovedata,"/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+#Check
+edgi_dat %>%
+  colnames()
+edgi_dat %>%
+  dim()
+```
+
+```{r EDGI Select & rename relevant columns}
+edgi_dat_id <- edgi_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  distinct(externalDataReference,
+           .keep_all = TRUE) %>% 
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% #create new column 
+  select(
+         ID = externalDataReference, # ID
+         startDate,
+         endDate,
+         sample,
+         dem.what_is_your_current_employment_status,
+         ) %>% 
+  add_numeric(exclude = exclude_cols_numeric)
+# Inspect colnames
+colnames(edgi_dat_id)
+```
+
+```{r EDGI Look at number of people excluded}
+# Inspect dimensions
+dim(edgi_dat_id)
+#Differences
+edgi_excluded <- dim(edgi_dat)[1]-dim(edgi_dat_id)[1]
+edgi_excluded
+```
+`edgi.excluded` EDGI participants excluded due to missing data
+
+Inspect numeric variables
+Add summary table with questions as columns, factor levels as rows, with absolute frequencies
+```{r EDGI inspect numeric variables}
+edgi_dat_id %>%
+  select(
+    all_of(
+      ends_with("numeric")
+      )
+    ) %>%
+  freq()
+```
+
+Check missingness by missmap
+Save all plots at end of script into one object
+```{r EDGI inspect missingness}
+edgi_miss_map <- edgi_dat_id %>% 
+  missmap()
+edgi_miss_map
+```
+
+Look at difference in names between GLAD and EDGI
+```{r Look at difference in names between GLAD and EDGI}
+setdiff(colnames(glad_dat_id), colnames(edgi_dat_id))
+```
+
+### Change the EDGI variables to match GLAD
+
+```{r change EDGI variables to match GLAD}
+
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    dem.what_is_your_current_employment_status_numeric = 
+      case_when(
+        dem.what_is_your_current_employment_status_numeric == 1 ~ 1,
+        dem.what_is_your_current_employment_status_numeric == 2 ~ 2,
+        dem.what_is_your_current_employment_status_numeric == 3 ~ 3,
+        dem.what_is_your_current_employment_status_numeric == 4 ~ 4,
+        dem.what_is_your_current_employment_status_numeric == 5 ~ 5,
+        dem.what_is_your_current_employment_status_numeric == 6 ~ 6,
+        dem.what_is_your_current_employment_status_numeric == 7 ~ 7,
+        dem.what_is_your_current_employment_status_numeric == 8 ~ 8,
+        dem.what_is_your_current_employment_status_numeric == 9 ~ 9,
+        dem.what_is_your_current_employment_status_numeric == 10 ~ 10
+      )
+  )
+
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    dem.what_is_your_current_employment_status =
+      recode_factor(dem.what_is_your_current_employment_status_numeric,
+                    "1" = "Prefer not to answer",
+                    "2" = "Seen but not answered",
+                    "3" = "In paid employment or self-employed",
+                    "4" = "Retired",
+                    "5" = "Looking after home and/or family",
+                    "6" = "Unable to work because of sickness or disability",
+                    "7" = "Unemployed",
+                    "8" = "Doing unpaid or voluntary work",
+                    "9" = "Full or part-time student",
+                    "10" = "None of the above",
+                    missing = NA_character_
+      )
+  )
+```
+
+# Bind rows of EDGI and GLAD data
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id
+            )
+#Check
+dat %>%
+  glimpse()
+```
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(ends_with("numeric"),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)))
+```
+
+
+Name your vectors in line with the chunks below
+Number the vectors or name them intuitively if you have multiple vectors
+Vectors of potential values should only contain possible values (exclude nonanswer values as appropriate)
+
+Create vector of categorical values for  variables
+```{r  vector categorical values}
+values_categorical_n_d <- c(
+  "In paid employment or self-employed",
+  "Retired",
+  "Looking after home and/or family",
+  "Unable to work because of sickness or disability",
+  "Unemployed",
+  "Doing unpaid or voluntary work",
+  "Full or part-time student",
+  "None of the above",
+  "Prefer not to answer",
+  NA
+  )
+values_categorical_n_d
+```
+
+Create vector of variable names for categorical  variables
+```{r  vector categorical variables}
+variables_categorical_n_d <-
+  c(
+    "dem.what_is_your_current_employment_status"
+    )
+variables_categorical_n_d
+```
+
+Use imp_check function to find if any implausible values and obtain summary
+table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+          variables = variables_categorical_n_d,
+          values = values_categorical_n_d)
+```
+
+# Save cleaned data
+
+Check colnames before exporting final dataset
+```{r check colnames}
+colnames(dat)
+```
+
+Combined object for excluded participants
+```{r GLAD EDGI save excluded participants}
+glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
+glad_edgi_excluded
+```
+
+# GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/employment_glad_clean.rds")
+    )
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata,"/EDGI_protocol/data/demographics/employment_edgi_clean.rds")
+    )
+```

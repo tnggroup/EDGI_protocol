@@ -1,0 +1,695 @@
+---
+title: "Age at diagnosis"
+author: "Shannon Bristow"
+date: '2022-09-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+---
+title: "Age at diagnosis"
+author: "Steven Bright"
+date: "19/08/2022"
+output: html_document
+---
+
+## Standards
+All arguments should be in their own row, including the first argument
+Closing bracket should have its own row
+Functions with a single argument can have this on the same line
+One argument can be hashed out per line for debugging errors
+
+Chunk names should be all lower case except:
+Study name (e.g. GLAD/EDGI/NBR) all caps
+Capitalised first word
+Chunk names MUST be unique
+
+Add only one empty line between chunks
+Add one extra line when starting a new section
+Use hash syntax as appropriate for headings and subheadings, as per markdown syntax
+
+Points requiring user input are enclosed thus <>
+
+Ensure that you have deleted/untracked .DS_Store before your initial commit
+Ensure that your  .gitignore contains "**/.DS_Store" before your initial commit
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Add the add_labelled_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the recode_check function - used to check for implausible values when recoding
+Add the imp_clean function - used to check variables for implausible values
+Add the cont_clean function - used to check continuous variables for implausible values
+```{r Read in functions}
+source(file = "scripts/functions/add_labelled_numeric.R")
+source(file = "scripts/functions/remove_duplicates.R")
+source(file = "scripts/functions/sumscores.R")
+source(file = "scripts/functions/package_check.R")
+source(file = "scripts/functions/recode_check.R")
+source(file = "scripts/functions/cont_clean.R")
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("sjlabelled",
+              "Amelia",
+              "gtsummary",
+              "lubridate",
+              "tidyverse")
+
+package_check(packages)
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "scripts/credentials/paths.R")
+```
+
+# Read in the data: Full Name of Questionnaire/Demographic
+Change this heading to the name of your questionnaire/demographic
+Load GLAD data first, then EDGI, then NBR, then RAMP
+
+Do not change variable names from the NLP names that are produced by the extraction
+EXCEPT in exceptional circumstances
+Document ANY changes to variable names in the issues spreadsheet "https://docs.google.com/spreadsheets/d/1a2gL8c0eH2pZXNTbnPzkDYQGeeVXbLKU8BUpYM0moe8/edit?usp=sharing"
+
+- For created variable names, use ONLY 'questionnaire.variable_name'
+- For dataset, only use snake_case naming
+- When using pipe operator '%>%', each function should begin on a new line
+- Do not add empty lines at the beginning or end of a chunk
+- Use only tidyverse functions wherever possible
+- When naming chunks, begin with the name of the dataset (GLAD, EDGI, NBR, RAMP) where appropriate
+
+## EDGI data
+
+```{r EDGI load mhd data}
+edgi_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/mhd_edgi.rds")
+  )
+  
+# Check variable names in dataframe
+edgi_dat %>%
+  colnames()
+
+# Inspect dimensions of dataframe 
+edgi_dat %>%
+  dim()
+
+# Report counts of duplicates in ID column
+edgi_dat %>%
+  select(externalDataReference) %>%
+  filter(duplicated(.)) %>%
+  count(., externalDataReference)
+
+# Report number of IDs to be dropped
+edgi_excluded <- edgi_dat %>%
+  select(externalDataReference) %>%
+  filter(duplicated(.)) %>%
+  count(., externalDataReference) %>%
+  select("EDGI Dropped IDs" = "n") %>%
+  colSums() + 1
+
+edgi_excluded
+```
+
+```{r EDGI load dem data}
+edgi_dem_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+)
+
+# Check variable names in dataframe
+edgi_dem_dat %>% 
+  colnames()
+
+# Inspect dimensions of dataframe 
+edgi_dem_dat %>% 
+  dim()
+
+# Report counts of duplicates in ID column
+edgi_dem_dat %>% 
+  select(externalDataReference) %>%
+  filter(duplicated(.)) %>%
+  count(., externalDataReference)
+
+# Report number of IDs to be dropped
+edgi_dem_excluded <- edgi_dem_dat %>%
+  select(externalDataReference) %>%
+  filter(duplicated(.)) %>%
+  count(., externalDataReference) %>%
+  select("EDGI Dropped IDs" = "n") %>%
+  colSums() + 1
+
+edgi_dem_excluded
+```
+
+Select/rename relevant columns and de-duplicate/NA-remove ID column
+NB: If this is data from the COPING survey, add "_cop" to the end of each variable name, including startDate/endDate
+```{r EDGI select}
+edgi_dat_id <- edgi_dat %>% #new dataset with ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  dplyr::rename(
+    "ID" = "externalDataReference"
+  ) %>% 
+  select(
+    ID,
+    sample,
+    startDate,
+    endDate,
+    mhd.anorexia_nervosa.2,
+    mhd.atypical_anorexia_nervosa.2,
+    mhd.bulimia_nervosa.2,
+    mhd.atypical_bulimia_nervosa.2,
+    mhd.bingeeating_disorder.2,
+    mhd.atypical_bingeeating_disorder.2,
+    mhd.purging_disorder.2,
+    mhd.nighteating_syndrome.1,
+    mhd.pica.2,
+    mhd.avoidantrestrictive_food_intake_disorder.2,
+    mhd.rumination_eating_disorder.1,
+    mhd.other_eating_disorder.2,
+    mhd.other_specified_feeding_or_eating_disorder.1
+  )
+
+# Inspect colnames
+edgi_dat_id %>%
+  colnames()
+
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+```
+
+```{r EDGI dem select}
+edgi_dem_dat_id <- edgi_dem_dat %>% #new dataset with ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  dplyr::rename(
+    "ID" = "externalDataReference"
+  ) %>% 
+  select(
+    ID, # Dropping sample, startDate and endDate before full_join with edgi mhd data
+    dem.day,
+    dem.month,
+    dem.year
+  )
+
+# Inspect colnames
+edgi_dem_dat_id %>%
+  colnames()
+
+# Inspect dimensions of new data set
+edgi_dem_dat_id %>%
+  dim()
+```
+
+```{r Join EDGI mhd and dem data}
+edgi_dat_id <- edgi_dat_id %>% 
+  full_join(edgi_dem_dat_id,
+            by = "ID")
+
+#Check data
+edgi_dat_id %>% 
+  head()
+
+edgi_dat_id %>% 
+  dim()
+```
+
+Check missingness by missmap
+```{r EDGI missmap}
+edgi_dat_id %>% 
+  missmap()
+```
+
+# Cleaning and creating dob variable
+
+Some of the responses in the age at diagnosis variables are the year at which 
+the participant was diagnosed instead of their age. Therefore, we need to 
+calculate the participants date of birth to work out their age at diagnosis.
+
+I've taken and adapted some code from Abi and Jess' age cleaning script to do this.
+
+```{r Check distribution of dem.day month and year variables}
+dob_vars <- edgi_dat_id %>% 
+  select(contains("dem.")) %>% 
+  colnames()
+
+dob_vars %>% 
+  map(
+    function(
+      variable_name){
+    group_by_at(
+      edgi_dat_id, variable_name) %>% 
+      summarise(Count = n()) %>% 
+      as_tibble()
+  }
+  )
+```
+
+```{r set minimum and maximum values for dem.day month and year}
+# Day
+day.min.scale = 1
+day.max.scale = 31
+
+# Month
+month.min.scale = 1
+month.max.scale = 12
+
+# Year
+year.min.scale = 1899
+year.max.scale = 2022 # note max age set later in age_upper_limit
+```
+
+```{r Add years to birthyear}
+#add values to birth year
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(dem.year = 
+           dem.year + 1919)
+
+# check EDGI
+edgi_dat_id %>%
+  group_by(dem.year) %>% 
+  count()
+```
+
+```{r Clean dem.day}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(dem.day =
+           case_when(dem.day < day.min.scale | dem.day > day.max.scale ~ -666, # implausible value
+                     TRUE ~ dem.day)
+         ) # leave as is
+
+
+# Check for implausible values
+edgi_dat_day_imp_n <- edgi_dat_id %>% 
+  filter(dem.day == -666) %>% 
+  nrow()
+
+# Check
+edgi_dat_day_imp_n
+
+# If statement
+if (edgi_dat_day_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD day of birth variable is ", edgi_dat_day_imp_n, ". This is fine."))
+} else {
+  print(paste0("The number of implausible values in the GLAD day of birth variable is ", edgi_dat_day_imp_n, ". Please investigate."))
+}
+
+# Check cleaned variable
+edgi_dat_id %>% 
+  group_by(dem.day) %>% 
+  count(dem.day) # The outlier is 59 (1 observation)
+```
+
+```{r GLAD & EDGI Clean dem.month}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(dem.month =
+           case_when(dem.month < month.min.scale | dem.month > month.max.scale ~ -666, # implausible value
+                     TRUE ~ dem.month)
+         ) # leave as is
+
+# Check for implausible values
+edgi_dat_month_imp_n <- edgi_dat_id %>% 
+  filter(dem.month == -666) %>% 
+  nrow()
+
+# Check
+edgi_dat_month_imp_n
+
+# If statement
+if (edgi_dat_month_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD month of birth variable is ", edgi_dat_month_imp_n, ". This is fine."))
+} else {
+  print(paste0("The number of implausible values in the GLAD month of birth variable is ", edgi_dat_month_imp_n, ". Please investigate."))
+}
+
+# Check clean variable
+edgi_dat_id %>% 
+  group_by(dem.month) %>% 
+  count()
+```
+
+```{r Clean dem.year}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(dem.year =
+           case_when(dem.year < year.min.scale | dem.year > year.max.scale ~ -666, # implausible value
+                     dem.year == 2020 ~ -666,
+                     TRUE ~ dem.year)
+         )
+
+# Check for implausible values
+edgi_year_imp_n <- edgi_dat_id %>% 
+  filter(dem.year == -666) %>% 
+  nrow()
+
+# Check
+edgi_year_imp_n
+
+# If statement
+if (edgi_year_imp_n == 0) {
+  print(paste0("The number of implausible values in the GLAD year of birth variable is ", edgi_year_imp_n, ". This is fine."))
+} else {
+  print(paste0("The number of implausible values in the GLAD year of birth variable is ", edgi_year_imp_n, ". Please investigate."))
+}
+
+# Check
+edgi_dat_id %>% 
+  group_by(dem.year) %>% 
+  count() # implausible years are 2020 and 2034 (latter was changed to -666)
+```
+
+```{r Change all -666 to NA }
+edgi_dat_id <- edgi_dat_id %>%
+  mutate_if(is.numeric, ~na_if(., -666)) # Implausible value
+
+#Check result
+edgi_dat_id %>% 
+  filter(if_all(c(dem.day, dem.month, dem.year),
+                ~ .x == -666))
+```
+
+```{r Make birth date}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(dem.dob = make_date(dem.year, dem.month, dem.day))
+
+# check
+edgi_dat_id %>% 
+  select(dem.day,
+         dem.month,
+         dem.year,
+         dem.dob) %>% 
+  head()
+```
+
+```{r Put EDGI age at diagnosis variables into a vector}
+edgi_age_at_diagnosis_vars <- edgi_dat_id %>% 
+  select(contains("mhd.")) %>% 
+  colnames()
+
+#Check names
+edgi_age_at_diagnosis_vars
+```
+
+```{r See distribution of all age at diagnosis variables across EDGI}
+edgi_age_at_diagnosis_vars %>% 
+  map(function(variable_name){
+    group_by_at(edgi_dat_id, variable_name) %>% 
+      summarise(Count = n()) %>% 
+      as_tibble()
+  })
+```
+
+One pt who answered "2018" to mhd.anorexia_nervosa.2 and mhd.bulimia_nervosa.2 
+was born in 1994, so they get 24 at age of diagnosis.
+
+One pt who answered 2013 to mhd.bingeeating_disorder.2 was born in 1985,
+so they get 28 for age at diagnosis.
+
+Note: the mhd variables only have the year of diagnosis. Therefore, unable 
+to ascertain whether the pt's birthday in that year would have passed or not.
+
+```{r Check erroneous year values against dob}
+edgi_dat_id %>% 
+  filter(mhd.anorexia_nervosa.2 == 2018 &
+           mhd.bulimia_nervosa.2 == 2018) %>% 
+  select(dem.dob)
+
+edgi_dat_id %>% 
+  filter(mhd.bingeeating_disorder.2 == 2013) %>% 
+  select(dem.dob)
+```
+
+```{r Change year answers in age at diagnosis to age}
+#Anorexia nervosa
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(mhd.anorexia_nervosa.2 = 
+           case_when(
+             mhd.anorexia_nervosa.2 == 2018 ~ 24,
+             mhd.anorexia_nervosa.2 != 2018 ~ mhd.anorexia_nervosa.2
+           ))
+
+#Bulimia nervosa
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(mhd.bulimia_nervosa.2 = 
+           case_when(
+             mhd.bulimia_nervosa.2 == 2018 ~ 24,
+             TRUE ~ mhd.bulimia_nervosa.2
+           )
+         )
+
+#Binge eating
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(mhd.bingeeating_disorder.2 = 
+           case_when(
+             mhd.bingeeating_disorder.2 == 2013 ~ 28,
+             TRUE ~ mhd.bingeeating_disorder.2
+           )
+         )
+
+#Check data
+edgi_age_at_diagnosis_vars %>% 
+  map(function(variable_name){
+    group_by_at(edgi_dat_id, variable_name) %>% 
+      summarise(Count = n()) %>% 
+      as_tibble()
+  }
+  )
+```
+
+# Cleaning age at diagnosis variables
+
+```{r Add exclude cols for the age at diagnosis cleaning}
+edgi_dat_id_cols <- edgi_dat_id %>% 
+  colnames()
+
+edgi_exclude_cols <- edgi_dat_id %>% 
+  select(!contains("mhd.")) %>% 
+  colnames()
+
+#Check vars
+edgi_dat_id_cols
+edgi_exclude_cols
+```
+
+Age at diagnosis outliers: 
+- Lower: Should there be a lower limit for being diagnosed with an ED?
+- Upper: The oldest person in the world is 117 years.
+
+```{r GLAD & EDGI current age define limits}
+age_lower_limit = 1 #Put as 1 for now
+age_upper_limit = 100 #Put as 100 for now
+```
+
+```{r GLAD & EDGI age outlier count}
+edgi_dat_id %>% 
+  map2(edgi_dat_id_cols,
+          function(column, column_name){
+            if(column_name %in% edgi_exclude_cols){
+              print(NA_real_)
+            } else {
+              length(which(column > age_upper_limit |
+                       column < age_lower_limit &
+                         column != -77))
+            }
+          })
+```
+
+```{r Recode age outliers to -666}
+#If the pt's age value is greater than the upper limit or less than the lower limit, they get -666
+edgi_dat_id <- edgi_dat_id %>% 
+  map2_df(edgi_dat_id_cols,
+          function(column, column_name){
+            if(column_name %in% edgi_exclude_cols){
+              column
+            } else{
+                case_when(
+                  column == -77 ~ -777,
+                  column > age_upper_limit |
+                    column < age_lower_limit ~ -666,
+                  TRUE ~ column
+                )
+            }
+          })
+
+#Check results
+edgi_age_at_diagnosis_vars %>% 
+  map(function(variable_name){
+    group_by_at(edgi_dat_id, variable_name) %>% 
+      summarise(Count = n()) %>% 
+      as_tibble()
+  })
+```
+
+```{r Round age at diagnosis values to whole numbers}
+#Note: Rounding should change ages such as 18.41 to 18
+edgi_dat_id <- edgi_dat_id %>% 
+  map2_df(edgi_dat_id_cols,
+       function(column, column_name){
+         if(column_name %in% edgi_exclude_cols){
+           column
+         } else {
+           column <- round(column)
+         }
+       }
+       )
+
+#Re-inspect distribution of age at diagnoses variables
+edgi_age_at_diagnosis_vars %>% 
+  map(function(variable_name){
+    group_by_at(edgi_dat_id, variable_name) %>% 
+      summarise(Count = n()) %>% 
+      as_tibble()
+  }
+  )
+```
+
+```{r Change all -666 to NA }
+edgi_dat_id <- edgi_dat_id %>%
+  mutate_if(
+    is.numeric, 
+    ~na_if(., -666)
+    ) # Implausible value
+
+#Check result
+edgi_dat_id %>% 
+  filter(
+    if_all(
+      c(dem.day, dem.month, dem.year), 
+      ~ .x == -666)
+    )
+```
+
+# Combining Data
+
+Bind rows of GLAD, EDGI, NBR and RAMP data
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- edgi_dat_id
+
+#dat <- glad_dat_id %>%
+#  bind_rows(edgi_dat_id, nbr_dat_id, ramp_dat_id)
+
+# Check dat using glimpse before continuing
+#dat %>% glimpse()
+```
+
+Extract and save labels
+```{r Extract save labels}
+# Save variable labels
+question_labels <- sjlabelled::get_label(dat)
+
+# Save value labels
+answer_labels <- sjlabelled::get_labels(dat, values = "as.name")
+
+# Change -77 to -777 in value labels names
+chng <- rapply(sapply(answer_labels, names),
+               function(x) ifelse(x==-77, -777, x),
+               how = "replace")
+
+# Add multiple lines here as necessary to change other nonanswer values in labels
+# chng <- rapply(chng,
+#                function(x) ifelse(x==-88, -888, x),
+#                how = "replace")
+
+# Substitute new value labels into answer_labels
+for (i in 1:length(chng)){
+  if(!is.null(answer_labels[[i]])){
+  names(answer_labels[[i]]) <- chng[[i]]
+  }
+}
+```
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(where(is.numeric),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)
+                )
+         )
+
+# Re-add labels after mutate
+dat <- sjlabelled::set_label(dat, question_labels)
+dat <- sjlabelled::set_labels(dat, labels = answer_labels)
+```
+
+Create list of all labels and attributes
+This chunk supersedes all categorical/numeric cleaning
+It gives you an output of c(the question label, all value-label pairs)
+for each variable
+Check for errors in the output of this chunk, including:
+- Label spelling errors (for questions and answers)
+- Incorrect values
+- Mismatches between labels and values
+- Scale errors
+- Variable naming issues from the data extraction
+- Any other issues you can see
+All issues/changes need to be logged as a to-do on Teams with yourself and Saakshi/Mika tagged
+At this point, you also need to pick out any continuous, date or text variables 
+to be cleaned in the later chunks
+```{r List labels attrs}
+label_list <- sapply(dat, function(x) c(attr(x, "label"), attr(x, "labels")))
+label_list
+```
+
+# Save cleaned data
+
+Combined object for excluded participants
+```{r GLAD EDGI NBR save excluded participants}
+#glad_edgi_nbr_excluded <- as.data.frame(cbind(glad_excluded, edgi_excluded, nbr_excluded))
+#glad_edgi_nbr_excluded
+```
+
+```{r Created vector of desired variable names}
+desired_variables <- dat %>% 
+  select(ID,
+         sample,
+         startDate,
+         endDate,
+         contains("mhd.")) %>% 
+  colnames()
+
+#Check vars
+desired_variables
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  select(all_of(desired_variables)) %>% 
+  saveRDS(
+    file = paste0(ilovedata,"/EDGI_protocol/data/demographics/age_at_diagnosis_edgi_clean.rds")
+    )
+```

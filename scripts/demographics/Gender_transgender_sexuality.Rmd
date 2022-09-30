@@ -1,0 +1,530 @@
+---
+title: "Gender Transgender Sexuality"
+author: "Shannon Bristow"
+date: '2022-09-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+---
+title: "Gender, transgender and sexuality"
+author: "Alicia Peel"
+date: "09/06/2021"
+output: html_document
+---
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+ source(file = "scripts/functions/add_numeric.R")
+ source(file = "scripts/functions/remove_duplicates.R")
+ source(file = "scripts/functions/sumscores.R")
+ source(file = "scripts/functions/package_check.R")
+ source(file = "scripts/functions/imp_check.R")
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c(
+  "summarytools", 
+  "sjlabelled", 
+  "Amelia", 
+  "gtsummary", 
+  "tidyverse"
+  )
+package_check(packages)
+```
+
+Retrieve recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+Read in file with path to ilovedata channel on Teams
+```{r Read in file with path to ilovedata channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+# Read in the data: Demographics
+
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- readRDS(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")
+  )
+  
+# Check variable names in dataframe
+glad_dat %>%
+  colnames()
+# Inspect dimensions of dataframe 
+glad_dat %>%
+  dim()
+```
+
+Specify columns to be excluded from add_numeric function
+```{r GLAD specify excluded columns}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate"
+  )
+```
+
+Select & rename relevant columns
+```{r GLAD select}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "GLAD", 
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate,
+         dem.sex = dem.select_questionnaire_items_medical,
+         dem.which_gender_do_you_identify_with,
+         dem.do_you_identify_as_transgender,
+         dem.what_is_your_sexual_orientation
+         ) %>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+glad_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1] - dim(glad_dat)[1]
+glad_excluded
+```
+
+Inspect numeric variables
+```{r GLAD inspect numeric variables}
+glad_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+ glad_miss_map <- glad_dat_id %>% 
+   missmap()
+
+ glad_miss_map
+```
+
+## EDGI data
+```{r EDGI read in data}
+edgi_dat <- readRDS(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+  
+# Check variable names in dataframe
+edgi_dat %>%
+  colnames()
+# Inspect dimensions of dataframe 
+edgi_dat %>%
+  dim()
+```
+
+Find differences between colnames of GLAD and EDGI dataframes
+```{r Check colnames}
+setdiff(colnames(glad_dat), colnames(edgi_dat))
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select}
+edgi_dat_id <- edgi_dat %>% # New dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI", 
+             .after = "externalDataReference") %>% # Create new sample column 
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate, 
+         dem.sex = dem.select_questionnaire_items_relevant,
+         dem.what_gender_do_you_identify_with,
+         dem.do_you_identify_as_transgender = dem.do_you_consider_yourself_to_be_transgender,
+         dem.what_is_your_sexual_orientation
+         ) %>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+edgi_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+edgi_excluded <- dim(edgi_dat_id)[1] - dim(edgi_dat)[1]
+edgi_excluded
+```
+
+Inspect numeric variables
+```{r EDGI inspect numeric variables}
+edgi_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+   tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+```{r EDGI inspect missingness}
+ edgi_miss_map <- edgi_dat_id %>% 
+   missmap()
+edgi_miss_map
+```
+
+# Bind rows of EDGI and GLAD data
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id)
+#Check
+dat %>% glimpse()
+```
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(ends_with("numeric"),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)))
+```
+
+# Numeric 0-1 variables
+
+Cleaning numeric variables
+```{r vector of numeric values}
+values_numeric_0_1 <- c(
+  0,
+  1,
+  -777,
+  NA
+  )
+values_numeric_0_1
+```
+
+Create vector of variable names for numeric variables
+```{r vector numeric variables}
+variables_numeric_0_1 <- c(
+    "dem.sex_numeric",
+    "dem.do_you_identify_as_transgender_numeric"
+  )
+variables_numeric_0_1
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check numeric variables}
+imp_check(data = dat,
+           variables = variables_numeric_0_1,
+          values = values_numeric_0_1)
+```
+
+# Numeric 0-3 variables
+
+Cleaning numeric variables
+```{r vector of numeric values}
+values_numeric_0_3 <- c(
+  0,
+  1,
+  2,
+  3,
+  -888,
+  -999,
+  NA
+  )
+values_numeric_0_3
+```
+
+Vector of numeric variables
+```{r numeric variables vector}
+variables_numeric_0_3 <- c(
+    "dem.which_gender_do_you_identify_with_numeric"
+  )
+variables_numeric_0_3
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check numeric variables}
+imp_check(data = dat,
+           variables = variables_numeric_0_3,
+          values = values_numeric_0_3)
+```
+
+# Numeric 1-5 variables
+
+Create vector of numeric values 
+```{r vector of numeric values}
+values_numeric_1_5 <- c(
+  1,
+  2,
+  3,
+  4,
+  5,
+  -999,
+  NA
+  )
+values_numeric_1_5
+```
+
+Vector of numeric variables
+```{r numeric variables vector}
+variables_numeric_1_5 <- c(
+    "dem.what_is_your_sexual_orientation_numeric"
+  )
+variables_numeric_1_5
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check numeric variables}
+imp_check(data = dat,
+           variables = variables_numeric_1_5,
+          values = values_numeric_1_5)
+```
+
+# Categorical 0-1 variables (sex)
+
+Create vector of categorical values for variables
+```{r vector of categorical labels}
+values_categorical_sex <- c(
+  "Male",
+  "Female",
+  "Seen but not answered",
+  NA
+  )
+values_categorical_sex
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_sex <- c(
+    "dem.sex"
+  )
+variables_categorical_sex
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_sex,
+          values = values_categorical_sex)
+```
+
+# Categorical 0-1 variables (transgender)
+
+Create vector of categorical values for variables
+```{r vector of categorical labels}
+values_categorical_trans <- c(
+  "No",
+  "Yes",
+  "Seen but not answered",
+  NA
+  )
+values_categorical_trans
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_trans <- c(
+    "dem.do_you_identify_as_transgender"
+  )
+variables_categorical_trans
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_trans,
+          values = values_categorical_trans)
+```
+
+# Categorical 0-3 variables
+
+Create vector of categorical values for variables
+```{r vector of categorical labels}
+values_categorical_0_3 <- c(
+  "Male",
+  "Female",
+  "Non-binary",
+  "Self-define",
+  "Seen but not answered",
+  "Don't know",
+  "Prefer not to answer",
+  NA
+  )
+values_categorical_0_3
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_0_3 <- c(
+    "dem.which_gender_do_you_identify_with"
+  )
+variables_categorical_0_3
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables 
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_0_3,
+          values = values_categorical_0_3)
+```
+
+Remove once cleaned on Qualtrics
+```{r Recode incorrect categorical variables}
+dat <- dat %>%
+  mutate(
+    across(all_of(variables_categorical_0_3), 
+           .fns = ~dplyr::recode(.,
+             "self-define" = "Self-define"
+            )
+          )
+  )
+```
+
+```{r Check correction applied}
+dat %>%
+  select(all_of(variables_categorical_0_3)) %>%
+  freq()
+```
+
+# Categorical 1-5 variables
+
+Create vector of categorical values for variables
+```{r vector of categorical labels}
+values_categorical_1_5 <- c(
+  "Heterosexual",
+  "Homosexual",
+  "Bisexual",
+  "Asexual",
+  "Self-define",
+  "Other",
+  "Seen but not answered",
+  "Don't know",
+  "Prefer not to answer",
+  NA
+  )
+values_categorical_1_5
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_1_5 <- c(
+    "dem.what_is_your_sexual_orientation"
+  )
+variables_categorical_1_5
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_1_5,
+          values = values_categorical_1_5)
+```
+
+Remove once cleaned on Qualtrics
+```{r Recode incorrect categorical variables}
+dat <- dat %>%
+  mutate(
+    across(all_of(variables_categorical_1_5), 
+           .fns = ~dplyr::recode(.,
+             "Prefer not to say" = "Prefer not to answer"
+            )
+          )
+  )
+```
+
+```{r Check correction applied}
+dat %>%
+  select(all_of(variables_categorical_1_5)) %>%
+  freq()
+```
+
+# Save cleaned data
+
+Check colnames before exporting final dataset
+```{r check colnames}
+colnames(dat)
+```
+
+Combined object for excluded participants
+```{r GLAD EDGI save excluded participants}
+glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
+glad_edgi_excluded
+```
+
+# GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/sex_gender_sexuality_glad_clean.rds")
+    )
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/sex_gender_sexuality_edgi_clean.rds")
+    )
+```
+
+# GLAD EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/sex_gender_sexuality_glad_edgi_clean.rds")
+    )
+```

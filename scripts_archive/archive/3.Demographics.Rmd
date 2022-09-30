@@ -1,0 +1,154 @@
+---
+title: "Demographics"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-08-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Clear Global Environment
+
+```{r clear global environment}
+rm(list = ls(all.names = TRUE)) 
+```
+
+Read in file with path to data channel
+```{r Read in file with path to data channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the imp_check function - used to check variables for implausible values
+```{r Read in functions}
+source(file = paste0("functions/add_numeric.R"))
+source(file = paste0("functions/remove_duplicates.R"))
+source(file = paste0("functions/package_check.R"))
+```
+
+Load packages
+
+```{r Load packages}
+library(tidyverse)
+library(gtsummary)
+```
+
+Set current date
+
+```{r current date}
+date <- Sys.Date()
+```
+
+Load data
+
+```{r Load data}
+load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+```
+
+
+```{r}
+names(dat_demographics)
+```
+
+
+```{r format table}
+summary_table <-
+  dat_demographics %>%
+  gtsummary::tbl_summary(
+        
+        by =  mixed_eating_disorders,
+        
+        label = list(
+        demographics.what_gender_do_you_identify_with ~
+          "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender"
+        ),
+                
+          type = list(demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical"
+          ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+```
+
+
+```{r format table}
+summary_table <-
+  dat_demographics_long %>%
+  gtsummary::tbl_summary(
+        
+        by =  Disorder,
+        
+        label = list(
+        demographics.what_gender_do_you_identify_with ~
+          "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender"
+        ),
+                
+          type = list(demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical"
+          ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+```
+
+
+
+Add bold labels to table
+
+```{r table with bold labels}
+summary_table %>% 
+  bold_labels() 
+```
+
+Save as a word document
+
+```{r table as word document}
+summary_table %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../results/EDGI_demographics.docx"
+  )
+```
+
