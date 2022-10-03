@@ -1,14 +1,4 @@
 ---
-title: "Employment_SB"
-author: "Shannon Bristow"
-date: '2022-09-29'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
 title: "Employment"
 author: "Alish Palmos"
 date: "24/08/2021"
@@ -42,15 +32,22 @@ Clear global environment prior to initiation
 remove(list = ls())
 ```
 
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
 Add the add_numeric function - used to convert character variables into numeric variables.
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
 ```{r Read in functions}
-source(file = "scripts/functions/add_numeric.R")
-source(file = "scripts/functions/remove_duplicates.R")
-source(file = "scripts/functions/sumscores.R")
-source(file = "scripts/functions/package_check.R")
-source(file = "scripts/functions/imp_check.R")
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Use package_check to install and load dependencies
@@ -58,6 +55,17 @@ Load tidyverse last
 ```{r Install load dependencies}
 packages <- c("summarytools", "sjlabelled", "Amelia", "gtsummary", "tidyverse")
 package_check(packages)
+```
+
+Specify columns to be excluded from add_numeric function
+Continuous variables should be excluded, as they are already numeric
+```{r GLAD Specify columns to be excluded from add_numeric function}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate"
+  )
 ```
 
 Retrieve recent date
@@ -90,83 +98,6 @@ Document ANY changes to variable names in the issues spreadsheet "https://docs.g
 
 
 # Read in data
-
-## GLAD data
-```{r GLAD load data}
-glad_dat <- read_rds(
-  file = paste0(ilovedata, "/data_raw//2022-09-16/glad/dem_glad.rds")
-  )
-  
-# Check variable names in dataframe
-glad_dat %>%
-  colnames()
-# Inspect dimensions of dataframe 
-glad_dat %>%
-  dim()
-```
-
-Specify columns to be excluded from add_numeric function
-Continuous variables should be excluded, as they are already numeric
-```{r GLAD Specify columns to be excluded from add_numeric function}
-exclude_cols_numeric <- c(
-  "ID",
-  "sample",
-  "startDate",
-  "endDate"
-  )
-```
-
-Select & rename relevant columns
-```{r GLAD Select & rename relevant columns}
-glad_dat_id <- glad_dat %>% #new dataset with ID
-  drop_na(externalDataReference) %>% # Drop NAs
-  distinct(externalDataReference,
-           .keep_all = TRUE) %>% 
-  add_column(sample = "GLAD",
-             .after = "externalDataReference") %>% #create new column with sample
-  select(
-         ID = externalDataReference, # ID
-         startDate,
-         endDate,
-         sample,
-         dem.what_is_your_current_employment_status
-         ) %>% 
-  add_numeric(exclude = exclude_cols_numeric)
-# Inspect colnames
-colnames(glad_dat_id)
-```
-
-
-```{r GLAD Look at number of people excluded}
-# Inspect dimensions
-glad_dat_id %>% 
-  dim()
-#Differences
-glad_excluded <- dim(glad_dat)[1]-dim(glad_dat_id)[1]
-glad_excluded
-```
-
-Inspect numeric variables
-Add summary table with questions as columns, factor levels as rows, with absolute frequencies
-```{r GLAD inspect numeric variables}
-glad_dat_id %>%
-  select(
-    all_of(
-      ends_with("numeric")
-      )
-    ) %>%
-  freq()
-```
-
-Check missingness by missmap
-Save all plots at end of script into one object
-```{r GLAD inspect missingness}
-glad_miss_map <- glad_dat_id %>% 
-  missmap()
-glad_miss_map
-```
-
-
 ## EDGI data
 Note: this is an optional questionnaire in EDGI.
 ```{r EDGI data}
@@ -228,11 +159,6 @@ edgi_miss_map <- edgi_dat_id %>%
 edgi_miss_map
 ```
 
-Look at difference in names between GLAD and EDGI
-```{r Look at difference in names between GLAD and EDGI}
-setdiff(colnames(glad_dat_id), colnames(edgi_dat_id))
-```
-
 ### Change the EDGI variables to match GLAD
 
 ```{r change EDGI variables to match GLAD}
@@ -273,15 +199,9 @@ edgi_dat_id <- edgi_dat_id %>%
   )
 ```
 
-# Bind rows of EDGI and GLAD data
-Read in data, bind datasets, then clean all together
-```{r Merge data sets}
-dat <- glad_dat_id %>%
-  bind_rows(edgi_dat_id
-            )
-#Check
-dat %>%
-  glimpse()
+# Rename dataset
+```{r rename dataset}
+dat <- edgi_dat_id
 ```
 
 Recode Non-answer values to 3 digits
@@ -348,22 +268,10 @@ Check colnames before exporting final dataset
 colnames(dat)
 ```
 
-Combined object for excluded participants
-```{r GLAD EDGI save excluded participants}
-glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
-colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
-rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
-glad_edgi_excluded
+```{r EDGI save excluded participants}
+edgi_excluded
 ```
 
-# GLAD
-```{r Write cleaned GLAD variables to a .rds file}
-dat %>% 
-  filter(sample == "GLAD") %>%  # select only GLAD participants
-  saveRDS(
-    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/employment_glad_clean.rds")
-    )
-```
 
 # EDGI
 ```{r Write cleaned EDGI variables to a .rds file}

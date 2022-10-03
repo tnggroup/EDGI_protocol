@@ -1,19 +1,13 @@
 ---
-title: "OSFED_DSM5_algorithm_SB"
-author: "Shannon Bristow"
-date: '2022-09-29'
+title: "OSFED DSM5 algorithms"
+author: "Saakshi Kakar, Shannon Bristow, Steven Bright, updated by Shannon Bristow"
+date: "30/08/2022"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
----
-title: "OSFED DSM5 algorithms"
-author: "Saakshi Kakar, Shannon Bristow, Steven Bright"
-date: "30/08/2022"
-output: html_document
----
 
 The purpose of this script is to write the algorithms for purging disorder,
 night eating syndrome, atypical BN, atypical BED, and atypical AN. This will 
@@ -54,6 +48,12 @@ Clear global environment prior to initiation
 remove(list = ls())
 ```
 
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
 Add the add_labelled_numeric function - used to convert character variables into numeric variables
 Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
 Add the sumscores function - used to generate sumscores
@@ -62,12 +62,12 @@ Add the recode_check function - used to check for implausible values when recodi
 Add the imp_clean function - used to check variables for implausible values
 Add the cont_clean function - used to check continuous variables for implausible values
 ```{r Read in functions}
-source(file = "scripts/functions/add_labelled_numeric.R")
-source(file = "scripts/functions/remove_duplicates.R")
-source(file = "scripts/functions/sumscores.R")
-source(file = "scripts/functions/package_check.R")
-source(file = "scripts/functions/recode_check.R")
-source(file = "scripts/functions/cont_clean.R")
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Use package_check to install and load dependencies
@@ -80,12 +80,6 @@ packages <- c("sjlabelled",
               "tidyverse")
 
 package_check(packages)
-```
-
-Read in file with path to ilovedata channel on Teams
-Ensure that your credentials directory is correctly located
-```{r Read in paths file}
-source(file = "../credentials/paths.R")
 ```
 
 # Read in the data: Full Name of Questionnaire/Demographic
@@ -134,7 +128,7 @@ directory_read <- function(folder_path, read_func){
 
 ```{r EDGI load sign-up data}
 edgi_dat_list <- directory_read(
-  folder = paste0(ilovedata, "data_raw/2022-09-16/edgi/"),
+  folder = paste0(ilovedata, "/data_raw/2022-09-16/edgi/"),
   read_func = read_rds
 )
 
@@ -148,9 +142,8 @@ edgi_dat_list %>%
 
 ```{r Read in EDGI lowest BMI data}
 edgi_bmi <- read_rds(
-  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/demographics/lowest_bmi_height_weight_edgi_clean.rds")
+  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/lowest_bmi_height_weight_edgi_clean.rds")
   )
-
 # Inspect 
 edgi_bmi %>%
   dim()
@@ -208,7 +201,7 @@ excluded_IDs <- function(df){
 
 ```{r Check excluded IDs in EDGI data sets}
 edgi_excluded_ids <- edgi_dat_list %>% 
-  map(excluded_IDs)
+  purrr::map(excluded_IDs)
 
 #Check excluded IDs
 edgi_excluded_ids %>% 
@@ -295,6 +288,8 @@ Check missingness by missmap
 edgi_dat_id %>% 
   missmap()
 ```
+
+
 
 #Algorithms
 
@@ -527,9 +522,9 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module_numeric <-
         (an.bmi_lowest >= 18.55 &
          
         # Afraid of gaining weight 
-        (an.gain_weight_fat_afraid == 2 | #Somewhat afraid
-         an.gain_weight_fat_afraid == 3 | #Very afraid
-         an.gain_weight_fat_afraid == 4) & #Extremely afraid
+        (an.gain_weight_afraid_fat == 2 | #Somewhat afraid
+         an.gain_weight_afraid_fat == 3 | #Very afraid
+         an.gain_weight_afraid_fat == 4) & #Extremely afraid
  
          # Self-worth dependent on body shape or weight
         (
@@ -547,8 +542,8 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module_numeric <-
           an.health_low_weightbmi_negative == 0 | #"Not at all"
   
          # Perceived body parts to be larger than they were
-        (an.people_thought_larger_parts == 1 | #Somewhat
-         an.people_thought_larger_parts == 2) #Very much
+        (an.people_thought_larger_body == 1 | #Somewhat
+         an.people_thought_larger_body == 2) #Very much
         )
         ),
     true = 1,
@@ -636,7 +631,7 @@ edgi_dat_id$ed.BE_freq_per_week <-
   with(edgi_dat_id,
     case_when(
       be.binge_eating_experience_episodes.txt.1 > 0 ~ round(be.binge_eating_experience_episodes.txt.1/52.1429, digits = 2),
-      be.binge_eating_enter_experience.txt > 0 ~ round(be.binge_eating_enter_experience.txt/4.34524, digits = 2),
+      be.binge_eating_episodes_enter.txt > 0 ~ round(be.binge_eating_episodes_enter.txt/4.34524, digits = 2),
       be.binge_eating_episodes_enter.txt > 0 ~  be.binge_eating_episodes_enter.txt
       )
   )
@@ -653,8 +648,8 @@ One year = 365.25 days; One month = 30.4167 days
 edgi_dat_id$ed.BE_duration_months <- NA
 
 # Change to numeric
-edgi_dat_id$be.duration_years_numeric <- as.numeric(edgi_dat_id$be.long_experience_regularly_occurring)
-edgi_dat_id$be.duration_months_numeric <- as.numeric(edgi_dat_id$be.long_experience_regularly_occurring.1)
+edgi_dat_id$be.duration_years_numeric <- as.numeric(edgi_dat_id$be.years)
+edgi_dat_id$be.duration_months_numeric <- as.numeric(edgi_dat_id$be.months)
 
 # Sum years and months into months
 edgi_dat_id$ed.BE_duration_months <- 
@@ -1021,8 +1016,8 @@ edgi_dat_id$ed.DSM5_NES_binary_numeric <-
       nes.aware_night_eating == 3 | #Somewhat aware
         nes.aware_night_eating == 5 | #Extremely aware
         
-      nes.recall_day_night_eating == 2 | #Sometimes recall
-        nes.recall_day_night_eating == 3 #Always recall
+      nes.recall_night_eating_day == 2 | #Sometimes recall
+        nes.recall_night_eating_day == 3 #Always recall
       ) &
     
     #Criterion C: Night eating/post-evening meal eating not explained by external factors
@@ -1096,7 +1091,7 @@ edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <-
   
 # Was there ever a time when you engaged in compensatory behaviors on average,once a week for 3 months when you were not also binge-eating?
   
-   (icb.binge_eating_wasthere_made == 1 # Yes
+   (icb.wasthere_binge_eating_made == 1 # Yes
    ), 
 
     true = 1,
@@ -1221,6 +1216,6 @@ Combined object for excluded participants
 dat %>% 
   #filter(sample == "EDGI") %>%  # select only EDGI participants
   saveRDS(
-    file = paste0(ilovedata, "/EDGI_protcol/data/algorithms/osfed_dsm5_algorithms_edgi_clean.rds")
+    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean.rds")
     )
 ```

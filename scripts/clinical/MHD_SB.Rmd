@@ -1,14 +1,4 @@
 ---
-title: "MHD_SB"
-author: "Shannon Bristow"
-date: '2022-09-29'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
 title: "Data cleaning Mental Health Diagoses (MHD) questionnaire in GLAD & EDGI"
 author: "Jessica Mundy"
 date: "21/06/2021"
@@ -28,12 +18,22 @@ knitr::opts_chunk$set(
 rm(list=ls())
 ```
 
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
 ```{r Read in functions}
-source(file = "scripts/functions/add_numeric.R")
-source(file = "scripts/functions/sumscores.R")
-source(file = "scripts/functions/package_check.R")
-source(file = "scripts/functions/remove_duplicates.R")
-source(file = "scripts/functions/imp_check.R")
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Note: always load tidyverse last
@@ -54,10 +54,6 @@ date <- Sys.Date()
 date
 ```
 
-```{r Source the credentials file}
-source("../credentials/paths.R")
-```
-
 # Read in data
 
 ## GLAD data
@@ -75,111 +71,6 @@ glad_dat %>%
   dim()
 ```
 
-Specify columns to be excluded from add_numeric function
-Continuous variables should be excluded, as they are already numeric
-```{r GLAD exclude columns}
-glad_exclude_cols <- c(
-  "ID",
-  "sample",
-  "startDate",
-  "endDate",
-  "mhd.other_ocdtext.txt",
-  "mhd.othertext.txt"
-  )
-```
-
-
-### Select & rename relevant columns
-Note: no age at diagnosis questions in the GLAD MHD.
-```{r GLAD Select & rename relevant columns}
-glad_dat_id <- glad_dat %>% #new dataset with ID
-  drop_na(externalDataReference) %>% # Drop NAs
-  remove_duplicates("externalDataReference") %>% 
-  add_column(sample = "GLAD",
-             .after = "externalDataReference") %>% #create new column with sample
-  select(
-         ID = externalDataReference, # ID
-         sample,
-         startDate,                                              
-         endDate,
-        
-         mhd.mental_distress_prevented_usual, #seemed to be previously named mhd.mental_distress_prevented_usual, but it's not appearing in the table above now.
-         mhd.seek_receive_professional_life,  #seemed to be previously named mhd.unusual_experiences_seek_receive
-        
-         # Depression, anxiety, OCD and PTSD related disorders
-         mhd.mdd,                                
-         mhd.perinatal_depression,                
-         mhd.pmdd,                               
-         mhd.bipolar_disorder,                    
-         mhd.gad,                                
-         mhd.social_anxiety,                      
-         mhd.specific_phobia,                    
-         mhd.agoraphobia,                         
-         mhd.panic_disorder,                     
-         mhd.panic_attacks,                       
-         mhd.ptsd,                              
-         mhd.ocd,                                 
-         mhd.bdd,                                
-         mhd.other_ocd,                           
-         mhd.other_ocd_text.txt,                 
-         mhd.none_dep_anx_ocd_ptsd = mhd.none_of_the_above,                             # renamed to differentiate from other none of the above   
-         mhd.dont_know_dep_anx_ocd_ptsd = mhd.dont_know,                                # renamed to differentiate from other don't know
-         mhd.pnta_dep_anx_ocd_ptsd = mhd.prefer_not_to_answer,                          # renamed to differentiate from other PNTA
-         
-         # EDs and neurodevelopmental disorders
-         mhd.an,                                 
-         mhd.atypical_an,                         
-         mhd.bn,                                 
-         mhd.bed,                                 
-         mhd.schizophrenia,                      
-         mhd.schizoaffective,                     
-         mhd.psychosis,
-         mhd.personality_disorder,
-         mhd.asd,                                
-         mhd.addadhd,                            
-         mhd.other,                              
-         mhd.other_text.txt,                      
-         mhd.none_neuro_eds = mhd.none_of_the_above.1,                             # renamed to differentiate from other none of the above 
-         mhd.dont_know_neuro_eds = mhd.dont_know.1,                                # renamed to differentiate from other don't know
-         mhd.pnta_neuro_eds = mhd.prefer_not_to_answer.1,                          # renamed to differentiate from other PNTA  
-         
-         mhd.personality_disorder_diagnosed
-         ) %>% 
-  add_numeric(exclude = glad_exclude_cols)
-
-# Inspect colnames
-glad_dat_id %>% 
-  colnames()
-```
-
-```{r GLAD Look at number of people excluded}
-# Inspect dimensions
-glad_dat_id %>% 
-  dim()
-
-#Differences
-glad_excluded <- dim(glad_dat_id)[1]-dim(glad_dat)[1]
-glad_excluded
-```
-
-### Inspect numeric variables
-```{r GLAD inspect numeric variables}
-glad_dat_id %>%
-  select(
-    all_of(
-      ends_with("numeric")
-      )
-    ) %>%
-  tbl_summary(missing_text = "Missing")
-```
-
-### Check missingness by missmap
-```{r GLAD inspect missingness}
-glad_miss_map <- glad_dat_id %>% 
-  missmap()
-
-glad_miss_map
-```
 
 ## EDGI data #1 
 ```{r Read in EDGI data}
@@ -319,13 +210,13 @@ edgi2_exclude_cols <- c(
   "sample",
   "startDate",
   "endDate",
-  "mhd.othertext.txt"
+  "mhd.othertext.txt",
+  "mhd.other_ocd_text.txt"
   )
 ```
 
 
 ### Select & rename relevant columns
-Note: no age at diagnosis questions in the GLAD MHD.
 ```{r EDGI #2 Select & rename relevant columns}
 edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
   drop_na(externalDataReference) %>% # Drop NAs
@@ -363,14 +254,14 @@ edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
          mhd.personality_disorder = dem.personality_disorder,                               
          mhd.asd = dem.autism_spectrum_disorder,                       
          mhd.addadhd = dem.attention_deficit_hyperactivity_disorder,           
-         mhd.other = dem.other.2,                                            
-         mhd.othertext.txt = dem.other_text.txt.2,                                   
+         mhd.other = dem.other.1,                                            
+         mhd.othertext.txt = dem.othertext.txt.1,                                   
          mhd.none_neuro = dem.none_of_the_above.2,                                 # renamed to differentiate from other none of the above                 
          mhd.dont_know_neuro = dem.dont_know.7,                                    # renamed to differentiate from other don'tknow      
          mhd.pnta_neuro = dem.prefer_not_to_answer.4,                              # renamed to differentiate from other PNTA  
         
          # Which personality disorder do you have?
-         mhd.personality_disorder_diagnosed = dem.diagnosed_personality_disorder
+         mhd.personality_disorder_diagnosed = dem.personality_disorder_diagnosed
          ) %>% 
   add_numeric(exclude = edgi2_exclude_cols)
 
@@ -415,19 +306,9 @@ edgi_dat_id_merged %>%
   dim()
 ```
 
-# Bind rows of GLAD & EDGI 
+# Rename data
 ```{r rbind the data sets}
-dat <- bind_rows(
-    glad_dat_id,
-    edgi_dat_id_merged
-    ) 
-
-# check
-dat %>%  
-  colnames()
-
-dat %>%
-  dim()
+dat <- edgi_dat_id_merged
 ```
 # Data cleaning
 
@@ -453,39 +334,6 @@ dat <- dat %>%
 ```
 
 # Numeric variables
-
-## Binary variables (0 and 1 and -999, -888, and -777)
-
-### Select numeric binary variables (0 and 1 and -999, -888, and -777) for cleaning
-```{r Select numeric binary variables (0 and 1 and -999, -888, and -777) for cleaning}
-variables_0_1.v1_numeric <- 
-  c(
-    "mhd.mental_distress_prevented_usual_numeric",
-    "mhd.unusual_experiences_seek_receive_numeric"
-  )
-
-# check
-variables_0_1.v1_numeric
-```
-                   
-### Vector of plausible numeric values for binary variables (0 and 1 and -999, -888, and -777)
-```{r vector of plausible numeric values for binary variables (0 and 1 and -999, -888, and -777)}
-vector_0_1.v1_numeric <- c(
-  0,
-  1,
-  -777,
-  -888,
-  -999,
-  NA
-  )
-```
-
-```{r imp_check numeric binary variables (0 and 1 and -999, -888, and -777)}
-imp_check(data = dat,
-          variables = variables_0_1.v1_numeric,
-          values = vector_0_1.v1_numeric)
-```
-
 ## Binary variables (0 and 1 and -888 and -777)
 
 ### Select numeric binary variables (0 and 1 and -888, and -777) for cleaning
@@ -544,15 +392,15 @@ variables_0_1.v3_numeric <-
     "mhd.bn_numeric",                                                     
     "mhd.bed_numeric",                                                     
     "mhd.schizophrenia_numeric",                                          
-    "mhd.schizoaffective_numeric",                                         
+  #  "mhd.schizoaffective_numeric",                                         
     "mhd.psychosis_numeric",                                              
     "mhd.personality_disorder_numeric",                                    
     "mhd.asd_numeric",                                                    
     "mhd.addadhd_numeric",                                                 
     "mhd.other_numeric",                                                  
-    "mhd.none_neuro_eds_numeric",                                
-    "mhd.dont_know_neuro_eds_numeric",                                       
-    "mhd.pnta_neuro_eds_numeric",  
+   # "mhd.none_neuro_eds_numeric",                                
+  #  "mhd.dont_know_neuro_eds_numeric",                                       
+ #  "mhd.pnta_neuro_eds_numeric",  
     "mhd.none_neuro_numeric",                                
     "mhd.dont_know_neuro_numeric",                                       
     "mhd.pnta_neuro_numeric",  
@@ -708,26 +556,6 @@ neuro_eds_numeric <- c(
 )
 ```
 
-
-```{r Recode numeric neurodevelopmental and eating disorder variables v2}
-dat <- dat %>%
-  mutate_at(vars(
-      all_of(
-       neuro_eds_numeric)),
-            ~case_when(
-         sample == "GLAD" & mhd.none_neuro_eds_numeric == 1 ~ 0,               # recode to "No" (0)          
-         sample == "GLAD" & mhd.dont_know_neuro_eds_numeric == 1 ~ -888,       # recode to "Don't know" (-888)       
-         sample == "GLAD" & mhd.pnta_neuro_eds_numeric == 1 ~ -999,            # recode to "Prefer not to answer" (-999)
-         TRUE ~ .                                                              # leave all other answers as they are
-             )
-    )
-
-# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
-dat %>% 
-  select(all_of(neuro_eds_numeric)) %>% 
-  freq()
-```
-
 ## Eating disorders (from main EDGI MHD)
 Note: recoding only for EDGI. This is because these questions were grouped together in one section in the EDGI survey. 
 
@@ -832,32 +660,7 @@ dat %>%
 ```
 
 
-# Scoring
-This was added to produce combined diagnosis scores
-```{r Scoring}
 
-sum_vars.anxiety_diagnosis <- c(
-  "mhd.gad_numeric",
-  "mhd.social_anxiety_numeric",
-  "mhd.specific_phobia_numeric",
-  "mhd.agoraphobia_numeric",
-  "mhd.panic_attacks_numeric",
-  "mhd.panic_disorder_numeric")
-dat <- dat %>% 
-  mutate(
-    mhd.sum_score_anxiety_diagnosis = 
-         sumscores(input = dat,
-                   sum_vars = sum_vars.anxiety_diagnosis,
-                   coding_keys = rep.int(1,times = length(sum_vars.anxiety_diagnosis)),
-                   na_limit = 6,
-                   min_item = 0,
-                   max_item = 1,
-                   min_score = 0,
-                   max_score = 1*length(sum_vars.anxiety_diagnosis)
-                   )
-  )
-
-```
 
 
 
@@ -873,17 +676,14 @@ Disorder groupings (from PANCHANGE analysis)
 8. Control group: no diagnosed disorders.
 
 ```{r Specify cohorts}
-GLAD = TRUE
 EDGI = TRUE
-NBR = FALSE
-RAMP = FALSE
 ```
 
 ### Depressive disorders
 Caveat: Perinatal depression item has flow logic meaning it is only shown to participants who answer 'Yes' to the question 'Have you ever been pregnant?'
 PMDD item has flow logic meaning it is only shown to participants who answer 'Female' to the question 'What was your assigned sex at birth?'
 ```{r mhd depressive_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.depressive_disorders_numeric =
@@ -910,7 +710,7 @@ dat %>%
 ```
 
 ```{r Check depressive_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.depressive_disorders,
@@ -927,7 +727,7 @@ dat %>%
 
 ### Anxiety disorders
 ```{r mhd anxiety_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.anxiety_disorders_numeric =
@@ -962,7 +762,7 @@ dat %>%
 ```
 
 ```{r Check anxiety_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.anxiety_disorders,
@@ -985,7 +785,7 @@ dat %>%
 
 Agoraphobia and panic disorder group
 ```{r mhd agoraphobia_panic_disorder}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.agoraphobia_panic_disorder_numeric =
@@ -1013,7 +813,7 @@ dat %>%
 ```
 
 ```{r Check agoraphobia_panic_disorder}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.agoraphobia_panic_disorder,
@@ -1030,7 +830,7 @@ dat %>%
 
 Depression and anxiety comorbidity
 ```{r mhd depression_anxiety}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.depression_and_anxiety_numeric =
@@ -1063,112 +863,6 @@ dat %>%
 ```
 
 ### Eating disorders
-
-There is routing questionnaire if participants have been diagnosed with an eating disorder and afterwards they get asked the specific disorders. Therefore, mhd.suspected_eating_disorder_diagnosed_numeric needs to be recoded as 0 otherwise they would be NAs.
-```{r nbr cleaning eating disorders}
-if(NBR == TRUE) {
-#Recode as 0 if ppt responds no to screening question (mhd.suspected_eating_disorder_diagnosed_numeric)
-dat <- dat %>%
-  mutate(
-    mhd.an_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.an_numeric == "0" ~ 0,
-                mhd.an_numeric == "1" ~ 1),
-    mhd.atypical_an_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.atypical_an_numeric == "0" ~ 0,
-                mhd.atypical_an_numeric == "1" ~ 1),
-    mhd.bn_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.bn_numeric == "0" ~ 0,
-                mhd.bn_numeric == "1" ~ 1),
-    mhd.bed_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.bed_numeric == "0" ~ 0,
-                mhd.bed_numeric == "1" ~ 1),
-    mhd.none_eds_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.none_eds_numeric == "0" ~ 0,
-                mhd.none_eds_numeric == "1" ~ 1),
-    mhd.dont_know_eds_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.dont_know_eds_numeric == "0" ~ 0,
-                mhd.dont_know_eds_numeric == "1" ~ 1),
-    mhd.pnta_eds_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.pnta_eds_numeric == "0" ~ 0,
-                mhd.pnta_eds_numeric == "1" ~ 1),
-    mhd.other_eating_disorder_numeric =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ 0,
-                mhd.other_eating_disorder_numeric == "0" ~ 0,
-                mhd.other_eating_disorder_numeric == "1" ~ 1),
-    mhd.an =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Anorexia nervosa",
-                mhd.an_numeric == "0" ~ "Not Anorexia nervosa",
-                mhd.an_numeric == "1" ~ "Anorexia nervosa"),
-    mhd.atypical_an =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Atypical anorexia nervosa",
-                mhd.atypical_an_numeric == "0" ~ "Not Atypical anorexia nervosa",
-                mhd.atypical_an_numeric == "1" ~ "Atypical anorexia nervosa"),
-    mhd.bn =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Bulimia nervosa",
-                mhd.bn_numeric == "0" ~ "Not Bulimia nervosa",
-                mhd.bn_numeric == "1" ~ "Bulimia nervosa"),
-    mhd.bed =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Binge-eating disorder",
-                mhd.bed_numeric == "0" ~ "Not Binge-eating disorder",
-                mhd.bed_numeric == "1" ~ "Binge-eating disorder"),
-    mhd.none_eds =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not None of the above",
-                mhd.none_eds == "0" ~ "Not None of the above",
-                mhd.none_eds == "1" ~ "None of the above"),
-    mhd.dont_know_eds =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Don't know",
-                mhd.dont_know_eds_numeric == "0" ~ "Not Don't know",
-                mhd.dont_know_eds_numeric == "1" ~ "Don't know"),
-    mhd.pnta_eds =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Prefer not to answer",
-                mhd.pnta_eds_numeric == "0" ~ "Not Prefer not to answer",
-                mhd.pnta_eds_numeric == "1" ~ "Prefer not to answer"),
-    mhd.other_eating_disorder =
-      case_when(mhd.suspected_eating_disorder_diagnosed_numeric == "0" ~ "Not Other eating disorder:",
-                mhd.other_eating_disorder_numeric == "0" ~ "Not Other eating disorder:",
-                mhd.other_eating_disorder_numeric == "1" ~ "Other eating disorder:")
-    )
-}
-```
-
-```{r mhd eating_disorders}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.eating_disorders_numeric =
-      case_when(
-        mhd.an_numeric == "1" ~ 1,
-        mhd.atypical_an_numeric == "1" ~ 1,
-        mhd.bn_numeric == "1" ~ 1,
-        mhd.bed_numeric == "1" ~ 1,
-        (mhd.an_numeric == "0" &
-        mhd.atypical_an_numeric == "0" &
-        mhd.bn_numeric == "0" &
-        mhd.bed_numeric == "0") ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.eating_disorders =
-      recode_factor(mhd.eating_disorders_numeric,
-                    "0" = "No eating disorder",
-                    "1" = "Eating disorder",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.eating_disorders,
-       cumul = F)
-}
-```
-
 For EDGI does not include other eating disorders, such as purging disorder, rumination disorder, ARFID, or Pica
 ```{r edgi mhd eating_disorders}
 if(EDGI == TRUE) {
@@ -1207,39 +901,6 @@ dat %>%
 ```
 
 
-Eating disorders with binge eating vs eating disorders without
-Caveat: Anorexia nervosa can have binge eating as well. Therefore, this would need an additional variable from the ED100K to define a "restricting" only anorexia nervosa subtype
-```{r mhd eating_disorders_restricting_vs_binge_eating}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.eating_disorders_restricting_vs_binge_eating_numeric =
-      case_when(
-        mhd.an_numeric == "1" ~ 1,
-        mhd.atypical_an_numeric == "1" ~ 1,
-        mhd.bn_numeric == "1" ~ 2,
-        mhd.bed_numeric == "1" ~ 2,
-        (mhd.an_numeric == "0" &
-        mhd.atypical_an_numeric == "0" &
-        mhd.bn_numeric == "0" &
-        mhd.bed_numeric == "0") ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.eating_disorders_restricting_vs_binge_eating =
-      recode_factor(mhd.eating_disorders_restricting_vs_binge_eating_numeric,
-                    "0" = "No eating disorder",
-                    "1" = "Anorexia nervosa",
-                    "2" = "Eating disorder with binge eating",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.eating_disorders_restricting_vs_binge_eating,
-       cumul = F)
-}
-```
 
 ```{r EDGI mhd.eating_disorders_restricting_vs_binge_eating}
 if(EDGI == TRUE) {
@@ -1278,25 +939,6 @@ dat %>%
 }
 ```
 
-```{r Check eating_disorders}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.eating_disorders,
-    mhd.eating_disorders_numeric,
-    mhd.eating_disorders_restricting_vs_binge_eating,
-    mhd.eating_disorders_restricting_vs_binge_eating_numeric,
-    mhd.an_numeric,
-    mhd.atypical_an_numeric,
-    mhd.bn_numeric,
-    mhd.bed_numeric,
-    mhd.an,
-    mhd.atypical_an,
-    mhd.bn,
-    mhd.bed
-  )
-}
-```
 
 ```{r EDGI Check eating_disorders}
 if(EDGI == TRUE) {
@@ -1322,35 +964,7 @@ dat %>%
 
 ### Obsessive compulsive disorders
 ```{r mhd obsessive_compulsive_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.obsessive_compulsive_disorders_numeric =
-      case_when(
-        mhd.ocd_numeric == "1" ~ 1,
-        mhd.other_ocd_numeric == "1" ~ 1,
-        mhd.bdd_numeric == "1" ~ 1,
-        (mhd.ocd_numeric == "0" &
-        mhd.other_ocd_numeric == "0" &
-        mhd.bdd_numeric == "0") ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.obsessive_compulsive_disorders =
-      recode_factor(mhd.obsessive_compulsive_disorders_numeric,
-                    "0" = "No obsessive compulsive disorder",
-                    "1" = "Obsessive compulsive disorder",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.obsessive_compulsive_disorders)
-}
-```
-
-```{r mhd obsessive_compulsive_disorders for ramp}
-if(RAMP == TRUE) {
+if( EDGI == TRUE) {
 dat <- dat %>%
   mutate(
     mhd.obsessive_compulsive_disorders_numeric =
@@ -1378,23 +992,7 @@ dat %>%
 ```
 
 ```{r Check obsessive_compulsive_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE) {
-dat %>%
-  select(
-    mhd.obsessive_compulsive_disorders,
-    mhd.obsessive_compulsive_disorders_numeric,
-    mhd.ocd,
-    mhd.ocd_numeric,
-    mhd.other_ocd,
-    mhd.other_ocd_numeric,
-    mhd.bdd,
-    mhd.bdd_numeric
-  )
-}
-```
-
-```{r Check obsessive_compulsive_disorders ramp}
-if(RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.obsessive_compulsive_disorders,
@@ -1414,19 +1012,20 @@ dat %>%
 "mhd.schizoaffective_numeric"
 "mhd.psychosis_numeric"
 ```{r mhd psychotic_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.psychotic_disorders_numeric =
       case_when(
         mhd.schizophrenia_numeric == "1" ~ 1,
-        mhd.schizoaffective_numeric == "1" ~ 1,
+      #  mhd.schizoaffective_numeric == "1" ~ 1,
         mhd.psychosis_numeric == "1" ~ 1,
         (mhd.schizophrenia_numeric == "0" &
-        (mhd.schizoaffective_numeric == "0" | is.na(mhd.schizoaffective_numeric == "0") & #NA included because some cohorts don't have schizoaffective disorder
-        mhd.psychosis_numeric == "0") ~ 0)
+       # (mhd.schizoaffective_numeric == "0" | is.na(mhd.schizoaffective_numeric == "0") & #NA included because some cohorts don't have schizoaffective disorder
+        mhd.psychosis_numeric == "0") ~ 0
+      )
         )
-    )
+    
 dat <- dat %>%
   mutate(
     mhd.psychotic_disorders =
@@ -1446,7 +1045,7 @@ Overlap between self-report schizophrenia and bipolar disorder
 +++CH: Check overlap between schizophrenia group and bipolar disorder
 ++KT: Only 63 with comorbid self-report bipolar disorder and schizophrenia. More likely to have shared symptoms, less likely to have confirmed diagnoses of both. Could be too severe to be in GLAD?
 ```{r mhd bipolar_and_schizophrenia_numeric}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.bipolar_and_schizophrenia_numeric =
@@ -1479,7 +1078,7 @@ dat %>%
 ```
 
 ```{r Check psychotic_disorders}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.psychotic_disorders,
@@ -1487,12 +1086,12 @@ dat %>%
     mhd.bipolar_and_schizophrenia,
     mhd.bipolar_and_schizophrenia_numeric,
     mhd.schizophrenia_numeric,
-    mhd.schizoaffective_numeric,
+  #  mhd.schizoaffective_numeric,
     mhd.bipolar_disorder,
     mhd.bipolar_disorder_numeric,
     mhd.psychosis_numeric,
     mhd.schizophrenia,
-    mhd.schizoaffective,
+   # mhd.schizoaffective,
     mhd.psychosis
   )
 }
@@ -1500,7 +1099,7 @@ dat %>%
 
 ### Autism spectrum disorder
 ```{r mhd autism_spectrum_disorder}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE){
+if( EDGI == TRUE ){
   dat <- dat %>%
     mutate(
       mhd.autism_spectrum_disorder_numeric =
@@ -1524,7 +1123,7 @@ if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE){
 ```
 
 ```{r Check autism_spectrum_disorder}
-if(GLAD == TRUE | EDGI == TRUE | NBR == TRUE | RAMP == TRUE) {
+if( EDGI == TRUE ) {
 dat %>%
   select(
     mhd.autism_spectrum_disorder,
@@ -1538,203 +1137,9 @@ dat %>%
 
 
 ### Personality disorders
-++KT: For all cluster coding chunks - have added other clusters as == 0, so that they are not coerced into NAs.
-Cluster A
-1. Paranoid                         28 ( 1.0%)
-2. Schizoid                         15 ( 0.5%)
-3. Schizotypal                      14 ( 0.5%)
-```{r mhd personality_cluster_a}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_a_numeric =
-      case_when(
-        mhd.personality_disorder_diagnosed_numeric == "1" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "2" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "3" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "4" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "5" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "6" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "7" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "8" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "9" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "10" ~ 0,
-        mhd.personality_disorder_numeric == "0" ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_a =
-      recode_factor(mhd.personality_cluster_a_numeric,
-                    "0" = "No personality disorder cluster A",
-                    "1" = "Personality disorder cluster A",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.personality_cluster_a,
-       cumul = F)
-}
-```
-
-```{r Check personality_cluster_a}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.personality_cluster_a,
-    mhd.personality_cluster_a_numeric,
-    mhd.personality_disorder_diagnosed,
-    mhd.personality_disorder_diagnosed_numeric
-  )
-}
-```
-
-Cluster B
-4. Antisocial                       24 ( 0.8%)
-5. Borderline                     2553 (89.4%)
-6. Histrionic                        7 ( 0.2%)
-7. Narcissistic                      8 ( 0.3%)
-
-```{r mhd personality_cluster_b}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_b_numeric =
-      case_when(
-        mhd.personality_disorder_diagnosed_numeric == "1" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "2" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "3" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "4" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "5" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "6" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "7" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "8" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "9" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "10" ~ 0,
-        mhd.personality_disorder_numeric == "0" ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_b =
-      recode_factor(mhd.personality_cluster_b_numeric,
-                    "0" = "No personality disorder cluster B",
-                    "1" = "Personality disorder cluster B",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.personality_cluster_b,
-       cumul = F)
-}
-```
-
-```{r Check personality_cluster_b}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.personality_cluster_b,
-    mhd.personality_cluster_b_numeric,
-    mhd.personality_disorder_diagnosed,
-    mhd.personality_disorder_diagnosed_numeric
-  )
-}
-```
-
-Cluster C
-8. Avoidant/anxious                133 ( 4.7%)
-9. Dependent                        29 ( 1.0%)
-10. Obsessive-compulsive
-```{r glad mhd personality_cluster_c}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_c_numeric =
-      case_when(
-        mhd.personality_disorder_diagnosed_numeric == "1" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "2" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "3" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "4" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "5" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "6" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "7" ~ 0,
-        mhd.personality_disorder_diagnosed_numeric == "8" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "9" ~ 1,
-        mhd.personality_disorder_diagnosed_numeric == "10" ~ 1,
-        mhd.personality_disorder_numeric == "0" ~ 0
-      )
-  )
-dat <- dat %>%
-  mutate(
-    mhd.personality_cluster_c =
-      recode_factor(mhd.personality_cluster_c_numeric,
-                    "0" = "No personality disorder cluster C",
-                    "1" = "Personality disorder cluster C",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.personality_cluster_c,
-       cumul = F)
-}
-```
-
-```{r Check personality_cluster_c}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.personality_cluster_c,
-    mhd.personality_cluster_c_numeric,
-    mhd.personality_disorder_diagnosed,
-    mhd.personality_disorder_diagnosed_numeric
-  )
-}
-```
-
-### Controls
-These individuals have no self report diagnosis of any kind that we measure.
-```{r mhd control GLAD RAMP}
-if(GLAD == TRUE | RAMP == TRUE) {
-dat <- dat %>%
-  mutate(
-    mhd.control_numeric =
-      if_else(
-    mhd.depressive_disorders_numeric == "0" &
-    mhd.anxiety_disorders_numeric == "0" &
-    mhd.eating_disorders_numeric == "0" &
-    mhd.obsessive_compulsive_disorders_numeric == "0" &
-    mhd.psychotic_disorders_numeric == "0" &
-    mhd.bipolar_disorder_numeric == "0" &
-    mhd.ptsd_numeric == "0" &
-    mhd.autism_spectrum_disorder_numeric == "0" &
-    mhd.addadhd_numeric == "0" &
-    mhd.personality_disorder_numeric == "0" &
-      mhd.pnta_dep_anx_ocd_ptsd_numeric == "0" & 
-      mhd.pnta_neuro_eds_numeric == "0" & 
-      mhd.dont_know_dep_anx_ocd_ptsd_numeric == "0" & 
-      mhd.dont_know_neuro_eds_numeric == "0" & 
-      mhd.other_numeric == "0",
-    true = 1,
-    false = 0,
-    NA_real_)
-  )
-dat <- dat %>%
-  mutate(
-    mhd.control =
-      recode_factor(mhd.control_numeric,
-                    "0" = "No control",
-                    "1" = "Control",
-                    missing = NA_character_
-                    )
-  )
-dat %>%
-  freq(mhd.control,
-       cumul = F)
-}
-```
 
 ```{r mhd control EDGI NBR}
-if(EDGI == TRUE | NBR == TRUE) {
+if(EDGI == TRUE ) {
 dat <- dat %>%
   mutate(
     mhd.control_numeric =
@@ -1777,26 +1182,8 @@ dat %>%
 ```
 
 
-```{r RAMP mhd check none of the above}
-if(RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.control,
-    mhd.none_dep_anx_ocd_ptsd,
-    mhd.none_neuro_eds
-  )
-dat %>%
-  group_by(mhd.control) %>%
-  count(
-    mhd.none_dep_anx_ocd_ptsd,
-    mhd.none_neuro_eds,
-    mhd.other
-  )
-}
-```
-
 ```{r NBR EDGI mhd check none of the above}
-if(NBR == TRUE | EDGI == TRUE) {
+if( EDGI == TRUE) {
 dat %>%
   group_by(mhd.control) %>%
   count(
@@ -1805,48 +1192,6 @@ dat %>%
     mhd.none_dep_anx_ocd_ptsd,
     mhd.other,
     mhd.other_eating_disorder
-  )
-}
-```
-
-
-Inspect the participants that do not qualify as double "None of these"
-```{r RAMP none of these comparison}
-if(RAMP == TRUE) {
-dat %>%
-  filter(
-    (mhd.none_dep_anx_ocd_ptsd == "Not None of these" |
-    mhd.none_neuro_eds == "Not None of these") &
-      mhd.control == "Control"
-  ) %>%
-    select(
-      mhd.none_dep_anx_ocd_ptsd_numeric,
-      mhd.dont_know_dep_anx_ocd_ptsd_numeric,
-      mhd.pnta_dep_anx_ocd_ptsd_numeric,
-      mhd.none_neuro_eds_numeric,
-      mhd.dont_know_neuro_eds_numeric,
-      mhd.pnta_neuro_eds_numeric,
-      mhd.other_numeric
-      )
-}
-```
-
-
-```{r Check control columns}
-if(GLAD == TRUE | NBR == TRUE | RAMP == TRUE) {
-dat %>%
-  select(
-    mhd.control,
-    mhd.depressive_disorders_numeric,
-    mhd.anxiety_disorders_numeric,
-    mhd.eating_disorders_numeric,
-    mhd.obsessive_compulsive_disorders_numeric,
-    mhd.psychotic_disorders_numeric,
-    mhd.bipolar_disorder_numeric,
-    mhd.ptsd_numeric,
-    mhd.autism_spectrum_disorder_numeric,
-    mhd.addadhd_numeric,
-    mhd.personality_disorder_numeric
   )
 }
 ```
@@ -1928,12 +1273,12 @@ export_variables <-
   c(
     "ID",
     "sample",                                                             
-    "startDate",                                                          
-    "endDate",
-    "mhd.other_ocdtext.txt",  
+   # "startDate",                                                          
+   # "endDate",
+  #  "mhd.other_ocdtext.txt",  
     "mhd.othertext.txt",                                                 
-    "mhd.mental_distress_prevented_usual_numeric",                      
-    "mhd.unusual_experiences_seek_receive_numeric",                       
+   # "mhd.mental_distress_prevented_usual_numeric",                      
+  #  "mhd.unusual_experiences_seek_receive_numeric",                       
     "mhd.mdd_numeric",
     "mhd.perinatal_depression_numeric",                                   
     "mhd.pmdd_numeric", 
@@ -1956,15 +1301,15 @@ export_variables <-
     "mhd.bn_numeric",
     "mhd.bed_numeric",
     "mhd.schizophrenia_numeric", 
-    "mhd.schizoaffective_numeric", 
+  #  "mhd.schizoaffective_numeric", 
     "mhd.psychosis_numeric",  
     "mhd.personality_disorder_numeric",
     "mhd.asd_numeric",    
     "mhd.addadhd_numeric", 
     "mhd.other_numeric",  
-    "mhd.none_neuro_eds_numeric", 
-    "mhd.dont_know_neuro_eds_numeric",
-    "mhd.pnta_neuro_eds_numeric",  
+ #   "mhd.none_neuro_eds_numeric", 
+  #  "mhd.dont_know_neuro_eds_numeric",
+   # "mhd.pnta_neuro_eds_numeric",  
     "mhd.none_neuro_numeric", 
     "mhd.dont_know_neuro_numeric",
     "mhd.pnta_neuro_numeric",  
@@ -1998,7 +1343,7 @@ export_variables <-
     "mhd.rumination_disorder_current_past_numeric",                       
     "mhd.other_eating_disorder_current_past_numeric",                    
     "mhd.other_specified_feeding_or_eating_disorder_current_past_numeric",
-    "mhd.sum_score_anxiety_diagnosis",
+  #  "mhd.sum_score_anxiety_diagnosis",
     "mhd.anxiety_disorders",
     "mhd.agoraphobia_panic_disorder",
     "mhd.depressive_disorders",
@@ -2006,9 +1351,9 @@ export_variables <-
     "mhd.obsessive_compulsive_disorders",
     "mhd.psychotic_disorders",
     "mhd.autism_spectrum_disorder",
-    "mhd.personality_cluster_a",
-    "mhd.personality_cluster_b",
-    "mhd.personality_cluster_c",
+ #   "mhd.personality_cluster_a",
+  #9  "mhd.personality_cluster_b",
+ #   "mhd.personality_cluster_c",
     "mhd.depression_and_anxiety",
     "mhd.eating_disorders_restricting_vs_binge_eating",
     "mhd.bipolar_and_schizophrenia",
@@ -2021,9 +1366,9 @@ export_variables <-
     "mhd.obsessive_compulsive_disorders_numeric",
     "mhd.psychotic_disorders_numeric",
     "mhd.autism_spectrum_disorder_numeric",
-    "mhd.personality_cluster_a_numeric",
-    "mhd.personality_cluster_b_numeric",
-    "mhd.personality_cluster_c_numeric",
+ #   "mhd.personality_cluster_a_numeric",
+ #   "mhd.personality_cluster_b_numeric",
+  #  "mhd.personality_cluster_c_numeric",
     "mhd.depression_and_anxiety_numeric",
     "mhd.eating_disorders_restricting_vs_binge_eating_numeric",
     "mhd.bipolar_and_schizophrenia_numeric",
@@ -2034,15 +1379,6 @@ export_variables <-
   )
 ```
 
-## GLAD
-```{r Write cleaned GLAD variables to a .rds file}
-dat %>% 
-  filter(sample == "GLAD") %>% 
-  select(all_of(export_variables)) %>% 
-  saveRDS(
-    file = paste0(ilovedata, "/data/2022-09-16/glad/clinical/mhd_glad_clean.rds")
-    )
-```
 
 ## EDGI
 ```{r Write cleaned EDGI variables to a .rds file}
@@ -2051,15 +1387,6 @@ dat %>%
   select(all_of(export_variables)) %>% 
   saveRDS(
     file = paste0(ilovedata, "/EDGI_protocol/data/clinical/mhd_edgi_clean.rds")
-    )
-```
-
-## GLAD & EDGI
-```{r Write cleaned GLAD & EDGI variables to a .rds file}
-dat %>% 
-  select(all_of(export_variables)) %>% 
-  saveRDS(
-    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/clinical/mhd_glad_edgi_clean.rds")
     )
 ```
 

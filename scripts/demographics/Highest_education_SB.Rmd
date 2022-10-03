@@ -1,14 +1,4 @@
 ---
-title: "Highest_education_SB"
-author: "Shannon Bristow"
-date: '2022-09-29'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
 title: "Cleaning education variables and deriving highest education variable in GLAD & EDGI"
 author: "Chelsea Mika Malouf"
 date: "29/07/2021"
@@ -32,12 +22,22 @@ knitr::opts_chunk$set(
 remove(list = ls())
 ```
 
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
 ```{r Read in functions}
-source(file = "scripts/functions/remove_duplicates.R")
-source(file = "scripts/functions/sumscores.R")
-source(file = "scripts/functions/package_check.R")
-source(file = "scripts/functions/imp_check.R")
-source(file = "scripts/functions/add_numeric.R")
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 ```{r Install load dependencies}
@@ -53,10 +53,6 @@ package_check(packages)
 ```{r Recent date}
 date <- Sys.Date()
 date
-```
-
-```{r Read in file with path to ilovedata channel on teams}
-source(file = "../credentials/paths.R")
 ```
 
 

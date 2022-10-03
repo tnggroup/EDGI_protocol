@@ -1,14 +1,4 @@
 ---
-title: "Years_of_education_SB"
-author: "Shannon Bristow"
-date: '2022-09-29'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
 title: "Years_of_Education"
 author: "Chelsea Mika Malouf"
 date: "26/07/2021"
@@ -59,20 +49,23 @@ date = Sys.Date()
 date
 ```
 
-# Add the add_numeric function - used to convert character variables into numeric variables.
-```{r Read in functions}
-source(file = "scripts/functions/add_numeric.R")
-
-```
-
-
 Read in file with path to ilovedata channel on Teams
-#Read in path file
-```{r Read in file with path to ilovedata channel on Teams}
-source("../credentials/paths.R")
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
 ```
 
-
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
 
 # Read in the data 
 ## GLAD data

@@ -1,15 +1,5 @@
 ---
-title: "Age at diagnosis"
-author: "Shannon Bristow"
-date: '2022-09-29'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
----
-title: "Age at diagnosis"
+title: "Age at diagnosis, updated by steven bright"
 author: "Steven Bright"
 date: "19/08/2022"
 output: html_document
@@ -50,20 +40,22 @@ Clear global environment prior to initiation
 remove(list = ls())
 ```
 
-Add the add_labelled_numeric function - used to convert character variables into numeric variables
-Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the recode_check function - used to check for implausible values when recoding
-Add the imp_clean function - used to check variables for implausible values
-Add the cont_clean function - used to check continuous variables for implausible values
 ```{r Read in functions}
-source(file = "scripts/functions/add_labelled_numeric.R")
-source(file = "scripts/functions/remove_duplicates.R")
-source(file = "scripts/functions/sumscores.R")
-source(file = "scripts/functions/package_check.R")
-source(file = "scripts/functions/recode_check.R")
-source(file = "scripts/functions/cont_clean.R")
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Use package_check to install and load dependencies
@@ -76,12 +68,6 @@ packages <- c("sjlabelled",
               "tidyverse")
 
 package_check(packages)
-```
-
-Read in file with path to ilovedata channel on Teams
-Ensure that your credentials directory is correctly located
-```{r Read in paths file}
-source(file = "scripts/credentials/paths.R")
 ```
 
 # Read in the data: Full Name of Questionnaire/Demographic
