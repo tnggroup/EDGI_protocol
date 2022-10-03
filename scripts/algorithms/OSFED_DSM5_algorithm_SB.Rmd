@@ -1091,8 +1091,12 @@ edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <-
   
 # Was there ever a time when you engaged in compensatory behaviors on average,once a week for 3 months when you were not also binge-eating?
   
-   (icb.wasthere_binge_eating_made == 1 # Yes
-   ), 
+   (icb.wasthere_binge_eating_made == 1  & # Yes 
+ 
+# ...and in the absence of low weight (otherwise it is ANBP) 
+
+ icb.average_made_low_weight == 1 # Yes, there have been times when I made myself vomit, used laxatives, or used diuretics when I was not at low weight.
+     ), 
 
     true = 1,
     false = 0,

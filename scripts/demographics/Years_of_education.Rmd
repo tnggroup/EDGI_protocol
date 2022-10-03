@@ -310,12 +310,12 @@ Save data
 ```{r save GLAD, EDGI, GLAD&EDGI data}
 saveRDS(object = 
   glad_edgi_dat.exp,
-  file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/", "Years_of_education_GLAD_EDGI_", date, ".rds"))
+  file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/", "years_of_education_GLAD_EDGI.rds"))
 saveRDS(object = 
   glad_dat.exp,
-  file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/", "Years_of_education_GLAD_", date, ".rds"))
+  file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/", "years_of_education_GLAD.rds"))
 saveRDS(object = 
   edgi_dat.exp,
-  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/", "Years_of_education_EDGI_", date, ".rds"))
+  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/", "years_of_education_edgi_clean.rds"))
 
 ```

@@ -15,20 +15,22 @@ Clear Global Environment
 rm(list = ls(all.names = TRUE)) 
 ```
 
-Read in file with path to data channel
-```{r Read in file with path to data channel on teams}
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
 source(file = "../credentials/paths.R")
 ```
 
-Add the add_numeric function - used to convert character variables into numeric variables
-Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the add_numeric function - used to convert character variables into numeric variables.
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
