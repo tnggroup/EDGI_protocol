@@ -1,0 +1,423 @@
+---
+title: "Data cleaning ethnicity variables in GLAD & EDGI"
+author: "Jessica Mundy"
+date: "02/06/2021"
+output: html_document
+---
+
+# Set up
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+```{r Clear global environment}
+rm(list=ls())
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+Note: always load tidyverse last
+```{r Install load dependencies}
+packages = c(
+  "summarytools",
+  "sjlabelled",
+  "Amelia",
+  "knitr",
+  "gtsummary",
+  "tidyverse"
+  )
+package_check(packages)
+```
+
+```{r Get system date}
+date <- Sys.Date()
+date
+```
+
+# Read in the data 
+
+## GLAD data
+```{r GLAD data}
+glad_dat <- read_rds(
+  file = paste0(
+    ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")
+  )
+  
+# check
+glad_dat %>%
+  colnames()
+
+glad_dat %>%
+  dim()
+```
+
+Specify columns to be excluded from add_numeric function
+Continuous variables should be excluded, as they are already numeric
+```{r GLAD Specify columns to be excluded from add_numeric function}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate"
+  )
+```
+
+## Select & rename relevant columns (will be a function at some point)
+```{r GLAD Select and rename relevant GLAD columns}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "GLAD",
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate,
+         dem.what_is_your_ethnic_origin = dem.questions_based_details_gather,
+         dem.what_is_your_ethnic_origin.txt = dem.questions_based_details_gather.txt  
+         
+         # # white ethnic origin
+         # dem.white_british = dem.british,                                             
+         # dem.white_irish = dem.irish,                                              
+         # dem.white_gypsytraveller = dem.gypsytraveller,                                      
+         # dem.white_spanish = dem.spanish,                                            
+         # dem.white_polish = dem.polish,                                              
+         # dem.white_german = dem.german,                                             
+         # dem.white_french = dem.french,                                              
+         # dem.white_italian = dem.italian,                                            
+         # dem.white_other_european = dem.other_european,                                      
+         # dem.white_other_europeantext.txt = dem.other_europeantext.txt,                             
+         # dem.white_other = dem.other,                                               
+         # dem.white_othertext.txt = dem.othertext.txt,                                      
+         # dem.white_prefer_not_to_answer = dem.prefer_not_to_answer,    
+         # 
+         # # black or black british ethnic origin
+         # dem.black_caribbean,                                          
+         # dem.black_south_african,                                       
+         # dem.black_kenyan,                                             
+         # dem.black_nigerian,                                            
+         # dem.black_ghanaian,                                           
+         # dem.black_ugandan,                                             
+         # dem.black_other.1,                                            
+         # dem.black_othertext.txt.1,                                     
+         # dem.black_prefer_not_to_answer.1,                            
+         # 
+         # # asian or asian british ethnic origin
+         # dem.asian_indian,                                              
+         # dem.asian_pakistani,                                          
+         # dem.asian_chinese,                                             
+         # dem.asian_bangladeshi,                                        
+         # dem.asian_sri_lanka,                                           
+         # dem.asian_iranian,                                            
+         # dem.asian_other.2,                                             
+         # dem.asian_othertext.txt.2,                                    
+         # dem.asian_prefer_not_to_answer.2
+        ) %>%
+   add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+glad_dat_id %>% 
+  colnames()
+
+
+# rename .txt variable without "_numeric"
+glad_dat_id <- glad_dat_id %>% 
+  select(-dem.what_is_your_ethnic_origin.txt) %>%  # get rid of old variable (useless - all NAs)
+  rename(dem.what_is_your_ethnic_origin.txt = dem.what_is_your_ethnic_origin.txt_numeric) # rename without "_numeric"
+
+glad_dat_id %>% 
+  colnames()
+```
+                             
+```{r GLAD number excluded}
+# Inspect dimensions
+dim(glad_dat_id)
+# Differences
+glad_excluded <- dim(glad_dat_id)[1]-dim(glad_dat)[1]
+glad_excluded
+```
+`glad_excluded` GLAD participants excluded due to missing data
+
+### Inspect numeric variables
+```{r GLAD inspect numeric variables}
+glad_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+glad_miss_map <- glad_dat_id %>% 
+  missmap()
+glad_miss_map
+```
+
+
+## EDGI data
+```{r EDGI Read in data}
+edgi_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+  
+# check
+edgi_dat %>%
+  colnames()
+edgi_dat %>%
+  dim()
+```
+
+### Select and rename relevant columns
+```{r EDGI Select and rename relevant columns}
+edgi_dat_id <- edgi_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         startDate,
+         endDate,
+         sample,
+         dem.what_is_your_ethnic_origin = dem.what_is_your_ethnic_origin, 
+         dem.what_is_your_ethnic_origin.txt = dem.what_is_your_ethnic_origin.txt   
+         
+         # white ethnic origin
+         # dem.white_british,                                                      
+         # dem.white_irish,                                                       
+         # dem.white_gypsytraveller,                                              
+         # dem.white_spanish,                                                     
+         # dem.white_polish,                                                      
+         # dem.white_german,                                                      
+         # dem.white_french,                                                      
+         # dem.white_italian,                                                     
+         # dem.white_other_white = demographics.other_white,                                        
+         # dem.white_australian = demographics.australian,                                         
+         # dem.white_american = demographics.american,                                           
+         # dem.white_other = dem.other,                                                       
+         # dem.white_othertext.txt = dem.other_text.txt,     # renamed to match GLAD                                         
+         # dem.white_prefer_not_to_answer = demographics.prefer_not_to_say,   # renamed to match GLAD   
+         # 
+         # # mixed ethnic origin
+         # dem.mixed_white,                                                       
+         # dem.mixed_south_asian,                                                 
+         # dem.mixed_east_asian,                                                  
+         # dem.mixed_black_african,                                               
+         # dem.mixed_black_caribbean,                                             
+         # dem.mixed_click_to_write_choice_9 = demographics.click_to_write_choice_9,                            
+         # dem.mixed_arab = dem.arab,                                                        
+         # dem.mixed_other_mixed = demographics.other_mixed,                                        
+         # dem.mixed_other_mixed_text.txt = demographics.other_mixed_text.txt,                               
+         # dem.mixed_prefer_not_to_say.1 = demographics.prefer_not_to_say.1,                                
+         # 
+         # # black or black british ethnic origin
+         # dem.black_caribbean,                                                   
+         # dem.black_south_african,                                               
+         # dem.black_kenyan,                                                      
+         # dem.black_nigerian,                                                    
+         # dem.black_ghanaian,                                                    
+         # dem.black_ugandan,                                                     
+         # dem.black_other = demographics.other_black,           # renamed to match GLAD                             
+         # dem.black_othertext.txt = demographics.other_black_text.txt,   # renamed to match GLAD                            
+         # dem.black_prefer_not_to_answer.1 = dem.prefer_not_to_answer # renamed to match GLAD
+         ) %>%
+   add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+edgi_dat_id %>% 
+  colnames()
+
+# rename .txt variable without "_numeric"
+edgi_dat_id <- edgi_dat_id %>% 
+  select(-dem.what_is_your_ethnic_origin.txt) %>%  # get rid of old variable (useless - all NAs)
+  rename(dem.what_is_your_ethnic_origin.txt = dem.what_is_your_ethnic_origin.txt_numeric) # rename without "_numeric"
+
+edgi_dat_id %>% 
+  colnames()
+```
+
+```{r EDGI number excluded}
+# Inspect dimensions
+dim(edgi_dat_id)
+# Differences
+edgi_excluded <- dim(edgi_dat_id)[1]-dim(edgi_dat)[1]
+edgi_excluded
+```
+`edgi_excluded` EDGI participants excluded due to missing data
+
+### Inspect numeric variables
+```{r EDGI inspect numeric variables}
+edgi_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+Save all plots at end of script into one object
+```{r EDGI inspect missingness}
+edgi_miss_map <- edgi_dat_id %>% 
+  missmap()
+edgi_miss_map
+```
+
+
+## Bind rows of EDGI and GLAD data
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id)
+#Check
+dat %>% glimpse()
+```
+
+
+# Data cleaning
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+```{r Recode NA values}
+dat <- dat %>%
+   mutate(
+     across(
+       ends_with("numeric"),
+             ~case_when(
+             . == -55 ~ -555,   
+             . == -77 ~ -777,
+             . == -88 ~ -888,
+             . == -99 ~ -999,
+             TRUE ~ .)
+   )
+   )
+```
+
+
+## Numeric variables
+
+### Vector of numeric variables for cleaning
+```{r Vector of numeric variables for cleaning}
+variables_numeric <- c(
+  "dem.what_is_your_ethnic_origin_numeric"
+)
+```
+
+### Vector of plausible numeric values
+```{r Vector of plausible numeric values}
+values_numeric <- c(
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  -888,
+  -999,
+  NA
+)
+```
+
+### imp_check numeric values
+```{r imp_check numeric values}
+imp_check(data = dat,
+          variables = variables_numeric,
+          values = values_numeric)
+```
+## Non-numeric values
+
+### Vector of variables for cleaning
+```{r Vector of variables for cleaning}
+variables <- c(
+  "dem.what_is_your_ethnic_origin"
+)
+```
+
+### Vector of plausible values
+```{r Vector of plausible values}
+values <- c(
+ "White",
+ "Mixed",
+ "Asian or Asian British",
+ "Black or Black British",
+ "Arab",
+ "Other",
+ "Don't know",
+ "Prefer not to say",
+ NA
+)
+```
+
+### imp_check values
+```{r imp_check values}
+imp_check(data = dat,
+          variables = variables,
+          values = values)
+```
+
+# Save cleaned data
+
+## Save variables for export
+```{r Save variables for export}
+export_variables <- dat %>% 
+  select(ID,
+         startDate,
+         endDate,
+         sample,
+         dem.what_is_your_ethnic_origin,         
+         dem.what_is_your_ethnic_origin.txt,    
+         dem.what_is_your_ethnic_origin_numeric) %>% 
+  colnames()
+```
+
+### GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  select(all_of(export_variables)) %>% 
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/ethnicity_glad_clean.rds")
+    )
+```
+
+### EDGI
+
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  select(all_of(export_variables)) %>% 
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/ethnicity_edgi_clean.rds")
+    )
+```
+
+### GLAD EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat %>% 
+  select(all_of(export_variables)) %>% 
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/ethnicity_glad_edgi_clean.rds")
+    )
+```
+

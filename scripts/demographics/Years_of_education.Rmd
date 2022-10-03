@@ -1,0 +1,321 @@
+---
+title: "Years_of_Education"
+author: "Chelsea Mika Malouf"
+date: "26/07/2021"
+output: html_document
+---
+
+This is a cleaning script for the variables over years of education in EDGI and GLAD. Please be aware of some differences in the questions and answer options between these studies.
+
+NBR does not have any variables on years of education completed. RAMP had highest level of education but does not count how many years of education they have had.
+
+EDGI & GLAD: General question about ethnic origin followed up with more specific questions
+  Question: How many years did you attend school? You can include pre-school, primary school, secondary school, college/sixth-form, university and post-university education.
+
+Note: At some stage, the EDGI & GLAD data sets will be merged (this is because they *should* have the exact same questions. However, due to a data extraction problem, there are some questions missing in both EDGI & GLAD and this means they don't match up exactly. At this stage, I am leaving them as separate data sets.)
+
+# Set up 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      comment=NA,
+                      prompt=FALSE,
+                      cache=FALSE)
+```
+
+Delete everything in your global environment
+```{r Delete everything in your global environment}
+remove(list = ls())
+```
+
+
+Install packages
+```{r Install packages}
+#install.packages("summarytools")
+#install.packages("sjlabelled")
+#install.packages("tidyverse")
+```
+
+Load packages from library
+NB: load tidyverse last!
+```{r Load packages from library}
+library(summarytools)
+library(sjlabelled)
+library(tidyverse)
+```
+
+Retrieve the recent date
+```{r Recent date}
+date = Sys.Date()
+date
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+
+# Read in the data 
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- readRDS(file = paste0(ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")) # update rds file accordingly
+
+#Check
+glad_dat %>%
+  colnames()
+
+glad_dat %>% #check number of rows and columns
+  dim()
+```
+
+Select relevant columns (will be a function at some point)
+```{r GLAD select}
+exclude_cols_dem <- c("ID",
+                  "sample")
+
+glad_dat.id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs without ID
+  distinct(externalDataReference, .keep_all = TRUE) %>% # Keeps only the first line of the duplicates
+  add_column(sample = "GLAD", .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference,# ID
+         sample, # Sample
+         startDate,
+         endDate,
+         dem.years_schoolplease_include_preschool.txt,# Years in education (different to EDGI)
+         dem.how_old_are_you_now.txt, # Age
+         ) 
+  # add_numeric(exclude = exclude_cols_dem) %>% ## don't add because original columns are not factors
+ 
+ 
+# Inspect colnames
+colnames(glad_dat.id)
+```
+
+Look at number of people excluded
+```{r GLAD number excluded}
+# Inspect dimensions
+dim(glad_dat.id)
+
+#Differences
+glad_excluded <- dim(glad_dat.id)[1]-dim(glad_dat)[1]
+glad_excluded
+```
+`r glad.years_of_educ.excluded` GLAD participants were excluded due to missing data on years of education items
+
+
+## EDGI demographics data
+```{r EDGI Read in data}
+edgi_dat <- readRDS(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")) 
+  
+#Check
+edgi_dat %>%
+  colnames()
+
+edgi_dat %>%
+  dim()
+
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select}
+exclude_cols_dem <- c("ID",
+                  "sample")
+
+edgi_dat.id <- edgi_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs without ID
+  distinct(externalDataReference, .keep_all = TRUE) %>% # Keeps only the first line of the duplicates
+  add_column(sample = "EDGI", .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference,# ID
+         sample, # Sample
+         startDate,
+         endDate,
+         dem.years_schoolplease_include_preschool.txt = dem.attend_school_years_include.txt, # Years in education (different to GLAD so it is changed to be the same as the GLAD variable name)
+         dem.how_old_are_you_now.txt, # Age. EDGI data dictionary has it as demographics.how_old_are_you_now.txt but the most recent data file has it as dem.how_old_are_you_now.txt so check
+         ) 
+
+ 
+# Inspect colnames
+colnames(edgi_dat.id)
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions
+dim(edgi_dat.id)
+
+#Differences 
+edgi_excluded <- dim(edgi_dat.id)[1]-dim(edgi_dat)[1]
+edgi_excluded
+```
+`r edgi.years_of_educ.excluded` EDGI participants were excluded due to missing data on years of education items
+
+
+
+#Merge EDGI & GLAD for cleaning 
+EDGI & GLAD have the same age variables so can be merged together for cleaning
+*Select final cleaned variables from EDGI & GLAD dataset and rename, ready to merge together.
+```{r Merge data sets}
+dat_glad_edgi <- glad_dat.id %>%
+  rbind(edgi_dat.id)
+
+#Check
+dat_glad_edgi
+
+freq(dat_glad_edgi$dem.years_schoolplease_include_preschool.txt)
+```
+
+##Recode NA values to 3 digits
+```{r Recode NA values to 3 digits}
+dat_glad_edgi <- dat_glad_edgi %>%
+  mutate(across(ends_with(".txt"),
+                ~case_when(
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)
+                )
+         )
+```
+
+
+#Add suffix "unc" for uncleaned data columns
+```{r Add unc suffix}
+dat_glad_edgi <- dat_glad_edgi %>%
+  rename_with( ~ paste(.x, "unc", sep = "_"), starts_with("dem"))
+dat_glad_edgi
+```
+
+
+
+# Clean variables: GLAD & EDGI
+
+```{r check values}
+dat_glad_edgi %>%
+  descr(dem.years_schoolplease_include_preschool.txt_unc,
+        stats = "common")
+
+freq(dat_glad_edgi$dem.years_schoolplease_include_preschool.txt_unc)
+```
+
+
+
+#Years of education outliers: The oldest person in the world is 117 years. Cannot be triple digits or a negative number.
+Students in the UK legally attend school between ages 5 and 16 (recent number). 
+Took someone (as of 2005) 89 years and 111 days to earn a bachelors degree.
+
+Set age and years of education limits
+```{r Defining limits for years of education and age}
+years_of_educ_upper_limit = 88
+years_of_educ_lower_limit = 0
+Age_uncleaned_lower_limit = 16
+Age_uncleaned_upper_limit = 117
+# age limits are added so that if person has an age thats an outlier then they shouldnt count when compared against their education
+# read in cleaned age once finished. 
+# use the age as the limit
+```
+
+
+##Years of education outlier count
+```{r Years of education outlier count}
+dat_glad_edgi %>%
+  filter(
+    dem.how_old_are_you_now.txt_unc > Age_uncleaned_upper_limit | # older than the age limit
+    dem.how_old_are_you_now.txt_unc < Age_uncleaned_lower_limit | # younger than the age limit
+    dem.years_schoolplease_include_preschool.txt_unc > dem.how_old_are_you_now.txt_unc | # if the person has more years of education than their age 
+    dem.years_schoolplease_include_preschool.txt_unc > years_of_educ_upper_limit | # older than the limit for years of education
+    dem.years_schoolplease_include_preschool.txt_unc < years_of_educ_lower_limit # less than the limit for years of education
+    ) %>%
+  nrow()
+```
+
+#Recode outliers to -666
+```{r Years of education Recode outliers to -666 GLAD}
+dat_glad_edgi <- dat_glad_edgi %>%
+    mutate(
+      dem.university_education_attend_school.txt =
+        if_else(
+            dem.years_schoolplease_include_preschool.txt_unc > dem.how_old_are_you_now.txt_unc | # if the person has more years of education than their age 
+            dem.years_schoolplease_include_preschool.txt_unc > years_of_educ_upper_limit | # older than the limit for years of education
+            dem.years_schoolplease_include_preschool.txt_unc < years_of_educ_lower_limit, # less than the limit for years of education
+          true = -666,
+          false = dem.years_schoolplease_include_preschool.txt_unc,
+          missing = NA_real_
+        )
+    )
+```
+
+
+#Years of education after recoding to -666
+```{r Years of education after recoding to -666}
+
+freq(dat_glad_edgi$dem.university_education_attend_school.txt)
+
+```
+
+
+
+#Save data
+Vector for final variables to export
+```{r variables to export}
+export_variables <-
+  c(
+    "ID",
+    "sample",
+    "dem.university_education_attend_school.txt"
+    )
+```
+
+
+Join datasets together
+```{r GLAD columns export}
+glad_dat.exp <- dat_glad_edgi %>%
+  filter(sample == "GLAD") %>%
+  select(all_of(export_variables))
+glad_dat.exp
+```
+
+```{r EDGI columns export}
+edgi_dat.exp <- dat_glad_edgi %>%
+  filter(sample == "EDGI") %>%
+  select(all_of(export_variables))
+edgi_dat.exp
+```
+
+
+
+```{r GLAD EDGI NBR export}
+glad_edgi_dat.exp <- dat_glad_edgi %>%
+  filter(sample == "GLAD" | sample == "EDGI") %>%
+  select(all_of(export_variables))
+glad_edgi_dat.exp
+```
+
+
+Save data
+```{r save GLAD, EDGI, GLAD&EDGI data}
+saveRDS(object = 
+  glad_edgi_dat.exp,
+  file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/", "Years_of_education_GLAD_EDGI_", date, ".rds"))
+saveRDS(object = 
+  glad_dat.exp,
+  file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/", "Years_of_education_GLAD_", date, ".rds"))
+saveRDS(object = 
+  edgi_dat.exp,
+  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/", "Years_of_education_EDGI_", date, ".rds"))
+
+```

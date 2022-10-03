@@ -1,0 +1,333 @@
+---
+title: 'EDGI protocol: Merging data'
+author: "Helena Davies"
+date: "24/08/2022"
+output: html_document
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Read in file with path to data channel
+```{r Read in file with path to data channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the imp_check function - used to check variables for implausible values
+```{r Read in functions}
+source(file = paste0("functions/add_numeric.R"))
+source(file = paste0("functions/remove_duplicates.R"))
+source(file = paste0("functions/package_check.R"))
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("summarytools", "sjlabelled", "Amelia", "gtsummary", "tidyverse")
+package_check(packages)
+```
+
+Retrieve recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+# Read in gender 
+```{r read in gender sex and sexuality data}
+sex_gender_sexuality <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/sex_gender_sexuality_edgi_clean.rds"))
+  
+# Check
+sex_gender_sexuality %>%
+  colnames()
+
+sex_gender_sexuality %>%
+  dim()
+
+# Select variables we need 
+sex_gender_sexuality <- sex_gender_sexuality %>%
+  select(ID,
+         sample,
+         dem.sex,
+         demographics.what_gender_do_you_identify_with,
+         dem.what_is_your_sexual_orientation,
+         dem.do_you_identify_as_transgender)
+```
+
+# Read in 'Ethnicity'
+```{r read in ethnicity}
+ethnicity <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/ethnicity_edgi_clean.rds"))
+  
+# Check
+ethnicity %>%
+  colnames()
+
+ethnicity %>%
+  dim()
+
+# Select variables we need 
+ethnicity <- ethnicity %>%
+  select(ID,
+         dem.what_is_your_ethnic_origin)
+```
+
+# Education
+```{r read in education}
+education <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/highest_education_edgi_clean.rds"))
+  
+# Check
+education %>%
+  colnames()
+
+education %>%
+  dim()
+
+# Select variables we need 
+education <- education %>%
+  select(ID,
+         dem.highest_education_finegrained)
+```
+
+```{r read in years of education}
+years_of_education <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/years_of_education_edgi_clean.rds"))
+  
+# Check
+years_of_education %>%
+  colnames()
+
+years_of_education %>%
+  dim()
+
+# Select variables we need 
+years_of_education <- years_of_education %>%
+  select(ID,
+         dem.years_schoolplease_include_preschool.txt)
+```
+
+# Employment
+```{r read in employment}
+employment <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/employment_edgi_clean.rds"))
+  
+# Check
+employment %>%
+  colnames()
+
+employment %>%
+  dim()
+
+# Select variables we need 
+employment <- employment %>%
+  select(ID,
+         dem.what_is_your_current_employment_status)
+```
+
+# Relationship status
+```{r read in relationship status}
+relationship_status <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/marital_status_edgi_clean.rds"))
+  
+# Check
+relationship_status %>%
+  colnames()
+
+relationship_status %>%
+  dim()
+
+# Select variables we need 
+relationship_status <- relationship_status %>%
+  select(ID,
+         dem.what_is_your_current_maritalrelationship_status)
+```
+
+# Smoking status 
+Note: This script needs further reviewing. HLD has done a quick review.
+```{r read in smoking status}
+smoking_status <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/smoking_pack_year_edgi_clean.rds"))
+  
+# Check
+smoking_status %>%
+  colnames()
+
+smoking_status %>%
+  dim()
+
+# Select variables we need 
+smoking_status <- smoking_status %>%
+  select(ID,
+         dem.pack_year)
+```
+
+# Treatment
+Note: For some reason, this is saved in the MHD even though it's part of the ED100K screening questionnaire.
+```{r read in treatment data}
+treatment <- readRDS(file = paste0(filepath_edgi_raw,
+                                     "mhd_edgi.rds"))
+  
+# Check
+treatment %>%
+  colnames()
+
+treatment %>%
+  dim()
+
+# Select variables we need 
+treatment <- treatment %>%
+  select(ID = externalDataReference,
+         mhd.eating_disorder_received_treatment)
+```
+
+# Age
+```{r read in age data}
+age <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/age_edgi_clean.rds"))
+  
+# Check
+age %>%
+  colnames()
+
+age %>%
+  dim()
+
+# Select variables we need 
+age <- age %>%
+  select(ID,
+         dem.how_old_are_you_now.txt,
+         dem.dob_age,
+         dem.age_category)
+```
+
+# Eating disorder diagnosis: algorithm-derived
+```{r read in eating disorder algorithm data}
+eating_disorder_algorithm <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "algorithms/ed_algorithms_diagnostics_edgi_clean.rds"))
+  
+# Check
+eating_disorder_algorithm %>%
+  colnames()
+
+eating_disorder_algorithm %>%
+  dim()
+
+# Select variables we need 
+eating_disorder_algorithm <- eating_disorder_algorithm %>%
+  select(ID,
+         ed.DSM5_AN_binary,
+         ed.DSM5_AN_restricting_binary,
+         ed.DSM5_AN_binge_purge_binary,
+         ed.DSM5_BN_binary,
+         ed.DSM5_BED_binary)
+```
+
+# Self-report (MHD)
+```{r read in mhd data}
+mhd <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "clinical/mhd_edgi_clean.rds"))
+  
+# Check
+mhd %>%
+  colnames()
+
+mhd %>%
+  dim()
+
+# Select columns
+mhd <- mhd %>%
+  select(-endDate,
+           -startDate,
+           -sample)
+```
+
+# Somatic comorbidity
+```{r read in somatic data}
+somatic <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/disability_medical_edgi_clean.rds"))
+  
+# Check
+somatic %>%
+  colnames()
+
+somatic %>%
+  dim()
+
+# Select columns
+somatic <- somatic %>%
+  select(-endDate,
+           -startDate,
+           -sample)
+```
+
+# Age at diagnosis
+```{r read in age at diagnosis data, eval=FALSE, include=FALSE}
+age_at_diagnosis <- readRDS(file = paste0(filepath_edgi_cleaned,
+                                     "demographics/age_at_diagnosis_edgi_clean.rds"))
+  
+# Check
+age_at_diagnosis %>%
+  colnames()
+
+age_at_diagnosis %>%
+  dim()
+```
+
+# Merge all data
+```{r}
+dat <- list(sex_gender_sexuality,
+                ethnicity,
+                education,
+                years_of_education,
+                employment,
+                relationship_status,
+                smoking_status,
+                treatment,
+                age,
+                eating_disorder_algorithm,
+                mhd,
+                somatic
+                ) %>%
+               # age_at_diagnosis) %>%
+  reduce(full_join,
+         by = "ID")
+```
+
+# Look at the data
+```{r view table}
+skimr::skim(dat)
+
+dat %>%
+  colnames()
+
+dat %>%
+  dim()
+```
+
+# Save the data
+```{r save the merged data}
+dat %>% 
+  saveRDS(
+    file = paste0(filepath_cleaned_data, "merged_dat.rds")
+    )
+
+```
+

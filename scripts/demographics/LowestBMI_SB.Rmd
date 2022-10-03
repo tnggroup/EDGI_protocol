@@ -1,0 +1,4342 @@
+---
+title: "Lowest BMI"
+author: "Saakshi Kakar, Helena Davies, Topher Huebel, updated by Shannon Bristow"
+date: "10/08/2021"
+output: html_document
+---
+
++++ Need to add case_when for all those with mistakes in their entries, to identify them for recontacting
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("summarytools", "sjlabelled", "Amelia", "gtsummary", "tidyverse")
+package_check(packages)
+```
+
+Retrieve recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in file with path to ilovedata channel on teams}
+source(file = "../credentials/paths.R")
+```
+
+Add negating function
+```{r Add negating function}
+`%nin%` = Negate(`%in%`)
+```
+
+# Read in the data: Demographics
+
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- readRDS(file = paste0(ilovedata, "/data_raw/2022-09-16/glad_ed/demographics_glad_ed.rds"))
+  
+#Check
+glad_dat %>%
+  colnames()
+
+glad_dat %>%
+  dim()
+```
+
+```{r GLAD specify excluded columns}
+exclude_cols_dem <- c("ID",
+                  "sample")
+
+```
+
+Select & rename relevant columns (will be a function at some point)
+
++++CH: Duplicates need to be investigated in a script
++++CH: Participants IDs that are duplicated must be merged/cleaned/deleted
++++CH: There will be duplicated IDs in COPING because participants will have answered the same questionnaire on phone vs computer and they couldn't start at the same position
+```{r GLAD select}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% # Keeps the first line 
+  add_column(sample = "GLAD", .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         height_signup_ft_unc = dem.what_is_your_current_height,
+         height_signup_inches_unc = dem.what_is_your_current_height.1,
+         height_signup_cm_unc = dem.what_is_your_current_height.2,
+         weight_lowest_st_unc = dem.adult_height_reaching_weighed, 
+         weight_lowest_lbs_unc = dem.adult_height_reaching_weighed.1,
+         weight_lowest_kg_unc = dem.adult_height_reaching_weighed.2,
+         bmi_lowest_unc = dem.adult_height_lowest_bmi
+  )  %>%
+# add_numeric(., exclude = exclude_cols_dem) %>% # We decided to not add _numeric because the original columns are not factors
+  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables: Don't know
+  mutate_if(is.numeric, ~na_if(., -99)) %>% # Prefer not to say
+  mutate_if(is.numeric, ~na_if(., -77)) %>% # Seen but not answered
+  mutate_if(is.character, ~na_if(., -88)) %>% # Recode missing values to NAs in character variables
+  mutate_if(is.character, ~na_if(., -99)) %>%
+  mutate_if(is.character, ~na_if(., -77)) %>%
+  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
+  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+
+# Inspect colnames
+colnames(glad_dat_id)
+```
+
+Look at number of people excluded
+The number of people to be excluded should be negative
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1] - dim(glad_dat)[1]
+glad_excluded
+```
+
+Check whether columns are numeric 
+```{r GLAD check if columns are numeric}
+glad_dat_id %>% 
+  dplyr::summarise_all(class) %>% 
+  tidyr::gather(variable, class)
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+glad_miss_map <- glad_dat_id %>% 
+  missmap()
+
+glad_miss_map
+```
+
+GLAD: All character variables must be converted to numeric without losing data
+
+# GLAD: Height
+
+## GLAD: Height in ft (feet)
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+```{r GLAD height_signup_ft_unc inspection}
+glad_dat_id %>%
+  freq(height_signup_ft_unc)
+```
+
+Conversion to numeric
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r GLAD height_signup_ft_unc Conversion to numeric and positive values}
+#Covert to numeric
+glad_dat_id <- glad_dat_id %>%
+  mutate(
+    height_signup_ft_unc_numeric =
+      abs(
+        as.numeric(
+          height_signup_ft_unc)
+      )
+  )
+
+#Check
+glad_dat_id %>%
+  freq(height_signup_ft_unc_numeric)
+```
+
+## GLAD: Height in inches
+
+Look at variable first to identify errors
+```{r GLAD height_signup_inches_unc inspection}
+glad_dat_id %>%
+  freq(height_signup_inches_unc)
+```
+
+Some participants have entered the decimals as fractions. We need to recode them as decimals
+```{r GLAD height_signup_inches_unc recoding of fractions}
+glad_dat_id <- glad_dat_id %>%
+  mutate(
+    height_signup_inches_tidied1 =
+      gsub(pattern = " 1/2",
+           replacement = ".5",
+           x = height_signup_inches_unc)
+  )  %>% 
+  mutate(
+    height_signup_inches_tidied2 =
+      gsub(pattern = " 3/4",
+           replacement = ".75",
+           x = height_signup_inches_tidied1)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied3 =
+      gsub(pattern = " 1/4",
+           replacement = ".25",
+           x = height_signup_inches_tidied2)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied4 =
+      gsub(pattern = " 2/3",
+           replacement = ".66",
+           x = height_signup_inches_tidied3)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied5 =
+      gsub(pattern = " 1/3",
+           replacement = ".33",
+           x = height_signup_inches_tidied4)
+  )
+```
+
+Conversion to numeric
+```{r GLAD height_signup_inches_unc Conversion to numeric and positive values}
+#Covert to numeric
+glad_dat_id <- glad_dat_id %>% 
+  mutate(
+    height_signup_inches_unc_numeric = 
+      abs(
+        as.numeric(
+          height_signup_inches_tidied5)
+        )
+  )
+
+#Check
+glad_dat_id %>%
+  freq(height_signup_inches_unc_numeric)
+```
+
+## GLAD: Height in cm
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+```{r GLAD height_signup_cm_unc inspection}
+glad_dat_id %>%
+  freq(height_signup_cm_unc)
+```
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r GLAD height_signup_cm_unc conversion to numeric and positive values}
+glad_dat_id <- glad_dat_id %>%
+  mutate(
+    height_signup_cm_unc_numeric =
+  abs(
+  as.numeric(
+    height_signup_cm_unc
+    )
+  )
+  )
+
+glad_dat_id %>%
+  freq(height_signup_cm_unc_numeric)
+```
+
+# GLAD: Weight
+
+## GLAD: Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r GLAD weight_lowest_st_unc inspection}
+glad_dat_id %>%
+  freq(weight_lowest_st_unc)
+```
+
+```{r GLAD weight_lowest_st_unc conversion to numeric and positive values}
+glad_dat_id <- glad_dat_id %>%
+  mutate(weight_lowest_st_unc_numeric =
+  abs(
+    as.numeric(
+    weight_lowest_st_unc
+  )
+  )
+  )
+
+glad_dat_id %>%
+  freq(weight_lowest_st_unc_numeric)
+```
+
+
+## GLAD: Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r GLAD weight_lowest_lbs_unc inspection}
+glad_dat_id %>%
+  freq(weight_lowest_lbs_unc)
+```
+
+
+```{r GLAD weight_lowest_lbs_unc conversion to numeric and positive values}
+glad_dat_id <- glad_dat_id %>%
+  mutate(weight_lowest_lbs_unc_numeric =
+  abs(
+  as.numeric(
+    weight_lowest_lbs_unc
+  )
+  )
+  )
+
+glad_dat_id %>%
+  freq(weight_lowest_lbs_unc_numeric)
+```
+
+## GLAD: Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r GLAD weight_lowest_kg_unc inspection}
+glad_dat_id %>%
+  freq(weight_lowest_kg_unc)
+```
+
+```{r GLAD weight_lowest_kg_unc conversion to numeric and positive values}
+glad_dat_id <- glad_dat_id %>%
+  mutate(weight_lowest_kg_unc_numeric =
+  abs(
+  as.numeric(
+    glad_dat_id$weight_lowest_kg_unc
+  )
+  )
+  )
+
+glad_dat_id %>%
+  freq(weight_lowest_kg_unc_numeric)
+```
+
+## GLAD: Lowest BMI
+```{r GLAD bmi_lowest_unc inspect}
+glad_dat_id %>%
+  freq(bmi_lowest_unc)
+```
+
+NB: In GLAD, a few participants entered their data as raw BMI
+
+```{r GLAD bmi_lowest_unc conversion to numeric and positive values}
+glad_dat_id <- glad_dat_id %>% 
+  mutate(bmi_lowest_unc_numeric =
+  abs(
+  as.numeric(
+    glad_dat_id$bmi_lowest_unc
+  )
+  )
+  )
+
+glad_dat_id %>%
+  freq(bmi_lowest_unc_numeric)
+```
+
+## EDGI data
+Please do not change the name of the object so it remains universal
+```{r EDGI read in data}
+edgi_dat <- readRDS(file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds"))
+
+#Check
+edgi_dat %>%
+  colnames()
+
+edgi_dat %>%
+  dim()
+```
+
+Find differences between colnames of GLAD and EDGI dataframes
+`setdiff()` gives the items in the first argument that are not in the second argument
+```{r Check colnames}
+setdiff(colnames(glad_dat), colnames(edgi_dat))
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select}
+edgi_dat_id <- edgi_dat %>% # New dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% 
+  add_column(sample = "EDGI", .after = "externalDataReference") %>% # Create new sample column 
+  select(
+         ID = externalDataReference,# ID
+         sample,
+         height_signup_ft_unc = dem.what_is_your_current_height,
+         height_signup_inches_unc = dem.what_is_your_current_height.1,
+         height_signup_cm_unc = dem.what_is_your_current_height.2,
+         weight_lowest_st_unc = dem.adult_height_reaching_weighed, 
+         weight_lowest_lbs_unc = dem.adult_height_reaching_weighed.1,
+         weight_lowest_kg_unc = dem.adult_height_reaching_weighed.2,
+         bmi_lowest_unc = dem.adult_height_lowest_bmi 
+         ) %>%
+# add_numeric(., exclude = exclude_cols_dem) %>% # We decided to not add _numeric because the original columns are not factors
+  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
+  mutate_if(is.numeric, ~na_if(., -99)) %>%
+  mutate_if(is.numeric, ~na_if(., -77)) %>%
+  mutate_if(is.character, ~na_if(., -88)) %>% # Recode missing values to NAs in character variables
+  mutate_if(is.character, ~na_if(., -99)) %>%
+  mutate_if(is.character, ~na_if(., -77)) %>%
+  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
+  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+
+
+# Inspect colnames
+colnames(edgi_dat_id)
+
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+edgi_excluded <- dim(edgi_dat_id)[1] - dim(edgi_dat)[1]
+edgi_excluded
+```
+
+Check whether columns are numeric 
+```{r EDGI check if columns are numeric}
+edgi_dat_id %>% 
+  dplyr::summarise_all(class) %>% 
+  tidyr::gather(variable, class)
+```
+
+Check missingness by missmap
+```{r EDGI inspect missingness}
+edgi_miss_map <- edgi_dat_id %>% 
+  missmap()
+
+edgi_miss_map
+```
+
+EDGI: All character variables must be converted to numeric without losing data
+
+# EDGI: Height
+
+## EDGI: Height in ft (feet)
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+```{r EDGI height_signup_ft_unc inspection}
+edgi_dat_id %>%
+  freq(height_signup_ft_unc)
+```
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r EDGI height_signup_ft_unc conversion to numeric}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    height_signup_ft_unc_numeric =
+  abs(
+  as.numeric(
+    height_signup_ft_unc)
+  )
+  )
+
+edgi_dat_id %>%
+  freq(height_signup_ft_unc_numeric)
+```
+
+## EDGI: Height in inches
+
+Look at variable first to identify errors
+```{r EDGI height_signup_inches_unc inspection}
+edgi_dat_id %>%
+  freq(height_signup_inches_unc)
+```
+
+Some participants have entered the decimals as fractions. We need to recode them as decimals
+```{r EDGI height_signup_inches_unc recoding of fractions}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    height_signup_inches_tidied1 =
+      gsub(pattern = " 1/2",
+           replacement = ".5",
+           x = height_signup_inches_unc)
+  )  %>% 
+  mutate(
+    height_signup_inches_tidied2 =
+      gsub(pattern = " 3/4",
+           replacement = ".75",
+           x = height_signup_inches_tidied1)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied3 =
+      gsub(pattern = " 1/4",
+           replacement = ".25",
+           x = height_signup_inches_tidied2)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied4 =
+      gsub(pattern = " 2/3",
+           replacement = ".66",
+           x = height_signup_inches_tidied3)
+  ) %>% 
+  mutate(
+    height_signup_inches_tidied5 =
+      gsub(pattern = " 1/3",
+           replacement = ".33",
+           x = height_signup_inches_tidied4)
+  )
+```
+
+Conversion to numeric
+```{r EDGI height_signup_inches_unc Conversion to numeric and positive values}
+#Covert to numeric
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    height_signup_inches_unc_numeric =
+      abs(
+        as.numeric(
+         height_signup_inches_tidied5)
+        )
+  )
+
+#Check
+edgi_dat_id %>%
+  freq(height_signup_inches_unc_numeric)
+```
+
+## EDGI: Height in cm
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+```{r EDGI height_signup_cm_unc inspection}
+edgi_dat_id %>%
+  freq(height_signup_cm_unc)
+```
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r EDGI height_signup_cm_unc conversion to numeric and positive values}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    height_signup_cm_unc_numeric =
+  abs(
+  as.numeric(
+    height_signup_cm_unc
+  )
+  )
+  )
+
+edgi_dat_id %>%
+  freq(height_signup_cm_unc_numeric)
+```
+
+# EDGI: Weight
+
+## EDGI Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r EDGI weight_lowest_st_unc inspection}
+edgi_dat_id %>%
+  freq(weight_lowest_st_unc)
+```
+
+```{r EDGI weight_lowest_st_unc conversion to numeric and positive values}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(weight_lowest_st_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_dat_id$weight_lowest_st_unc
+  )
+  )
+  )
+
+edgi_dat_id %>%
+  freq(weight_lowest_st_unc_numeric)
+```
+
+
+## EDGI: Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r EDGI weight_lowest_lbs_unc inspection}
+edgi_dat_id %>%
+  freq(weight_lowest_lbs_unc)
+```
+
+
+```{r EDGI weight_lowest_lbs_unc conversion to numeric and positive values}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(weight_lowest_lbs_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_dat_id$weight_lowest_lbs_unc
+  )
+  )
+  )
+
+edgi_dat_id %>%
+  freq(weight_lowest_lbs_unc_numeric)
+```
+
+## EDGI: Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r EDGI weight_lowest_kg_unc inspection}
+edgi_dat_id %>%
+  freq(weight_lowest_kg_unc)
+```
+
+```{r EDGI weight_lowest_kg_unc conversion to numeric and positive values}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(weight_lowest_kg_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_dat_id$weight_lowest_kg_unc
+  )
+  )
+)
+
+edgi_dat_id %>%
+  freq(weight_lowest_kg_unc_numeric)
+```
+
+## EDGI: Lowest BMI 
+```{r EDGI bmi_lowest_unc inspect}
+edgi_dat_id %>%
+  freq(bmi_lowest_unc)
+```
+
+NB: In EDGI, a few participants entered their data as raw BMI
+
+```{r EDGI bmi_lowest_unc conversion to numeric and positive values}
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(bmi_lowest_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_dat_id$bmi_lowest_unc
+  )
+  )
+  )
+
+edgi_dat_id %>%
+  freq(bmi_lowest_unc_numeric)
+```
+
+
+# Data binds rows
+Columns to exclude
+```{r Columns to not bind the rows of}
+columns_to_exclude <- 
+  c(
+    "height_signup_ft_unc",
+    "height_signup_inches_unc",
+    "height_signup_cm_unc",
+    "weight_lowest_st_unc",
+    "weight_lowest_lbs_unc",
+    "weight_lowest_kg_unc"
+    )
+```
+
+```{r Row bind cohorts}
+dat <- glad_dat_id %>% 
+  select(
+    -all_of(columns_to_exclude)
+  ) %>%
+  bind_rows(
+    edgi_dat_id %>%
+      select(
+    -all_of(columns_to_exclude)
+  )
+  ) 
+```
+
+```{r Skim row binded data frame}
+dat %>%
+  skimr::skim()
+```
+
+# Data cleaning
+# Height data cleaning
+## GLAD & EDGI (merged) Height in inches cleaning
+
+```{r merged data height_signup_inches_unc conversion to numeric inspection}
+#Check
+dat %>%
+  freq(height_signup_inches_unc_numeric)
+```
+
+Check difference in number of NAs
+```{r merged data height_signup_inches_unc NA inspection 1}
+sum(is.na(dat$height_signup_inches_unc)) - sum(is.na(dat$height_signup_inches_unc_numeric))
+```
+There should be no difference in NAs after converting the fractions to decimals.
+
+Need to identify people that have entered their height in inches and height in feet twice.
+Meaning they have entered their whole weight twice in both columns.
+```{r merged data height_signup_inches_unc Checking entries in feet and inches twice}
+dat %>%
+  select(height_signup_inches_unc_numeric,
+         height_signup_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_signup_inches_unc_numeric > 12 & !is.na(height_signup_inches_unc_numeric)) &
+      ( 
+        ((height_signup_inches_unc_numeric/12)-0.3) < height_signup_ft_unc_numeric & 
+          ((height_signup_inches_unc_numeric/12)+0.3) > height_signup_ft_unc_numeric
+      ))
+```
+
+Identify these double entry cases and manually correct those.
+```{r merged data height_signup_inches_unc identifying IDs of entries done twice}
+inches_twice_IDs <- dat %>%
+  select(height_signup_inches_unc_numeric,
+         height_signup_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_signup_inches_unc_numeric > 12 & !is.na(height_signup_inches_unc_numeric)) &
+      ( 
+        ((height_signup_inches_unc_numeric/12)-0.3) < height_signup_ft_unc_numeric & 
+          ((height_signup_inches_unc_numeric/12)+0.3) > height_signup_ft_unc_numeric
+      )) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+inches_twice_IDs
+```
+
+Get decimal point value from ft entry and put into inches column
+```{r merged data height_signup_inches_unc extract decimal point value from ft and put into inches 2}
+dat <- dat %>%
+  mutate(height_signup_inches_tidied7 =
+           case_when(
+             ID %in% inches_twice_IDs ~ (height_signup_ft_unc_numeric - trunc(height_signup_ft_unc_numeric))*10, # extract decimal point value from ft and put into inches
+             TRUE ~ height_signup_inches_unc_numeric
+           )
+  )
+```
+
+```{r merged data height_signup_inches_unc check freq}
+dat %>%
+  freq(height_signup_inches_tidied7)
+```
+
+Check that the above worked
+```{r merged data height_signup_inches_unc Check that the above worked}
+dat %>%
+  select(height_signup_inches_tidied7,
+         height_signup_inches_unc_numeric,
+         height_signup_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_signup_inches_unc_numeric > 12 & !is.na(height_signup_inches_unc_numeric)) &
+      ( 
+        ((height_signup_inches_unc_numeric/12)-0.3) < height_signup_ft_unc_numeric & 
+          ((height_signup_inches_unc_numeric/12)+0.3) > height_signup_ft_unc_numeric 
+      ))
+```
+
+Everyone with a value of 12 or above should be coded as implausible, i.e., -666 (12 inches = 1 foot; if someone were to put 5ft12, they are actually 6ft).
+NB: Implausible values are coded as -666.
+One would expect values between 0 and 11 inches.
+```{r merged data height_signup_inches_unc above 12 - implausible value}
+dat <- dat %>%
+  mutate(
+    height_signup_inches =
+      if_else(
+        condition = height_signup_inches_tidied7 >= 12 & !is.na(height_signup_inches_tidied7), 
+        true = -666, 
+        false = height_signup_inches_tidied7,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_inches)
+```
+
+In the data freeze 2021-05-20, we have got no implausible values (i.e., -666) in GLAD & EDGI (merged)
+In the data freeze 2021-10-03, we have got 16 implausible values (i.e., -666) in GLAD & EDGI (merged)
+
+
+Check difference in number of NAs
+```{r merged data height_signup_inches_unc NA inspection 2}
+sum(is.na(dat$height_signup_inches_tidied7)) - sum(is.na(dat$height_signup_inches_unc_numeric))
+```
+
+## GLAD & EDGI (merged): Height in cm cleaning
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r merged data height_signup_cm_unc conversion to numeric inspection}
+dat %>%
+  freq(height_signup_cm_unc_numeric)
+```
+
+There are now only numeric entries in the cm variables, so can convert to numeric.
+
+If someone has entered a value below 3, it is likely they have entered their height in metres rather than cm. Need to identify these people and convert their answers from m to cm.
+```{r  merged data height_signup_cm_unc metres in cm field}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied2 =
+      if_else(
+        condition = height_signup_cm_unc_numeric < 3 & !is.na(height_signup_cm_unc_numeric), # Height below 3 in metres in cm column
+        true = height_signup_cm_unc_numeric*100, # Multiply by 100 to convert from metres to centimetres
+        false = height_signup_cm_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied2)
+```
+
+If someone has entered a value of 4 digits beginning with two ones, it is likely they have accidentally entered one twice at the beginning. Need to identify these people and convert their answers.
+```{r merged data height_signup_cm_unc two 1s at the beginning}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied3 =
+      if_else(
+        condition = height_signup_cm_tidied2 >= 1100 &
+          height_signup_cm_tidied2 < 1200 & # Heights between 1100 and 1200
+          !is.na(height_signup_cm_tidied2), 
+        true = height_signup_cm_tidied2 - 1000, # Take/subtract 1,000 to get value in cm
+        false = height_signup_cm_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied3)
+```
+
+If someone has entered a value of 4 digits, it is likely they have forgotten to add the decimal point. Need to identify these people and convert their answers.
+Individuals with values like 1544, 1577, 1680, ...
+```{r merged data height_signup_cm_unc 4 digits forgotten decimal point}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied4 =
+      if_else(
+        condition = height_signup_cm_tidied3 > 1000 &
+          height_signup_cm_tidied3 < 3000 & # Heights of up to 3 m (implausible height will be cleaned in min and max chunks)
+          !is.na(height_signup_cm_tidied3),
+        true = height_signup_cm_tidied3/10, # divide by 10 to add decimal point
+        false = height_signup_cm_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied4)
+```
+
+If someone has entered a value with two ones at the beginning and a decimal point after the second digit, it is likely they have firstly put the decimal point in the wrong place and also accidentally entered one twice. Need to identify these people and convert their answers.
+e.g., 11.57
+```{r merged data height_signup_cm_unc 4 digits accidental decimal point}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied5 =
+      if_else(
+        condition = height_signup_cm_tidied4 > 11 &
+          height_signup_cm_tidied4 < 12 & # Heights between 11 and 12
+          !is.na(height_signup_cm_tidied4),
+        true = (height_signup_cm_tidied4 - 10)*100, # Take away 10 and multiply everything by 100
+        false = height_signup_cm_tidied4,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied5)
+```
+
+If someone has entered a value with a decimal point after the second digit, it is likely they have put the decimal point in the wrong place. Need to identify these people and convert their answers.
+```{r merged data height_signup_cm_unc decimal point second digit wrong place}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied6 =
+      if_else(
+        condition = height_signup_cm_tidied5 > 8 & # taller than 80 cm
+          height_signup_cm_tidied5 < 25 & # shorter than 250 cm
+          !is.na(height_signup_cm_tidied5),
+        true = height_signup_cm_tidied5*10,
+        false = height_signup_cm_tidied5,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied6)
+```
+
+If someone has entered a value with five digits with no decimal point, it is likely they have forgotten the decimal point. Need to identify these people in order to recontact.
+NB: We will code implausible values as -666.
+```{r merged data height_signup_cm_unc five digits without decimal point - implausible value}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied7 =
+      if_else(
+        condition = height_signup_cm_tidied6 > 10000 & # taller than 100 cm
+          height_signup_cm_tidied6 < 20000 & # shorter than 200 cm
+          !is.na(height_signup_cm_tidied6),
+        true = -666, # Implausible value
+        false = height_signup_cm_tidied6,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_cm_tidied7)
+```
+
+Identify people with repeating sequences of digits
+They must have more than 6 digits
++++ Would be great if we could automatise this
+```{r merged data height_signup_cm_unc identify values with potential repeats}
+height_signup_cm_tidied7_repeats <- dat %>% 
+  select(
+    ID,
+    height_signup_cm_tidied7
+  ) %>%
+  filter(
+    height_signup_cm_tidied7 >100000 & !is.na(height_signup_cm_tidied7)
+  )
+height_signup_cm_tidied7_repeats
+```
+
+```{r merged data height_signup_cm_unc message for coder}
+number_repeating_digits <- height_signup_cm_tidied7_repeats %>%
+  nrow()
+  
+  # If statement
+if (number_repeating_digits == 0) {
+  print(paste0("No participants have repeating sequences of digits in GLAD & EDGI (merged). No further action required."))
+} else {
+  print(paste0("The number of participants with repeating sequences of digits in GLAD & EDGI (merged) is ", number_repeating_digits, ". Please manually recode these values using the chunks below."))
+}
+```
+
+```{r merged data height_signup_cm_unc cut repeats in digits of 3, eval=FALSE, include=FALSE}
+capture_repeated_text_entry(
+  height_signup_cm_tidied7_repeats$height_signup_cm_tidied7,
+  3
+) 
+```
+
+IMPORTANT: This needs to be done manually per dataset.
+
+```{r merged data height_signup_cm_unc repeating digits case_when recoding}
+dat <- dat %>%
+  mutate(
+    height_signup_cm_tidied8 =
+      case_when(
+                height_signup_cm_tidied7 == 1761176 ~ 176, 
+                height_signup_cm_tidied7 == 2022202 ~ 202,
+                height_signup_cm_tidied7 == 117517552 ~ 175,
+        TRUE ~ height_signup_cm_tidied7
+      )
+  )
+```
+
+```{r merged data height_signup_cm_unc repeating digits case_when recoding checking}
+#Check
+dat %>%
+  freq(height_signup_cm_tidied8)
+```
+
+
+Checking plausibility of short heights
+
++++CH: I've hashed bmi_2 out because the columns are non-numeric in GLAD & EDGI (merged)
+
+```{r merged data height_signup_cm_unc cross-checking short height with weight in kg}
+dat %>%
+  select(height_signup_cm_tidied8,
+         weight_lowest_kg_unc_numeric,
+         weight_lowest_st_unc_numeric,
+         weight_lowest_lbs_unc_numeric) %>%
+  filter(height_signup_cm_tidied8 < 140) %>%
+  mutate(bmi_1 =
+           round(
+             weight_lowest_kg_unc_numeric/(height_signup_cm_tidied8/100)^2,
+             digits = 2),
+         bmi_2 =
+           round(
+             ((weight_lowest_st_unc_numeric*6.35) + (weight_lowest_lbs_unc_numeric/2.205)) / (height_signup_cm_tidied8/100)^2,
+             digits = 2)
+  )
+```
+Participants with height in cm under 120 have BMIs above 55, so have entered an implausible height and/or weight. They should be investigated or be recontacted
+
+Checking plausibility of tall heights
+```{r merged data height_signup_cm_unc cross-checking tall height with weight in kg}
+dat %>%
+  select(height_signup_cm_tidied8,
+         weight_lowest_kg_unc_numeric,
+         weight_lowest_st_unc_numeric,
+         weight_lowest_lbs_unc_numeric) %>%
+  filter(height_signup_cm_tidied8 > 200) %>%
+  mutate(bmi_1 =
+           round(
+             weight_lowest_kg_unc_numeric/ (height_signup_cm_tidied8/100)^2,
+             digits = 2),
+         bmi_2 =
+           round(
+             ((weight_lowest_st_unc_numeric*6.35) + (weight_lowest_lbs_unc_numeric/2.205) 
+             ) / (height_signup_cm_tidied8/100)^2,
+             digits = 2)
+  )
+```
+2020-05-20: The 207 seems fine. The BMI is low, but this is an eating disorder sample. Maybe check if participant has got Marfan Syndrome.
+
+Minimum and maximum cleaning chunk for height in cm
+Based on the the two chunks before we have chosen these cutoffs
+```{r merged data height_signup_cm_unc define limits}
+cm_lower_limit = 120
+cm_upper_limit = 220
+```
+
+```{r merged data height_signup_cm_unc identify number of outliers}
+dat %>%
+  filter(height_signup_cm_tidied8 > cm_upper_limit |
+           height_signup_cm_tidied8 < cm_lower_limit) %>%
+  nrow()
+```
+
+```{r merged data height_signup_cm_unc set implausible values to -666}
+dat <- dat %>%
+  mutate(
+    height_signup_cm =
+      if_else(
+        height_signup_cm_tidied8 > cm_upper_limit |
+          height_signup_cm_tidied8 < cm_lower_limit,
+        true = -666,
+        false = height_signup_cm_tidied8,
+        missing = NA_real_
+      )
+  )
+# Check
+dat %>%
+  freq(
+    height_signup_cm
+  )
+```
+
+18 individuals have implausible values. These participants should be recontacted if possible
+2021-10-03: 37 individuals have implausible values. These participants should be recontacted if possible
+
+## GLAD & EDGI (merged): Height in ft (feet) cleaning
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+
+```{r merged data height_signup_ft_unc conversion to numeric inspection}
+#Check
+dat %>%
+  freq(height_signup_ft_unc_numeric)
+```
+
+If someone has an implausible value in the inches column, they should automatically be considered to have an implausible value in the feet column (i.e., we will need to re-contact them anyway)
+```{r merged data height_signup_ft_unc implausible feet value because inches are already implausible from chunks before}
+dat <- dat %>%
+  mutate(
+    height_signup_ft_tidied2 = # set feet column
+      if_else(
+        condition = height_signup_inches == -666 & # Implausible value in the inches column
+          !is.na(height_signup_inches),
+        true = -666, # set feet column to implausible (-666)
+        false = height_signup_ft_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_ft_tidied2)
+```
+2021-05-20 freeze: 10 participants receive an implausible feet (ft) value because they have implausible inches values
+2021-10-03 freeze: 16 participants receive an implausible feet (ft) value because they have implausible inches values
+
+Identify cases and manually correct 
+(this is same as the chunk above "merged data height_signup_inches_unc identifying IDs of entries done twice" but repeated for ease)
+meaning the participant entered their whole height in both the feet and the inches column
+1 foot = 12 inches
+```{r merged data height_signup_ft_unc identifying IDs of entries done twice}
+ft_twice_IDs <- dat %>%
+  select(height_signup_inches_unc_numeric,
+         height_signup_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_signup_inches_unc_numeric > 12 & !is.na(height_signup_inches_unc_numeric)) &
+      ( 
+        ((height_signup_inches_unc_numeric/12)-0.3) < height_signup_ft_unc_numeric & 
+          ((height_signup_inches_unc_numeric/12)+0.3) > height_signup_ft_unc_numeric
+      )) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+ft_twice_IDs
+```
+
+Extracting the whole number value (before the floating point) from the feet (ft) column and put this value in the feet (ft) column
+```{r merged data height_signup_ft_unc extract the whole number value from the ft column and put into ft column}
+dat <- dat %>%
+  mutate(height_signup_ft_tidied3 =
+           case_when(
+             ID %in% ft_twice_IDs ~ trunc(height_signup_ft_tidied2),
+             TRUE ~ height_signup_ft_tidied2
+           )
+  )
+```
+
+Check that the above worked
+```{r merged data height_signup_ft_unc Check that the above worked}
+dat %>%
+  select(height_signup_inches_tidied7,
+         height_signup_inches_unc_numeric,
+         height_signup_ft_tidied3, 
+         height_signup_ft_unc_numeric,
+         ID) %>%
+  filter(
+    (height_signup_inches_unc_numeric > 12 & !is.na(height_signup_inches_unc_numeric)) &
+      ( 
+        ((height_signup_inches_unc_numeric/12)-0.3) < height_signup_ft_unc_numeric & 
+          ((height_signup_inches_unc_numeric/12)+0.3) > height_signup_ft_unc_numeric
+      ))
+```
+
+If someone has entered a value with three digits with no decimal point, it is likely that they have entered their height in cm by mistake in the feet (ft) option. Need to identify these people and convert their answers.
+
+Check if these participants have entered anything in the inches column. If so, would need to set to 0.
+```{r merged data height_signup_ft_unc Check the participants answers in inches}
+dat %>%
+  select(
+    ID,
+    height_signup_inches_unc_numeric,
+    height_signup_ft_tidied3) %>%
+  filter(
+    height_signup_ft_tidied3 > 100 & # Between 100 and 240cm
+      height_signup_ft_tidied3 < 240 # Max height is 240cm
+  )  
+```
+2021-05-20 freeze: the participant has entered nothing in the inches column.
+2021-10-03 freeze: the participant has entered nothing in the inches column.
+
+The value in cm in the feet (ft) column must be converted to feet (ft)
+1 cm are 0.03280 inches
+```{r merged data height_signup_ft_unc three digits entered needs decimal point as probably height in cm}
+dat <- dat %>%
+  mutate(
+    height_signup_ft_tidied4 =
+      if_else(
+        condition = height_signup_ft_tidied3 > 100 & #Between 100 and 240cm
+          height_signup_ft_tidied3 < 240 &  # Max height is 240cm
+          !is.na(height_signup_ft_tidied3),
+        true = height_signup_ft_tidied3/30.48, #Divide by 30.48 to get height in cm back to ft
+        false = height_signup_ft_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(height_signup_ft_tidied4)
+```
+2021-05-20 freeze: 158 is not in the frequency table anymore
+
+```{r merged data height_signup_ft_unc Identify ID of participants who entered their height in cm in the feet column}
+three_decimal_IDs <- dat %>%
+  select(height_signup_ft_tidied3,
+         ID) %>%
+  filter(height_signup_ft_tidied3 > 100 & #Between 100 and 240cm
+           height_signup_ft_tidied3 < 240 &  # Max height is 240cm
+           !is.na(height_signup_ft_tidied3)) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+three_decimal_IDs
+```
+
+Get decimal point value from feet (ft) entry and put into inches column
+As the value behind the floating point most probably represents inches and not a decimal of feet (ft)
+```{r merged data height_signup_inches_unc extract decimal point value from ft and put into inches}
+dat <- dat %>%
+  mutate(height_signup_inches_tidied8 =
+           case_when(
+             ID %in% three_decimal_IDs ~
+               ((height_signup_ft_tidied4 - trunc(height_signup_ft_tidied4))*12), # extract decimal point value from ft and put into inches - also need to multiply by 12 as this value is a decimal of feet rather than an entry of inches
+             TRUE ~ height_signup_inches_tidied7
+           )
+  )
+```
+
+```{r merged data height_signup_inches_unc Check freq of height_signup_inches_tidied8}
+dat %>%
+  freq(height_signup_inches_tidied8)
+```
+
+Set feet to whole number
+```{r merged data height_signup_inches_unc set feet to whole number}
+dat <- dat %>%
+  mutate(height_signup_ft_tidied5 =
+           case_when(
+             ID %in% three_decimal_IDs ~  trunc(height_signup_ft_tidied4),
+             TRUE ~ height_signup_ft_tidied4
+           )
+  )
+```
+
+```{r merged data height_signup_inches_unc set feet to whole number Check above code worked}
+dat %>%
+  select(height_signup_inches_tidied8,
+         height_signup_ft_unc_numeric,
+         height_signup_ft_tidied2,
+         height_signup_ft_tidied4,
+         height_signup_ft_tidied5
+  ) %>%
+  filter(height_signup_ft_tidied2 > 100 & # Between 100 and 240cm
+           height_signup_ft_tidied2 < 240 &  # Max height is 240cm
+           !is.na(height_signup_ft_tidied2)
+  )
+```
+
+Minimum and maximum cleaning chunk for height in ft
+```{r merged data height_signup_ft_unc define limits}
+ft_lower_limit = 4
+ft_upper_limit = 8
+```
+
+```{r merged data height_signup_ft_unc identify number of outliers}
+dat %>%
+  filter(height_signup_ft_tidied5 > ft_upper_limit |
+           height_signup_ft_tidied5 < ft_lower_limit) %>%
+  nrow()
+```
+2021-05-20 freeze: 22 participants have entered values lower than 4 or higher than 8 feet (ft).
+2021-10-03 freeze: 34 participants have entered values lower than 4 or higher than 8 feet (ft).
+
+We are setting these implausible values to -666
+```{r merged data height_signup_ft_unc set implausible values to -666}
+dat <- dat %>%
+  mutate(
+    height_signup_ft =
+      if_else(
+        (height_signup_ft_tidied5 > ft_upper_limit |
+           height_signup_ft_tidied5 < ft_lower_limit) &
+          !is.na(height_signup_ft_tidied5),
+        true = -666,
+        false = height_signup_ft_tidied5,
+        missing = NA_real_
+      )
+  )
+# Check
+dat %>%
+  freq(
+    height_signup_ft
+  )
+```
+
+# GLAD & EDGI (merged): Weight
+
+## GLAD & EDGI (merged): Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r merged data weight_lowest_st_unc conversion to numeric inspection}
+dat %>%
+  freq(weight_lowest_st_unc_numeric)
+```
+
+
+## GLAD & EDGI (merged): Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r merged data weight_lowest_lbs_unc conversion to numeric inspection}
+dat %>%
+  freq(weight_lowest_lbs_unc_numeric)
+```
+
+
+Participant may have entered their weight twice both in the pounds (lbs) and in the stone (st) column:
+  If someone has entered a number over 90 in the pounds (lbs) column and a number in the stone column that is equal to the larger number but in stone, e.g., if someone put "113" lbs and "8" stone 
+```{r merged data weight_lowest_st_unc weight entered twice check occurences}
+dat %>%
+  select(
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_st_unc_numeric
+  ) %>%
+  filter(
+    (weight_lowest_lbs_unc_numeric > 90 & !is.na(weight_lowest_lbs_unc_numeric)) & # weight in pounds above 90
+      ( 
+        ((weight_lowest_lbs_unc_numeric/14)-0.5) < weight_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+          ((weight_lowest_lbs_unc_numeric/14)+0.5) > weight_lowest_st_unc_numeric
+      )
+  )
+```
+We set their pounds (lbs) to zero
+```{r merged data weight_lowest_st_unc weight entered twice set lbs to 0}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs_tidied0 =
+      if_else(
+        condition = (weight_lowest_lbs_unc_numeric > 90 & !is.na(weight_lowest_lbs_unc_numeric)) & # weight in pounds above 90
+          ( 
+            ((weight_lowest_lbs_unc_numeric/14)-0.5) < weight_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+              ((weight_lowest_lbs_unc_numeric/14)+0.5) > weight_lowest_st_unc_numeric
+          ),
+        true = 0, # set the pounds (lbs) to zero
+        false = weight_lowest_lbs_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_lbs_tidied0)
+```
+
+If someone has entered a number over 90 in the stones column and a number in the pounds (lbs) column that is equal to the larger number but in stone, e.g., if someone put "113" stone and "8" lbs (two mistakes)
+Someone mixed up the pound and the stone column.
+```{r merged data weight_lowest_st_unc weight entered twice and the wrong column check occurences}
+dat %>%
+  select(
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_st_unc_numeric
+  ) %>%
+  filter(
+    (weight_lowest_st_unc_numeric > 90  & !is.na(weight_lowest_st_unc_numeric)) &
+      ( 
+        ((weight_lowest_st_unc_numeric/14)-0.5) < weight_lowest_lbs_unc_numeric & 
+          ((weight_lowest_st_unc_numeric/14)+0.5) > weight_lowest_lbs_unc_numeric
+      )
+  )
+```
+We are dividing the pounds (lbs) value mistakenly entered in the stone column by 14 to convert it to stone.
+```{r merged data weight_lowest_st_unc weight entered twice and the wrong column}
+dat <- dat %>%
+  mutate(
+    weight_lowest_st_tidied1 =
+      if_else(
+        condition = (weight_lowest_st_unc_numeric > 90  & !is.na(weight_lowest_st_unc_numeric)) &
+          ( 
+            ((weight_lowest_st_unc_numeric/14)-0.5) < weight_lowest_lbs_unc_numeric & 
+              ((weight_lowest_st_unc_numeric/14)+0.5) > weight_lowest_lbs_unc_numeric
+          ),
+        true = weight_lowest_st_unc_numeric/14, # Divide weight (mistakenly put in lbs in the stone column) by 14 to convert to stone.
+        false = weight_lowest_st_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_st_tidied1)
+```
+
+Checking the above chunk worked
+```{r merged data weight_lowest_st_unc weight entered twice and the wrong column checking above chunk worked}
+dat %>%
+  select(
+    weight_lowest_st_tidied1, # divided by 14
+    weight_lowest_st_unc_numeric,
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_lbs_tidied0
+  ) %>%
+  filter(
+    weight_lowest_st_unc_numeric > 90 &
+      weight_lowest_st_tidied1 < 40
+  )
+```
+
+
+```{r merged data weight_lowest_st_unc pulling IDs of weight entered twice}
+weight_entered_twice_IDs <- dat %>%
+  select(weight_lowest_st_unc_numeric,
+         weight_lowest_lbs_unc_numeric,
+         ID) %>%
+  filter(weight_lowest_st_unc_numeric > 90  & !is.na(weight_lowest_st_unc_numeric)) %>%
+  filter( 
+    ((weight_lowest_st_unc_numeric/14)-0.5) < weight_lowest_lbs_unc_numeric & 
+      ((weight_lowest_st_unc_numeric/14)+0.5) > weight_lowest_lbs_unc_numeric
+  ) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+weight_entered_twice_IDs
+```
+
+Set lbs to 0
+```{r merged data weight_lowest_st_unc set lbs to 0}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs_tidied00 =
+      case_when(
+        ID %in% weight_entered_twice_IDs ~ 0, # Set value in lbs to 0
+        TRUE ~ weight_lowest_lbs_tidied0
+      )
+  )
+```
+
+
+Checking the above chunk worked
+```{r merged data weight_lowest_st_unc set lbs to 0 checking above chunk worked}
+dat %>%
+  select(
+    weight_lowest_st_tidied1, # divided by 14
+    weight_lowest_st_unc_numeric,
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_lbs_tidied0,
+    weight_lowest_lbs_tidied00
+  ) %>%
+  filter(
+    weight_lowest_st_unc_numeric > 90 &
+      weight_lowest_st_tidied1 < 40
+  )
+```
+
+Checking plausibility of high weights in stone by calculating the BMI to understand if the weight is possible in relation to the participant's height
+```{r merged data weight_lowest_st_unc cross-checking high weight with their heights and BMI}
+dat %>%
+  select(weight_lowest_st_tidied1,
+         weight_lowest_lbs_unc_numeric,
+         height_signup_cm_tidied8,
+         height_signup_ft,
+         height_signup_inches_unc_numeric
+  ) %>%
+  filter(weight_lowest_st_tidied1 > 90) %>%
+  mutate(bmi_kg =
+           round(
+             ((weight_lowest_st_tidied1*6.35) + (weight_lowest_lbs_unc_numeric/2.205) 
+             ) / (((height_signup_ft*30.48)+(height_signup_inches_unc_numeric*2.54))/100)^2,
+             digits = 2)
+  )
+```
+
+2021-05-20: None of the high weights in stone has a plausible BMI: all BMIs are above 200.
+2021-10-03: None of the high weights in stone has a plausible BMI: all BMIs are above 200.
+
+If someone has entered over 90 in the stone column and also entered their weight in lbs, then they are implausible values.
+NB: -666 = implausible value.
+This takes care of the rest of the participants with weights above 90. 
+```{r merged data weight_lowest_st_unc two entries - implausible value}
+dat <- dat %>%
+  mutate(
+    weight_lowest_st_tidied2 =
+      if_else(
+        condition =
+          (weight_lowest_st_tidied1 > 90 & !is.na(weight_lowest_st_tidied1)) & # Weight in stone above 90
+          (weight_lowest_lbs_unc_numeric > 0 & !is.na(weight_lowest_lbs_unc_numeric)), # Weight in pounds above 0
+        true = -666, 
+        false = weight_lowest_st_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_st_tidied2)
+```
+
+If someone has entered over 90 but not entered anything in the pounds (lbs) column, it is likely they have actually given their entire weight in lbs (pounds).
+```{r merged data weight_lowest_st_unc above 90 whole weight in pounds (lbs) check occurence}
+dat %>%
+  select(
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_st_tidied2
+  ) %>%
+  filter(
+    (weight_lowest_st_tidied2 > 90 & !is.na(weight_lowest_st_tidied2)) &
+      (is.na(weight_lowest_lbs_unc_numeric) |
+         weight_lowest_lbs_unc_numeric == 0)
+  )
+```
+
+
+There is no one who has entered only a value in the pounds (lbs) column. Therefore it's unlikely that someone has entered their whole weight in kg or pounds (lbs) in this column. If someone were in this column, you would need to cross-check their entry with their height to work out whether it's more likely that they have entered their entire weight in lbs or in kg.
+
+```{r merged data weight_lowest_st_unc above 90 whole weight in pounds (lbs)}
+dat <- dat %>%
+  mutate(
+    weight_lowest_st_tidied3 =
+      if_else(
+        condition = 
+          (weight_lowest_st_tidied2 > 90 & !is.na(weight_lowest_st_tidied2)) &
+          (is.na(weight_lowest_lbs_unc_numeric) |
+             weight_lowest_lbs_unc_numeric == 0),
+        true = weight_lowest_st_tidied2/14, # Divide weight (mistakenly put in lbs in the stone column) by 14 to convert back to stone.
+        false = weight_lowest_st_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_st_tidied3)
+```
+
+## GLAD & EDGI (merged): Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r merged data weight_lowest_lbs_unc numeric inspection}
+dat %>%
+  freq(weight_lowest_lbs_unc_numeric)
+```
+
+
+Filtering the data set for values that are above 13 and therefore implausible or data entry mistakes.
+```{r merged data weight_lowest_lbs_unc filter for implausible values above 13}
+dat %>%
+  select(
+    weight_lowest_lbs_unc_numeric,
+    weight_lowest_st_unc_numeric,
+    weight_lowest_lbs_tidied00,
+    weight_lowest_kg_unc_numeric
+  ) %>%
+  filter(
+    weight_lowest_lbs_unc_numeric > 13
+  )
+```
+2021-05-20 freeze: 138 participants have entered an implausible value or made a data entry mistake
+2021-10-03 freeze: 265 participants have entered an implausible value or made a data entry mistake
+
+If someone has entered a number over 90 in the stones column and a number in the lbs column that is equal to the larger number but in stone, e.g., if someone put "113" stone and "8" lbs (i.e., has made two mistakes - entered the same weight twice and entered them in the wrong columns)
+```{r merged data weight_lowest_lbs_unc weight entered twice check occurence}
+dat %>% 
+  select(
+    weight_lowest_lbs_tidied00,
+    weight_lowest_st_unc_numeric,
+  ) %>%
+  filter(
+    (weight_lowest_lbs_tidied00 > 90 & !is.na(weight_lowest_st_unc_numeric)) &
+      ( 
+        ((weight_lowest_lbs_tidied00*14)-7) < weight_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+          ((weight_lowest_lbs_tidied00*14)+7) > weight_lowest_st_unc_numeric
+      )
+  )
+```
+
+2021-05-20: No one in the data set has made this data entry mistake
+2021-10-03: No one in the data set has made this data entry mistake
+
+Converting the stone entry in the pounds column to pounds and putting it in the pounds column.
+```{r merged data weight_lowest_lbs_unc weight entered twice}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs_tidied1 =
+      if_else(
+        condition = (weight_lowest_lbs_tidied00 > 90 & !is.na(weight_lowest_st_unc_numeric)) &
+          ( 
+            ((weight_lowest_lbs_tidied00*14)-7) < weight_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+              ((weight_lowest_lbs_tidied00*14)+7) > weight_lowest_st_unc_numeric
+          ),
+        true = 0, # Change lbs to 0 as will keep weight in stone
+        false = weight_lowest_lbs_tidied00,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_lbs_tidied1)
+```
+
+Checking the above chunk worked
++++CH: Why do we have output here and the chunk above does not show any output?
+  +++HLD: I'm not sure I understand your question?
+```{r merged data weight_lowest_lbs_unc cross-checking high weight with their heights}
+dat %>%
+  select(
+    weight_lowest_st_tidied1,
+    weight_lowest_st_unc_numeric,
+    weight_lowest_lbs_tidied1,
+    weight_lowest_lbs_unc_numeric
+  ) %>%
+  filter(
+    weight_lowest_lbs_tidied1 == 0 &
+      weight_lowest_lbs_unc_numeric > 0
+  )
+```
+
+For participants with entries of over 90 in the pounds (lbs) column and 0 in the stone (st) column, we can assume that they purposely entered their entire weight in pounds (lbs) in the pounds (lbs) column.
+Checking for entries in the lbs column over 90 with no entry in stone column and an entry of 0 in the stone column
+```{r merged data weight_lowest_lbs_unc checking values over 90 with stone entries}
+dat %>%
+  select(
+    weight_lowest_st_tidied1,
+    weight_lowest_st_unc_numeric,
+    weight_lowest_st_tidied3,
+    weight_lowest_lbs_tidied1,
+    weight_lowest_lbs_unc_numeric,
+  ) %>%
+  filter(
+    weight_lowest_lbs_tidied1 > 90 &
+      weight_lowest_st_tidied3 == 0
+  )
+```
+
+For these people, need to re-calculate their weight into stone (st) and change pounds (lbs) to 0.
+```{r merged data weight_lowest_st_unc values over 90 in lbs and 0 in stone change lbs to stone}
+dat <- dat %>%
+  mutate(
+    weight_lowest_st_tidied4 =
+      if_else(
+        condition = (
+          (
+            weight_lowest_lbs_tidied1 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_lowest_lbs_tidied1))
+          ) & 
+            (
+              weight_lowest_st_tidied3 == 0 & # Value of 0 entered in stone column
+                !(is.na(weight_lowest_st_tidied3))
+            ) 
+        ),
+        true = weight_lowest_lbs_tidied1/14, # Change entry in lbs to stone and save in stone column
+        false = weight_lowest_st_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_st_tidied4)
+```
+
+Change pounds (lbs) to 0 if they entered there whole weight in pounds (lbs) in the pounds column, because we converted it to stone and saved it to stone in the chunk before.
+```{r merged data weight_lowest_lbs_unc values over 90 in lbs and 0 in stone change lbs to 0}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs_tidied2 =
+      if_else(
+        condition = (
+          (
+            weight_lowest_lbs_tidied1 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_lowest_lbs_tidied1))
+          ) & 
+            (
+              weight_lowest_st_tidied3 == 0 & # Value of 0 entered in stone column
+                !(is.na(weight_lowest_st_tidied3))
+            ) 
+        ),
+        true = 0, # Change entry in lbs to 0 as their entry is now in stone in the stone column
+        false = weight_lowest_lbs_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_lbs_tidied2)
+```
+
+Check that the above worked 
+(look at cleanest weight_lowest_st_tidied4 and weight_lowest_lbs_tidied2 and compare with weight_lowest_lbs_tidied1 and weight_lowest_st_tidied3)
+```{r merged data weight_lowest_lbs_unc checking values over 90 code worked}
+dat %>%
+  select(
+    weight_lowest_st_tidied3,
+    weight_lowest_st_tidied4, # weight converted to stone
+    weight_lowest_lbs_tidied1, # old pounds column
+    weight_lowest_lbs_tidied2 # pounds set to zero
+  ) %>%
+  filter(
+    weight_lowest_lbs_tidied1 > 90 &
+      (weight_lowest_st_tidied3 == 0)
+  )
+```
+
+Q for group: What should we do with people who have entered 14-30 lbs in the lbs section of the 'stone & lbs'?
+  Answer (discussed in meeting): They should be treated as implausible and we are setting all to -666 and will recontact them to clarify their values
+```{r merged data weight_lowest_lbs_unc inspection after cleaning}
+dat %>%
+  freq(weight_lowest_lbs_tidied2)
+```
+
+If someone were NA in the stone column and over 90 in the pounds (lbs) column, then it would be worth investigating whether they had entered their weight in lbs or in kg (by cross-checking with height). 
+
+```{r merged data weight_lowest_lbs_unc lbs over 90 and NA in stone columm}
+dat %>%
+  select(
+    weight_lowest_lbs_tidied2,
+    weight_lowest_st_tidied4,
+    height_signup_cm,
+    height_signup_ft,
+    height_signup_inches,
+    weight_lowest_lbs_unc_numeric
+  ) %>%
+  filter(
+    weight_lowest_lbs_tidied2 > 90 
+    & is.na(weight_lowest_st_tidied4)
+  )
+```
+
+2021-05-20: No one has made this data entry mistake
+2021-10-03: No one has made this data entry mistake
+
+Checking plausibility of the above weights by cross-checking with BMI
+```{r merged data weight_lowest_lbs_unc cross-checking lbs over 90 with their BMI}
+dat %>%
+  select(weight_lowest_lbs_tidied2,
+         weight_lowest_st_tidied4,
+         weight_lowest_st_unc_numeric,
+         height_signup_cm,
+         height_signup_ft,
+         height_signup_inches,
+         weight_lowest_lbs_unc_numeric
+  ) %>%
+  filter(weight_lowest_lbs_tidied2 > 90 &
+           is.na(weight_lowest_st_tidied4)) %>%
+  mutate(bmi_kg =
+           round(
+             ((weight_lowest_lbs_tidied2/2.205) 
+             ) / (((height_signup_ft*30.48)+(height_signup_inches*2.54))/100)^2,
+             digits = 2)
+  )
+```
+All of the above have plausible values in the BMI column when assuming they have entered their entire weight in lbs in the lbs column (rather than in kg). So, for these people, their entry into the lbs column needs to be converted to stone and entered into the stone column, and their entry in the lbs column should be set to 0.
+
+
+For these people, need to re-calculate their weight into stone and change lbs to 0.
+```{r merged data weight_lowest_st_unc values over 90 in lbs and NA in stone change lbs to stone}
+dat <- dat %>%
+  mutate(
+    weight_lowest_st =
+      if_else(
+        condition = (
+          (
+            weight_lowest_lbs_tidied2 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_lowest_lbs_tidied2))
+          ) & 
+            (
+              is.na(weight_lowest_st_tidied4) # NA in stone column
+            ) 
+        ),
+        true = weight_lowest_lbs_tidied2/14, # Change entry in lbs to stone and save in stone column
+        false = weight_lowest_st_tidied4,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_st)
+```
+
+Change lbs to 0
+```{r merged data weight_lowest_st_unc values over 90 in lbs and NA in stone change lbs to 0}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs_tidied3 =
+      if_else(
+        condition = (
+          (
+            weight_lowest_lbs_tidied2 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_lowest_lbs_tidied2))
+          ) & 
+            (
+              is.na(weight_lowest_st_tidied4) # NA in stone column
+            ) 
+        ),
+        true = 0, # Change entry in lbs to 0 as their entry is now in stone
+        false = weight_lowest_lbs_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_lbs_tidied3)
+```
+
+Check that the above code worked
+```{r merged data weight_lowest_lbs_unc lbs over 90 and NA in stone columm checking code worked}
+dat %>%
+  select(
+    weight_lowest_lbs_tidied2,
+    weight_lowest_st_tidied4,
+    weight_lowest_lbs_tidied3,
+    weight_lowest_st
+  ) %>%
+  filter(
+    weight_lowest_lbs_tidied2 > 90
+    & is.na(weight_lowest_st_tidied4)
+  )
+```
+
+
+Change all leftover implausible values (i.e., 14+) to -666 
+```{r merged data weight_lowest_lbs_unc Change lbs values over 14 to -666}
+dat <- dat %>%
+  mutate(
+    weight_lowest_lbs =
+      case_when(
+        weight_lowest_lbs_tidied3 >= 14 ~ -666,
+        TRUE ~ weight_lowest_lbs_tidied3
+      )
+  )
+dat %>%
+  freq(weight_lowest_lbs)
+```
+
+## GLAD & EDGI (merged): Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r merged data weight_lowest_kg_unc conversion to numeric inspection}
+dat %>%
+  freq(weight_lowest_kg_unc_numeric)
+```
+
+
+Cross-check low and high weights with their BMI
+```{r merged data weight_lowest_kg_unc cross-checking low and high weights with BMI}
+dat %>%
+  select(
+    ID,
+    weight_lowest_kg_unc_numeric,
+    height_signup_cm
+  ) %>%
+  filter(
+    weight_lowest_kg_unc_numeric > 200 |
+      weight_lowest_kg_unc_numeric < 45
+  ) %>%
+  mutate(
+    bmi =
+      round( # round two 2 digits after the floating point
+        weight_lowest_kg_unc_numeric/ # weight in kg
+          (height_signup_cm/100)^2, # conversion from cm to metres and squaring of the value
+        digits = 2
+      )
+  )
+```
+
++++ Check diagnoses - may have cancer or IBD (very low BMI)
++++ADD
+
+convert from stone to kg - done below?
++++ADD
+
+3 digits + above 350 / 10 - done below?
++++ADD
+
+Convert implausible kg entered in stone (after looking at BMI) to kg
+```{r merged data weight_lowest_kg_unc coverting implausible kg entered in stone values to kg}
+dat <- dat %>%
+  mutate(
+    weight_lowest_kg_unc_tidied1 =
+      if_else(
+        condition = (
+          weight_lowest_kg_unc_numeric < 20 &  # Entered under 20 pounds (lbs) in the kg column
+            !(is.na(weight_lowest_kg_unc_numeric)
+            )
+        ),
+        true = weight_lowest_kg_unc_numeric*6.35029, # Change entry in the kg column entered in stone to kilos
+        false = weight_lowest_kg_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_kg_unc_tidied1)
+```
+
+Convert implausible kg above 350 (there is a plausible entry of 300 kg) 
+
+Background information:
+Jon Brower Minnoch (September 29, 1941 – September 10, 1983) was an American man who, at his peak weight, was the heaviest human being ever recorded, weighing 1,400 lb (635 kilograms; 100 stone) (0.635 tons).
+At the age of 12, Minnoch weighed 294 lb (133 kilograms; 21.0 stone) with an estimated height of 5 ft 7 in (170 cm),[2] and by age 22 he was 6 ft 1 in (185 cm) in height and weighed 500 lb (230 kilograms; 36 stone).[3]
+BMI = 400/1.82^2 = 120.76
+
+We assume that participants with weights above 350 kg have put the floating point in the wrong position. Therefore, we are dividing their weight by 10 to move the floating point by one decimal.
+```{r merged data weight_lowest_kg_unc coverting implausible kg above 350}
+dat <- dat %>%
+  mutate(
+    weight_lowest_kg_unc_tidied2 =
+      if_else(
+        condition = (
+          weight_lowest_kg_unc_tidied1 > 350 &  # Entered over 350kg
+            !(is.na(weight_lowest_kg_unc_tidied1)
+            )
+        ),
+        true = weight_lowest_kg_unc_tidied1/10, # Change entry to plausible value by dividing by 10
+        false = weight_lowest_kg_unc_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat %>%
+  freq(weight_lowest_kg_unc_tidied2)
+```
+
+2021-05-20: No weight above 300 kg.
+2021-10-03: No weight above 300 kg.
+
+## GLAD & EDGI (merged): Derived and combined height in m
+
+Create height in metres variables
+```{r merged data height_signup_m_unc derive height in m}
+dat <- dat %>%
+  mutate(
+    height_signup_m_unc =
+      case_when(
+        height_signup_cm == -666 ~ -666, # implausible cm value remains implausible
+        !is.na(height_signup_cm) ~ height_signup_cm/100, # if the weight in centimetres (cm) is not NA it gets divided by 100 to convert to metres
+        height_signup_ft == -666 ~ -666, # implausible feet (ft) value remains implausible
+        height_signup_inches == -666 ~ -666, # implausible inches value remains implausible
+        !is.na(height_signup_ft) # value is not NA in feet
+        & !is.na(height_signup_inches) # and value is not NA in inches
+        ~ ((height_signup_ft*30.48)+(height_signup_inches*2.54))/100 # both values together get converted into metres
+      )
+  )
+# Check
+dat %>%
+  freq(height_signup_m_unc)
+```
+
+Inspect implausible height in metre entries with their original height & weight entries
+```{r merged data height_signup_m_unc inspect implausble height in m}
+dat %>%
+  select(
+    height_signup_cm,
+    height_signup_ft,
+    height_signup_inches,
+    height_signup_m_unc,
+    weight_lowest_st,
+    weight_lowest_lbs,
+    weight_lowest_kg_unc_tidied2
+  ) %>%
+  filter(
+    height_signup_m_unc > 2.31 | # taller than 2 metres and 31 centimetres
+      (height_signup_m_unc < 1 # shorter than 1 metres
+       & height_signup_m_unc != -666 # and not implausible
+      )
+  )
+```
+
+The tallest persin in the world is 2.31 metres (m)
+```{r merged data height_signup_m_unc derived height min and max}
+height_upper_limit = 2.31 # Tallest person in the world is 2.31 metres
+height_lower_limit = 1
+```
+
+
+```{r merged data height_signup_m derived height number of outliers}
+dat %>%
+  filter(
+    height_signup_m_unc > height_upper_limit 
+    | (
+      height_signup_m_unc < height_lower_limit
+      & height_signup_m_unc != -666
+    )
+  ) %>%
+  nrow
+```
+
+Recode implausible values to -666
+```{r merged data height_signup_m_unc derived height recode implausible values to -666}
+dat <- dat %>%
+  mutate(
+    height_signup_m =
+      if_else(
+        height_signup_m_unc > height_upper_limit
+        | (height_signup_m_unc < height_lower_limit
+           & height_signup_m_unc != -666
+        ),
+        true = -666,
+        false = height_signup_m_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat %>%
+  freq(height_signup_m)
+```
+
+## GLAD & EDGI (merged): Dervied and combined weight in kg
+
+```{r merged data weight_lowest_kg_derived_unc derive weight in stone and lbs to kg}
+dat <- dat %>%
+  mutate(
+    weight_lowest_kg_derived_unc =
+      case_when(
+        weight_lowest_kg_unc_tidied2 == -666 ~ -666, # implausible kg remains implausible
+        !is.na(weight_lowest_kg_unc_tidied2) ~ weight_lowest_kg_unc_tidied2, # not NA kg remains its own value
+        weight_lowest_lbs == -666 ~ -666, # implausible pounds (lbs) remains implausible 
+        weight_lowest_st == -666 ~ -666, # implausible stone remains implausible
+        !is.na(weight_lowest_lbs) # is not NA in the pounds (lbs) column
+        & !is.na(weight_lowest_st) # is not NA in the stones (st) column
+        ~ ((weight_lowest_st*6.35) + (weight_lowest_lbs*2.205) # convert to kg and add up
+        )
+      )
+  )
+# Check
+dat %>%
+  freq(weight_lowest_kg_derived_unc)
+```
+
+Inspect implausible weight in kg entries with their original height & weight entries
+```{r merged data weight_lowest_kg_derived_unc inspect implausble height in m}
+dat %>%
+  select(
+    height_signup_ft_unc_numeric,
+    height_signup_inches_unc_numeric,
+    height_signup_ft_tidied4,
+    height_signup_inches_tidied8,
+    height_signup_cm_unc_numeric,
+    height_signup_cm_tidied8,
+    height_signup_m, # final cleaned height in metres
+    weight_lowest_st,
+    weight_lowest_lbs,
+    weight_lowest_kg_derived_unc # derived weight in kg to be cleaned
+  ) %>%
+  filter(
+    weight_lowest_kg_derived_unc > 300
+  )
+```
+
+Background information:
+  Jon Brower Minnoch (September 29, 1941 – September 10, 1983) was an American man who, at his peak weight, was the heaviest human being ever recorded, weighing 1,400 lb (635 kilograms; 100 stone) (0.635 tons).
+At the age of 12, Minnoch weighed 294 lb (133 kilograms; 21.0 stone) with an estimated height of 5 ft 7 in (170 cm),[2] and by age 22 he was 6 ft 1 in (185 cm) in height and weighed 500 lb (230 kilograms; 36 stone).[3]
+BMI = 400/1.82^2 = 120.76
+
+```{r merged data weight_lowest_kg_derived_unc derived weight min and max}
+weight_upper_limit = 300 # 
+weight_lower_limit = 25
+```
+
+```{r merged data weight_lowest_kg_derived_unc derived weight number of outliers}
+dat %>%
+  filter(
+    weight_lowest_kg_derived_unc > weight_upper_limit 
+    | (
+      weight_lowest_kg_derived_unc < weight_lower_limit
+      & weight_lowest_kg_derived_unc != -666
+    )
+  ) %>%
+  nrow()
+```
+
+Recode implausible values to -666
+```{r merged data weight_lowest_kg_derived_unc derived weight recode implausible values to -666}
+dat <- dat %>%
+  mutate(
+    weight_lowest_kg =
+      if_else(
+        weight_lowest_kg_derived_unc > weight_upper_limit
+        | (weight_lowest_kg_derived_unc < weight_lower_limit
+           & weight_lowest_kg_derived_unc != -666
+        ),
+        true = -666,
+        false = weight_lowest_kg_derived_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat %>%
+  freq(weight_lowest_kg)
+```
+
+
+
+## GLAD & EDGI (merged): Lowest BMI
+```{r merged data bmi_lowest_unc inspect}
+dat %>%
+  freq(bmi_lowest_unc)
+```
+
+NB: In GLAD & EDGI (merged), a few participants entered their data as raw BMI
+
+```{r merged data bmi_lowest_unc conversion to numeric}
+dat$bmi_lowest_unc_numeric <-
+  as.numeric(
+    dat$bmi_lowest_unc
+  )
+dat %>%
+  freq(bmi_lowest_unc_numeric)
+```
+
+```{r merged data bmi_lowest_derived_unc derive BMI}
+dat <- dat %>%
+  mutate(
+    bmi_lowest_derived_unc =
+      case_when(
+        weight_lowest_kg == - 666 # implausible weight in kg
+        | height_signup_m == - 666 ~ -666, # implausible height in m
+        
+         !is.na(bmi_lowest_unc_numeric) ~ bmi_lowest_unc_numeric, # In GLAD & EDGI (merged) as entering raw BMI was an option
+        
+        !is.na(weight_lowest_kg) # is not NA in the combined weight in kg column
+        & !is.na(height_signup_m) # is not NA in the combined height in m column
+        ~ weight_lowest_kg / height_signup_m^2 # calculate BMI
+      )
+  )
+# Check
+dat %>%
+  filter(bmi_lowest_derived_unc != -666) %>%
+  descr(bmi_lowest_derived_unc)
+```
+
+```{r merged data bmi_lowest_derived_unc top 10 BMIs}
+dat %>%
+  select(
+    bmi_lowest_derived_unc,
+    weight_lowest_kg,
+    height_signup_m,
+  ) %>%
+  slice_max(
+    order_by = bmi_lowest_derived_unc,
+    n = 10
+  )
+```
+
+```{r merged data bmi_lowest_derived_unc bottom 10 BMIs}
+dat %>%
+  select(
+    bmi_lowest_derived_unc,
+    weight_lowest_kg,
+    height_signup_m,
+  ) %>%
+  filter(
+    bmi_lowest_derived_unc != -666
+  ) %>%
+  slice_max(
+    order_by = -bmi_lowest_derived_unc,
+    n = 10
+  )
+```
+
+Minimum and maximum cleaning chunk for BMI
+We have sorted the tibble by BMI and are displaying the top 10 BMIs and the lowest 10 BMIs
+Based on the the two chunks before we have chosen these cutoffs: 7 and 91
+
++++CH: May want to change NBR BMI to 91 too?
+
+```{r merged data bmi_lowest_derived_unc derive BMI define limits}
+bmi_lower_limit = 7 # 
+bmi_upper_limit = 91
+```
+
+```{r merged data bmi_lowest_derived_unc derive BMI identify number of outliers}
+dat %>%
+  filter(
+    bmi_lowest_derived_unc > bmi_upper_limit |
+      bmi_lowest_derived_unc < bmi_lower_limit
+  ) %>%
+  nrow()
+```
+2021-05-20: 124 people have implausible BMIs, will be set to -666 (i.e., implausible value)
+2021-10-03: 231 people have implausible BMIs, will be set to -666 (i.e., implausible value)
+
+
+```{r merged data bmi_lowest_derived_unc derive BMI set implausible values to -666}
+dat <- dat %>%
+  mutate(
+    bmi_lowest =
+      if_else(
+        bmi_lowest_derived_unc > bmi_upper_limit |
+          bmi_lowest_derived_unc < bmi_lower_limit,
+        true = -666,
+        false = bmi_lowest_derived_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat %>%
+  descr(
+    bmi_lowest
+  )
+# Check
+dat %>%
+  filter(
+    bmi_lowest != -666
+  ) %>%
+  descr(
+    bmi_lowest
+  )
+```
+
++++ Will cross-check with people's diagnoses to see if any have implausible values
+
+#AN Lowest BMI
+
+##GLAD AN data 
+
+```{r GLAD AN read in data}
+glad_an_dat <- readRDS(file = paste0(ilovedata, "/data_raw/2022-09-16/glad_ed/an_glad_ed.rds"))
+  
+#Check
+glad_an_dat %>%
+  colnames()
+
+glad_an_dat %>%
+  dim()
+```
+
+Select & rename relevant columns (will be a function at some point)
+
++++CH: Duplicates need to be investigated in a script
++++CH: Participants IDs that are duplicated must be merged/cleaned/deleted
++++CH: There will be duplicated IDs in COPING because participants will have answered the same questionnaire on phone vs computer and they couldn't start at the same position
+```{r GLAD AN select}
+glad_an_dat_id <- glad_an_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% # Keeps the first line 
+  add_column(sample = "GLAD", .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         height_an_low_weight_ft_unc = an.how_tall_were_you_then,
+         height_an_low_weight_inches_unc = an.how_tall_were_you_then.1,
+         height_an_low_weight_cm_unc = an.how_tall_were_you_then.2,
+         weight_an_lowest_st_unc = an.low_time_weight, 
+         weight_an_lowest_lbs_unc = an.low_time_weight.1,
+         weight_an_lowest_kg_unc = an.low_time_weight.2,
+         bmi_an_lowest_unc = an.bmi_low_time
+         ) %>%
+# add_numeric(., exclude = exclude_cols_dem) %>% # We decided to not add _numeric because the original columns are not factors
+  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables: Don't know
+  mutate_if(is.numeric, ~na_if(., -99)) %>% # Prefer not to say
+  mutate_if(is.numeric, ~na_if(., -77)) %>% # Seen but not answered
+  mutate_if(is.character, ~na_if(., -88)) %>% # Recode missing values to NAs in character variables
+  mutate_if(is.character, ~na_if(., -99)) %>%
+  mutate_if(is.character, ~na_if(., -77)) %>%
+  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
+  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+
+# Inspect colnames
+colnames(glad_an_dat_id)
+```
+
+Look at number of people excluded
+The number of people to be excluded should be negative
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1] - dim(glad_dat)[1]
+glad_excluded
+```
+
+Check whether columns are numeric 
+```{r GLAD check if columns are numeric}
+glad_an_dat_id %>% 
+  dplyr::summarise_all(class) %>% 
+  tidyr::gather(variable, class)
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+glad_miss_map <- glad_dat_id %>% 
+  missmap()
+
+glad_miss_map
+```
+GLAD: All character variables must be converted to numeric without losing data
+
+# GLAD: AN Height
+
+## GLAD: Height in ft (feet)
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+```{r GLAD height_signup_ft_unc inspection}
+glad_an_dat_id %>%
+  freq(height_an_low_weight_ft_unc)
+```
+
+Conversion to numeric
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r GLAD height_signup_ft_unc Conversion to numeric and positive value}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(
+    height_signup_ft_unc_numeric =
+      abs(
+        as.numeric(
+          height_an_low_weight_ft_unc)
+      )
+  )
+#Check
+glad_an_dat_id %>%
+  freq(height_an_low_weight_ft_unc)
+```
+
+## GLAD: AN Height in inches
+Look at variable first to identify errors
+```{r GLAD height_an_low_weight_inches_unc inspection}
+glad_an_dat_id %>%
+  freq(height_an_low_weight_inches_unc)
+```
+
+Some participants have entered the decimals as fractions. We need to recode them as decimals
+```{r GLAD height_an_low_weight_inches_unc recoding of fractions}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(
+    height_an_low_weight_inches_tidied1 =
+      gsub(pattern = " 1/2",
+           replacement = ".5",
+           x = height_an_low_weight_inches_unc)
+  )  %>% 
+  mutate(
+    height_an_low_weight_inches_tidied2 =
+      gsub(pattern = " 3/4",
+           replacement = ".75",
+           x = height_an_low_weight_inches_tidied1)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied3 =
+      gsub(pattern = " 1/4",
+           replacement = ".25",
+           x = height_an_low_weight_inches_tidied2)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied4 =
+      gsub(pattern = " 2/3",
+           replacement = ".66",
+           x = height_an_low_weight_inches_tidied3)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied5 =
+      gsub(pattern = " 1/3",
+           replacement = ".33",
+           x = height_an_low_weight_inches_tidied4)
+  )
+```
+
+Conversion to numeric
+```{r GLAD height_an_low_weight_inches_unc Conversion to numeric and positive values}
+#Covert to numeric
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(
+    height_an_low_weight_inches_unc_numeric = 
+      abs(
+        as.numeric(
+         height_an_low_weight_inches_tidied5
+         )
+        )
+  )
+
+#Check
+glad_an_dat_id %>%
+  freq(height_an_low_weight_inches_unc_numeric)
+```
+
+## GLAD: AN Height in cm
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+```{r GLAD height_an_low_weight_cm_unc inspection}
+glad_an_dat_id %>%
+  freq(height_an_low_weight_cm_unc)
+```
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r GLAD height_an_low_weight_cm_unc conversion to numeric and positive values}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(height_an_low_weight_cm_unc_numeric =
+  abs(
+  as.numeric(
+    height_an_low_weight_cm_unc
+  )
+  )
+  )
+
+glad_an_dat_id %>%
+  freq(height_an_low_weight_cm_unc_numeric)
+```
+
+
+# GLAD: AN Weight
+
+## GLAD: AN Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r GLAD weight_an_lowest_st_unc inspection}
+glad_an_dat_id %>%
+  freq(weight_an_lowest_st_unc)
+```
+
+```{r GLAD weight_an_lowest_st_unc conversion to numeric and positive values}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(
+  weight_an_lowest_st_unc_numeric =
+  abs(
+  as.numeric(
+    weight_an_lowest_st_unc
+  )
+  )
+  )
+
+glad_an_dat_id %>%
+  freq(weight_an_lowest_st_unc_numeric)
+```
+
+
+## GLAD: AN Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r GLAD weight_an_lowest_lbs_unc inspection}
+glad_an_dat_id %>%
+  freq(weight_an_lowest_lbs_unc)
+```
+
+
+```{r GLAD weight_an_lowest_lbs_unc conversion to numeric and positive values}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(weight_an_lowest_lbs_unc_numeric =
+  abs(
+  as.numeric(
+    weight_an_lowest_lbs_unc
+  )
+  )
+  )
+
+glad_an_dat_id %>%
+  freq(weight_an_lowest_lbs_unc_numeric)
+```
+
+## GLAD: AN Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r GLAD weight_an_lowest_kg_unc inspection}
+glad_an_dat_id %>%
+  freq(weight_an_lowest_kg_unc)
+```
+
+```{r GLAD weight_an_lowest_kg_unc conversion to numeric}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(weight_an_lowest_kg_unc_numeric =
+  abs(
+  as.numeric(
+    weight_an_lowest_kg_unc
+  )
+  )
+  )
+
+glad_an_dat_id %>%
+  freq(weight_an_lowest_kg_unc_numeric)
+```
+
+
+## GLAD: AN BMI 
+```{r GLAD bmi_an_lowest_unc inspect}
+glad_an_dat_id %>%
+  freq(bmi_an_lowest_unc)
+```
+
+NB: In GLAD, a few participants entered their data as raw BMI
+
+```{r GLAD bmi_an_lowest_unc conversion to numeric and positive values}
+glad_an_dat_id <- glad_an_dat_id %>%
+  mutate(bmi_an_lowest_unc_numeric =
+  abs(
+  as.numeric(
+    glad_an_dat_id$bmi_an_lowest_unc
+  )
+  )
+  )
+
+glad_an_dat_id %>%
+  freq(bmi_an_lowest_unc_numeric)
+```
+
+## EDGI AN data
+Please do not change the name of the object so it remains universal
+```{r EDGI read in data}
+edgi_an_dat <- readRDS(file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/an_edgi.rds"))
+  
+#Check
+edgi_an_dat %>%
+  colnames()
+
+edgi_an_dat %>%
+  dim()
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select}
+edgi_an_dat_id <- edgi_an_dat %>% # New dataset with ID
+  drop_na(externalDataReference) %>% # Drop NAs
+  remove_duplicates("externalDataReference") %>% 
+  add_column(sample = "EDGI", .after = "externalDataReference") %>% # Create new sample column 
+  select(
+         ID = externalDataReference,# ID
+         sample,
+         height_an_low_weight_ft_unc = an.how_tall_were_you_then,
+         height_an_low_weight_inches_unc = an.how_tall_were_you_then.1,
+         height_an_low_weight_cm_unc = an.how_tall_were_you_then.2,
+         weight_an_lowest_st_unc = an.low_weight_time, 
+         weight_an_lowest_lbs_unc = an.low_weight_time.1,
+         weight_an_lowest_kg_unc = an.low_weight_time.2,
+         bmi_an_lowest_unc = an.bmi_low_time 
+         ) %>%
+# add_numeric(., exclude = exclude_cols_dem) %>% # We decided to not add _numeric because the original columns are not factors
+  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
+  mutate_if(is.numeric, ~na_if(., -99)) %>%
+  mutate_if(is.numeric, ~na_if(., -77)) %>%
+  mutate_if(is.character, ~na_if(., -88)) %>% # Recode missing values to NAs in character variables
+  mutate_if(is.character, ~na_if(., -99)) %>%
+  mutate_if(is.character, ~na_if(., -77)) %>%
+  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
+  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
+  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
+  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+
+
+# Inspect colnames
+colnames(edgi_an_dat_id)
+
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+edgi_excluded <- dim(edgi_dat_id)[1] - dim(edgi_dat)[1]
+edgi_excluded
+```
+
+Check whether columns are numeric 
+```{r EDGI check if columns are numeric}
+edgi_an_dat_id %>% 
+  dplyr::summarise_all(class) %>% 
+  tidyr::gather(variable, class)
+```
+
+EDGI: All character variables must be converted to numeric without losing data
+
+# EDGI: AN Height
+
+## EDGI: AN Height in ft (feet)
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+```{r EDGI height_signup_ft_unc inspection}
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_ft_unc)
+```
+
+Conversion to numeric
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r EDGI height_signup_ft_unc Conversion to numeric and positive value}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+  mutate(
+    height_an_low_weight_ft_unc_numeric =
+      abs(
+        as.numeric(
+          height_an_low_weight_ft_unc)
+      )
+  )
+#Check
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_ft_unc_numeric)
+```
+
+## EDGI: AN Height in inches
+Look at variable first to identify errors
+```{r EDGI height_an_low_weight_inches_unc inspection}
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_inches_unc)
+```
+
+Some participants have entered the decimals as fractions. We need to recode them as decimals
+```{r EDGI height_an_low_weight_inches_unc recoding of fractions}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+  mutate(
+    height_an_low_weight_inches_tidied1 =
+      gsub(pattern = " 1/2",
+           replacement = ".5",
+           x = height_an_low_weight_inches_unc)
+  )  %>% 
+  mutate(
+    height_an_low_weight_inches_tidied2 =
+      gsub(pattern = " 3/4",
+           replacement = ".75",
+           x = height_an_low_weight_inches_tidied1)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied3 =
+      gsub(pattern = " 1/4",
+           replacement = ".25",
+           x = height_an_low_weight_inches_tidied2)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied4 =
+      gsub(pattern = " 2/3",
+           replacement = ".66",
+           x = height_an_low_weight_inches_tidied3)
+  ) %>% 
+  mutate(
+    height_an_low_weight_inches_tidied5 =
+      gsub(pattern = " 1/3",
+           replacement = ".33",
+           x = height_an_low_weight_inches_tidied4)
+  )
+```
+
+Conversion to numeric
+```{r EDGI height_an_low_weight_inches_unc Conversion to numeric and positive values}
+#Covert to numeric
+edgi_an_dat_id <- edgi_an_dat_id %>% 
+  mutate(
+    height_an_low_weight_inches_unc_numeric = 
+      abs(
+      as.numeric(
+        height_an_low_weight_inches_tidied5
+        )
+      )
+  )
+
+#Check
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_inches_unc_numeric)
+```
+
+## EDGI: AN Height in cm
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+```{r EDGI height_an_low_weight_cm_unc inspection}
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_cm_unc)
+```
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r EDGI height_an_low_weight_cm_unc conversion to numeric}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+mutate(height_an_low_weight_cm_unc_numeric =
+  as.numeric(
+    height_an_low_weight_cm_unc
+  )
+)
+
+edgi_an_dat_id %>%
+  freq(height_an_low_weight_cm_unc_numeric)
+```
+
+# EDGI: AN Weight
+
+## EDGI:AN Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r EDGI weight_an_lowest_st_unc inspection}
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_st_unc)
+```
+
+```{r EDGI weight_an_lowest_st_unc conversion to numeric}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+mutate(weight_an_lowest_st_unc_numeric =
+  as.numeric(
+    edgi_an_dat_id$weight_an_lowest_st_unc
+  )
+)
+
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_st_unc_numeric)
+```
+
+## EDGI: AN Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r EDGI weight_an_lowest_lbs_unc inspection}
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_lbs_unc)
+```
+
+
+```{r EDGI weight_an_lowest_lbs_unc conversion to numeric}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+mutate(weight_an_lowest_lbs_unc_numeric =
+  as.numeric(
+    edgi_an_dat_id$weight_an_lowest_lbs_unc
+  )
+)
+
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_lbs_unc_numeric)
+```
+
+
+## EDGI: AN Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r EDGI weight_an_lowest_kg_unc inspection}
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_kg_unc)
+```
+
+```{r EDGI weight_an_lowest_kg_unc conversion to numeric and positive values}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+mutate(weight_an_lowest_kg_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_an_dat_id$weight_an_lowest_kg_unc
+  )
+  )
+)
+
+edgi_an_dat_id %>%
+  freq(weight_an_lowest_kg_unc_numeric)
+```
+
+## EDGI: AN lowest BMI 
+```{r EDGI bmi_an_lowest_unc inspect}
+edgi_an_dat_id %>%
+  freq(bmi_an_lowest_unc)
+```
+
+NB: In EDGI, a few participants entered their data as raw BMI
+
+```{r EDGI bmi_an_lowest_unc conversion to numeric and positive values}
+edgi_an_dat_id <- edgi_an_dat_id %>%
+mutate(bmi_an_lowest_unc_numeric =
+  abs(
+  as.numeric(
+    edgi_an_dat_id$bmi_an_lowest_unc
+  )
+  )
+)
+
+edgi_an_dat_id %>%
+  freq(bmi_an_lowest_unc_numeric)
+```
+
+
+# Data binds rows
+Columns to exclude
+```{r Columns to not bind the rows of}
+an_columns_to_exclude <- 
+  c(
+    "height_an_low_weight_ft_unc",
+    "height_an_low_weight_inches_unc",
+    "height_an_low_weight_cm_unc",
+    "weight_an_lowest_st_unc",
+    "weight_an_lowest_lbs_unc",
+    "weight_an_lowest_kg_unc"
+    )
+```
+
+```{r Row bind cohorts}
+dat_an <- glad_an_dat_id %>% 
+  select(
+    -all_of(an_columns_to_exclude)
+  ) %>%
+  bind_rows(
+    edgi_an_dat_id %>%
+      select(
+    -all_of(an_columns_to_exclude)
+  )
+  ) 
+```
+
+```{r Skim row binded data frame}
+dat_an %>%
+  skimr::skim()
+```
+
+
+# Data cleaning
+# AN Height data cleaning
+## GLAD & EDGI (merged) AN  Height in inches cleaning
+```{r merged data height_an_low_weight_inches_unc conversion to numeric inspection}
+#Check
+dat_an %>%
+  freq(height_an_low_weight_inches_unc_numeric)
+```
+
+Check difference in number of NAs
+```{r merged data height_an_low_weight_inches_unc NA inspection 1}
+sum(is.na(dat$height_an_low_weight_inches_unc)) - sum(is.na(dat$height_an_low_weight_inches_unc_numeric))
+```
+There should be no difference in NAs after converting the fractions to decimals.
+
+Need to identify people that have entered their height in inches and height in feet twice.
+Meaning they have entered their whole weight twice in both columns.
+```{r merged data height_an_low_weight_inches_unc Checking entries in feet and inches twice}
+dat_an %>%
+  select(height_an_low_weight_inches_unc_numeric,
+         height_an_low_weight_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_an_low_weight_inches_unc_numeric > 12 & !is.na(height_an_low_weight_inches_unc_numeric)) &
+      ( 
+        ((height_an_low_weight_inches_unc_numeric/12)-0.3) < height_an_low_weight_ft_unc_numeric & 
+          ((height_an_low_weight_inches_unc_numeric/12)+0.3) > height_an_low_weight_ft_unc_numeric
+      ))
+```
+
+Identify these double entry cases and manually correct those.
+```{r merged data height_an_low_weight_inches_unc identifying IDs of entries done twice}
+inches_twice_IDs <- dat_an %>%
+  select(height_an_low_weight_inches_unc_numeric,
+         height_an_low_weight_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_an_low_weight_inches_unc_numeric > 12 & !is.na(height_an_low_weight_inches_unc_numeric)) &
+      ( 
+        ((height_an_low_weight_inches_unc_numeric/12)-0.3) < height_an_low_weight_ft_unc_numeric & 
+          ((height_an_low_weight_inches_unc_numeric/12)+0.3) > height_an_low_weight_ft_unc_numeric
+      )) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+inches_twice_IDs
+```
+
+
+
+Get decimal point value from ft entry and put into inches column
+```{r merged data height_an_low_weight_inches_unc extract decimal point value from ft and put into inches 2}
+dat_an <- dat_an %>%
+  mutate(height_an_low_weight_inches_tidied7 =
+           case_when(
+             ID %in% inches_twice_IDs ~ (height_an_low_weight_ft_unc_numeric - trunc(height_an_low_weight_ft_unc_numeric))*10, # extract decimal point value from ft and put into inches
+             TRUE ~ height_an_low_weight_inches_unc_numeric
+           )
+  )
+```
+
+```{r merged data height_an_low_weight_inches_unc check freq}
+dat_an %>%
+  freq(height_an_low_weight_inches_tidied7)
+```
+
+Check that the above worked
+```{r merged data height_an_low_weight_inches_unc Check that the above worked}
+dat_an %>%
+  select(height_an_low_weight_inches_tidied7,
+         height_an_low_weight_inches_unc_numeric,
+         height_an_low_weight_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_an_low_weight_inches_unc_numeric > 12 & !is.na(height_an_low_weight_inches_unc_numeric)) &
+      ( 
+        ((height_an_low_weight_inches_unc_numeric/12)-0.3) < height_an_low_weight_ft_unc_numeric & 
+          ((height_an_low_weight_inches_unc_numeric/12)+0.3) > height_an_low_weight_ft_unc_numeric 
+      ))
+```
+
+Everyone with a value of 12 or above should be coded as implausible, i.e., -666 (12 inches = 1 foot; if someone were to put 5ft12, they are actually 6ft).
+NB: Implausible values are coded as -666.
+One would expect values between 0 and 11 inches.
+```{r merged data height_an_low_weight_inches_unc above 12 - implausible value}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_inches =
+      if_else(
+        condition = height_an_low_weight_inches_tidied7 >= 12 & !is.na(height_an_low_weight_inches_tidied7), 
+        true = -666, 
+        false = height_an_low_weight_inches_tidied7,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_inches)
+```
+
+In the data freeze 2021-05-20, we have got no implausible values (i.e., -666) in GLAD & EDGI (merged)
+In the data freeze 2021-10-03, we have got 6 implausible values (i.e., -666) in GLAD & EDGI (merged)
+
+Check difference in number of NAs
+```{r merged data height_an_low_weight_inches_unc NA inspection 2}
+sum(is.na(dat$height_an_low_weight_inches_tidied7)) - sum(is.na(dat$height_an_low_weight_inches_unc_numeric))
+```
+
+## GLAD & EDGI (merged): AN Height in cm cleaning
+
+Look at variable first to identify errors
+One would expect values between 130 to 250 cm (i.e., 1.30-2.50 m)
+
+
+If they have a 0 at the beginning (e.g., 0180), they automatically get converted to numeric (without the 0 at the beginning) using the function as.numeric.
+NB: We need to convert to numeric before we can perform calculations on the column.
+```{r merged data height_an_low_weight_cm_unc conversion to numeric inspection}
+dat_an %>%
+  freq(height_an_low_weight_cm_unc_numeric)
+```
+
+There are now only numeric entries in the cm variables, so can convert to numeric.
+
+If someone has entered a value below 3, it is likely they have entered their height in metres rather than cm. Need to identify these people and convert their answers from m to cm.
+```{r  merged data height_an_low_weight_cm_unc metres in cm field}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied2 =
+      if_else(
+        condition = height_an_low_weight_cm_unc_numeric < 3 & !is.na(height_an_low_weight_cm_unc_numeric), # Height below 3 in metres in cm column
+        true = height_an_low_weight_cm_unc_numeric*100, # Multiply by 100 to convert from metres to centimetres
+        false = height_an_low_weight_cm_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied2)
+```
+
+If someone has entered a value of 4 digits beginning with two ones, it is likely they have accidentally entered one twice at the beginning. Need to identify these people and convert their answers.
+```{r merged data height_an_low_weight_cm_unc two 1s at the beginning}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied3 =
+      if_else(
+        condition = height_an_low_weight_cm_tidied2 >= 1100 &
+          height_an_low_weight_cm_tidied2 < 1200 & # Heights between 1100 and 1200
+          !is.na(height_an_low_weight_cm_tidied2), 
+        true = height_an_low_weight_cm_tidied2 - 1000, # Take/subtract 1,000 to get value in cm
+        false = height_an_low_weight_cm_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied3)
+```
+
+If someone has entered a value of 4 digits, it is likely they have forgotten to add the decimal point. Need to identify these people and convert their answers.
+Individuals with values like 1544, 1577, 1680, ...
+```{r merged data height_an_low_weight_cm_unc 4 digits forgotten decimal point}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied4 =
+      if_else(
+        condition = height_an_low_weight_cm_tidied3 > 1000 &
+          height_an_low_weight_cm_tidied3 < 3000 & # Heights of up to 3 m (implausible height will be cleaned in min and max chunks)
+          !is.na(height_an_low_weight_cm_tidied3),
+        true = height_an_low_weight_cm_tidied3/10, # divide by 10 to add decimal point
+        false = height_an_low_weight_cm_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied4)
+```
+
+If someone has entered a value with two ones at the beginning and a decimal point after the second digit, it is likely they have firstly put the decimal point in the wrong place and also accidentally entered one twice. Need to identify these people and convert their answers.
+e.g., 11.57
+```{r merged data height_an_low_weight_cm_unc 4 digits accidental decimal point}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied5 =
+      if_else(
+        condition = height_an_low_weight_cm_tidied4 > 11 &
+          height_an_low_weight_cm_tidied4 < 12 & # Heights between 11 and 12
+          !is.na(height_an_low_weight_cm_tidied4),
+        true = (height_an_low_weight_cm_tidied4 - 10)*100, # Take away 10 and multiply everything by 100
+        false = height_an_low_weight_cm_tidied4,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied5)
+```
+
+If someone has entered a value with a decimal point after the second digit, it is likely they have put the decimal point in the wrong place. Need to identify these people and convert their answers.
+```{r merged data height_an_low_weight_cm_unc decimal point second digit wrong place}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied6 =
+      if_else(
+        condition = height_an_low_weight_cm_tidied5 > 8 & # taller than 80 cm
+          height_an_low_weight_cm_tidied5 < 25 & # shorter than 250 cm
+          !is.na(height_an_low_weight_cm_tidied5),
+        true = height_an_low_weight_cm_tidied5*10,
+        false = height_an_low_weight_cm_tidied5,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied6)
+```
+
+If someone has entered a value with five digits with no decimal point, it is likely they have forgotten the decimal point. Need to identify these people in order to recontact.
+NB: We will code implausible values as -666.
+```{r merged data height_an_low_weight_cm_unc five digits without decimal point - implausible value}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied7 =
+      if_else(
+        condition = height_an_low_weight_cm_tidied6 > 10000 & # taller than 100 cm
+          height_an_low_weight_cm_tidied6 < 20000 & # shorter than 200 cm
+          !is.na(height_an_low_weight_cm_tidied6),
+        true = -666, # Implausible value
+        false = height_an_low_weight_cm_tidied6,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied7)
+```
+
+Identify people with repeating sequences of digits
+They must have more than 6 digits
++++ Would be great if we could automatise this
+```{r merged data height_an_low_weight_cm_unc identify values with potential repeats}
+height_an_low_weight_cm_tidied7_repeats <- dat_an %>% 
+  select(
+    ID,
+    height_an_low_weight_cm_tidied7
+  ) %>%
+  filter(
+    height_an_low_weight_cm_tidied7 >100000 & !is.na(height_an_low_weight_cm_tidied7)
+  )
+height_an_low_weight_cm_tidied7_repeats
+```
+
+```{r merged data height_an_low_weight_cm_unc message for coder}
+number_repeating_digits <- height_an_low_weight_cm_tidied7_repeats %>%
+  nrow()
+  
+  # If statement
+if (number_repeating_digits == 0) {
+  print(paste0("No participants have repeating sequences of digits in GLAD & EDGI (merged). No further action required."))
+} else {
+  print(paste0("The number of participants with repeating sequences of digits in GLAD & EDGI (merged) is ", number_repeating_digits, ". Please manually recode these values using the chunks below."))
+}
+```
+
+```{r merged data height_an_low_weight_cm_unc cut repeats in digits of 3, eval=FALSE, include=FALSE}
+capture_repeated_text_entry(
+  height_an_low_weight_cm_tidied7_repeats$height_an_low_weight_cm_tidied7,
+  3
+) 
+```
+
+IMPORTANT: This needs to be done manually per dataset.
+
+```{r merged data height_an_low_weight_cm_unc repeating digits case_when recoding}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm_tidied8 =
+      case_when(
+        #2021-10-03: no one in GLAD & EDGI AN(merged) has entered more than 3 digits (2020-05-20)
+        TRUE ~ height_an_low_weight_cm_tidied7
+      )
+  )
+```
+
+```{r merged data height_an_low_weight_cm_unc repeating digits case_when recoding checking}
+#Check
+dat_an %>%
+  freq(height_an_low_weight_cm_tidied8)
+```
+
+
+Checking plausibility of short heights
+
++++CH: I've hashed bmi_2 out because the columns are non-numeric in GLAD & EDGI (merged)
+
+```{r merged data height_an_low_weight_cm_unc cross-checking short height with weight in kg}
+dat_an %>%
+  select(height_an_low_weight_cm_tidied8,
+         weight_an_lowest_kg_unc_numeric,
+         weight_an_lowest_st_unc_numeric,
+         weight_an_lowest_lbs_unc_numeric) %>%
+  filter(height_an_low_weight_cm_tidied8 < 140) %>%
+  mutate(bmi_1 =
+           round(
+             weight_an_lowest_kg_unc_numeric/(height_an_low_weight_cm_tidied8/100)^2,
+             digits = 2),
+         bmi_2 =
+           round(
+             ((weight_an_lowest_st_unc_numeric*6.35) + (weight_an_lowest_lbs_unc_numeric/2.205)) / (height_an_low_weight_cm_tidied8/100)^2,
+             digits = 2)
+  )
+```
+Participants with height in cm under 120 have BMIs above 55, so have entered an implausible height and/or weight. They should be investigated or be recontacted
+
+Checking plausibility of tall heights
+```{r merged data height_an_low_weight_cm_unc cross-checking tall height with weight in kg}
+dat_an %>%
+  select(height_an_low_weight_cm_tidied8,
+         weight_an_lowest_kg_unc_numeric,
+         weight_an_lowest_st_unc_numeric,
+         weight_an_lowest_lbs_unc_numeric) %>%
+  filter(height_an_low_weight_cm_tidied8 > 200) %>%
+  mutate(bmi_1 =
+           round(
+             weight_an_lowest_kg_unc_numeric/ (height_an_low_weight_cm_tidied8/100)^2,
+             digits = 2),
+         bmi_2 =
+           round(
+             ((weight_an_lowest_st_unc_numeric*6.35) + (weight_an_lowest_lbs_unc_numeric/2.205) 
+             ) / (height_an_low_weight_cm_tidied8/100)^2,
+             digits = 2)
+  )
+```
+
+Minimum and maximum cleaning chunk for height in cm
+Based on the the two chunks before we have chosen these cutoffs
+```{r merged data height_an_low_weight_cm_unc define limits}
+cm_lower_limit = 120
+cm_upper_limit = 220
+```
+
+```{r merged data height_an_low_weight_cm_unc identify number of outliers}
+dat_an %>%
+  filter(height_an_low_weight_cm_tidied8 > cm_upper_limit |
+           height_an_low_weight_cm_tidied8 < cm_lower_limit) %>%
+  nrow()
+```
+2021-10-03: 17 participants have height in cm > 220 or < 120
+```{r merged data height_an_low_weight_cm_unc set implausible values to -666}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_cm =
+      if_else(
+        height_an_low_weight_cm_tidied8 > cm_upper_limit |
+          height_an_low_weight_cm_tidied8 < cm_lower_limit,
+        true = -666,
+        false = height_an_low_weight_cm_tidied8,
+        missing = NA_real_
+      )
+  )
+# Check
+dat_an %>%
+  freq(
+    height_an_low_weight_cm
+  )
+```
+
+2021-10-03: 17 individuals have implausible values. These participants should be recontacted if possible
+
+## GLAD & EDGI (merged): AN Height in ft (feet) cleaning
+1 foot are 30.48 cm
+Conversion: multiply the length value (in foot) by 30.48
+On average, values between 4 and 7 feet (ft) are expected.
+
+```{r merged data height_an_low_weight_ft_unc conversion to numeric inspection}
+#Check
+dat_an %>%
+  freq(height_an_low_weight_ft_unc_numeric)
+```
+
+If someone has an implausible value in the inches column, they should automatically be considered to have an implausible value in the feet column (i.e., we will need to re-contact them anyway)
+```{r merged data height_an_low_weight_ft_unc implausible feet value because inches are already implausible from chunks before}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_ft_tidied2 = # set feet column
+      if_else(
+        condition = height_an_low_weight_inches == -666 & # Implausible value in the inches column
+          !is.na(height_an_low_weight_inches),
+        true = -666, # set feet column to implausible (-666)
+        false = height_an_low_weight_ft_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_ft_tidied2)
+```
+2021-10-03 freeze: 6 participants receive an implausible feet (ft) value because they have implausible inches values
+
+Identify cases and manually correct 
+(this is same as the chunk above "merged data height_an_low_weight_inches_unc identifying IDs of entries done twice" but repeated for ease)
+meaning the participant entered their whole height in both the feet and the inches column
+1 foot = 12 inches
+```{r merged data height_an_low_weight_ft_unc identifying IDs of entries done twice}
+ft_twice_IDs <- dat_an %>%
+  select(height_an_low_weight_inches_unc_numeric,
+         height_an_low_weight_ft_unc_numeric, 
+         ID) %>%
+  filter(
+    (height_an_low_weight_inches_unc_numeric > 12 & !is.na(height_an_low_weight_inches_unc_numeric)) &
+      ( 
+        ((height_an_low_weight_inches_unc_numeric/12)-0.3) < height_an_low_weight_ft_unc_numeric & 
+          ((height_an_low_weight_inches_unc_numeric/12)+0.3) > height_an_low_weight_ft_unc_numeric
+      )) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+ft_twice_IDs
+```
+
+Extracting the whole number value (before the floating point) from the feet (ft) column and put this value in the feet (ft) column
+```{r merged data height_an_low_weight_ft_unc extract the whole number value from the ft column and put into ft column}
+dat_an <- dat_an %>%
+  mutate(height_an_low_weight_ft_tidied3 =
+           case_when(
+             ID %in% ft_twice_IDs ~ trunc(height_an_low_weight_ft_tidied2),
+             TRUE ~ height_an_low_weight_ft_tidied2
+           )
+  )
+```
+
+Check that the above worked
+```{r merged data height_an_low_weight_ft_unc Check that the above worked}
+dat_an %>%
+  select(height_an_low_weight_inches_tidied7,
+         height_an_low_weight_inches_unc_numeric,
+         height_an_low_weight_ft_tidied3, 
+         height_an_low_weight_ft_unc_numeric,
+         ID) %>%
+  filter(
+    (height_an_low_weight_inches_unc_numeric > 12 & !is.na(height_an_low_weight_inches_unc_numeric)) &
+      ( 
+        ((height_an_low_weight_inches_unc_numeric/12)-0.3) < height_an_low_weight_ft_unc_numeric & 
+          ((height_an_low_weight_inches_unc_numeric/12)+0.3) > height_an_low_weight_ft_unc_numeric
+      ))
+```
+
+If someone has entered a value with three digits with no decimal point, it is likely that they have entered their height in cm by mistake in the feet (ft) option. Need to identify these people and convert their answers.
+
+Check if these participants have entered anything in the inches column. If so, would need to set to 0.
+```{r merged data height_an_low_weight_ft_unc Check the participants answers in inches}
+dat_an %>%
+  select(
+    ID,
+    height_an_low_weight_inches_unc_numeric,
+    height_an_low_weight_ft_tidied3) %>%
+  filter(
+    height_an_low_weight_ft_tidied3 > 100 & # Between 100 and 240cm
+      height_an_low_weight_ft_tidied3 < 240 # Max height is 240cm
+  )  
+```
+
+The value in cm in the feet (ft) column must be converted to feet (ft)
+1 cm are 0.03280 inches
+```{r merged data height_an_low_weight_ft_unc three digits entered needs decimal point as probably height in cm}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_ft_tidied4 =
+      if_else(
+        condition = height_an_low_weight_ft_tidied3 > 100 & #Between 100 and 240cm
+          height_an_low_weight_ft_tidied3 < 240 &  # Max height is 240cm
+          !is.na(height_an_low_weight_ft_tidied3),
+        true = height_an_low_weight_ft_tidied3/30.48, #Divide by 30.48 to get height in cm back to ft
+        false = height_an_low_weight_ft_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(height_an_low_weight_ft_tidied4)
+```
+
+```{r merged data height_an_low_weight_ft_unc Identify ID of participants who entered their height in cm in the feet column}
+three_decimal_IDs <- dat_an %>%
+  select(height_an_low_weight_ft_tidied3,
+         ID) %>%
+  filter(height_an_low_weight_ft_tidied3 > 100 & #Between 100 and 240cm
+           height_an_low_weight_ft_tidied3 < 240 &  # Max height is 240cm
+           !is.na(height_an_low_weight_ft_tidied3)) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+three_decimal_IDs
+```
+
+Get decimal point value from feet (ft) entry and put into inches column
+As the value behind the floating point most probably represents inches and not a decimal of feet (ft)
+```{r merged data height_an_low_weight_inches_unc extract decimal point value from ft and put into inches}
+dat_an <- dat_an %>%
+  mutate(height_an_low_weight_inches_tidied8 =
+           case_when(
+             ID %in% three_decimal_IDs ~
+               ((height_an_low_weight_ft_tidied4 - trunc(height_an_low_weight_ft_tidied4))*12), # extract decimal point value from ft and put into inches - also need to multiply by 12 as this value is a decimal of feet rather than an entry of inches
+             TRUE ~ height_an_low_weight_inches_tidied7
+           )
+  )
+```
+
+```{r merged data height_an_low_weight_inches_unc Check freq of height_an_low_weight_inches_tidied8}
+dat_an %>%
+  freq(height_an_low_weight_inches_tidied8)
+```
+
+Set feet to whole number
+```{r merged data height_an_low_weight_inches_unc set feet to whole number}
+dat_an <- dat_an %>%
+  mutate(height_an_low_weight_ft_tidied5 =
+           case_when(
+             ID %in% three_decimal_IDs ~  trunc(height_an_low_weight_ft_tidied4),
+             TRUE ~ height_an_low_weight_ft_tidied4
+           )
+  )
+```
+
+```{r merged data height_an_low_weight_inches_unc set feet to whole number Check above code worked}
+dat_an %>%
+  select(height_an_low_weight_inches_tidied8,
+         height_an_low_weight_ft_unc_numeric,
+         height_an_low_weight_ft_tidied2,
+         height_an_low_weight_ft_tidied4,
+         height_an_low_weight_ft_tidied5
+  ) %>%
+  filter(height_an_low_weight_ft_tidied2 > 100 & # Between 100 and 240cm
+           height_an_low_weight_ft_tidied2 < 240 &  # Max height is 240cm
+           !is.na(height_an_low_weight_ft_tidied2)
+  )
+```
+
+Minimum and maximum cleaning chunk for height in ft
+```{r merged data height_an_low_weight_ft_unc define limits}
+ft_lower_limit = 4
+ft_upper_limit = 8
+```
+
+```{r merged data height_an_low_weight_ft_unc identify number of outliers}
+dat_an %>%
+  filter(height_an_low_weight_ft_tidied5 > ft_upper_limit |
+           height_an_low_weight_ft_tidied5 < ft_lower_limit) %>%
+  nrow()
+```
+2021-10-03 freeze: 16 participants have entered values lower than 4 or higher than 8 feet (ft).
+
+We are setting these implausible values to -666
+```{r merged data height_an_low_weight_ft_unc set implausible values to -666}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_ft =
+      if_else(
+        (height_an_low_weight_ft_tidied5 > ft_upper_limit |
+           height_an_low_weight_ft_tidied5 < ft_lower_limit) &
+          !is.na(height_an_low_weight_ft_tidied5),
+        true = -666,
+        false = height_an_low_weight_ft_tidied5,
+        missing = NA_real_
+      )
+  )
+# Check
+dat_an %>%
+  freq(
+    height_an_low_weight_ft
+  )
+```
+
+# GLAD & EDGI (merged): AN Weight
+
+## GLAD & EDGI (merged): AN Weight in stone (st)
+1 st = 6.35029 kg
+for an approximate result, multiply the mass value by 6.35
+One would expect values between 6 and 25 roughly
+```{r merged data weight_an_lowest_st_unc conversion to numeric inspection}
+dat_an %>%
+  freq(weight_an_lowest_st_unc_numeric)
+```
+
+
+## GLAD & EDGI (merged): AN Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r merged data weight_an_lowest_lbs_unc conversion to numeric inspection}
+dat_an %>%
+  freq(weight_an_lowest_lbs_unc_numeric)
+```
+
+
+Participant may have entered their weight twice both in the pounds (lbs) and in the stone (st) column:
+  If someone has entered a number over 90 in the pounds (lbs) column and a number in the stone column that is equal to the larger number but in stone, e.g., if someone put "113" lbs and "8" stone 
+```{r merged data weight_an_lowest_st_unc weight entered twice check occurences}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_st_unc_numeric
+  ) %>%
+  filter(
+    (weight_an_lowest_lbs_unc_numeric > 90 & !is.na(weight_an_lowest_lbs_unc_numeric)) & # weight in pounds above 90
+      ( 
+        ((weight_an_lowest_lbs_unc_numeric/14)-0.5) < weight_an_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+          ((weight_an_lowest_lbs_unc_numeric/14)+0.5) > weight_an_lowest_st_unc_numeric
+      )
+  )
+```
+We set their pounds (lbs) to zero
+```{r merged data weight_an_lowest_st_unc weight entered twice set lbs to 0}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs_tidied0 =
+      if_else(
+        condition = (weight_an_lowest_lbs_unc_numeric > 90 & !is.na(weight_an_lowest_lbs_unc_numeric)) & # weight in pounds above 90
+          ( 
+            ((weight_an_lowest_lbs_unc_numeric/14)-0.5) < weight_an_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+              ((weight_an_lowest_lbs_unc_numeric/14)+0.5) > weight_an_lowest_st_unc_numeric
+          ),
+        true = 0, # set the pounds (lbs) to zero
+        false = weight_an_lowest_lbs_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_lbs_tidied0)
+```
+
+If someone has entered a number over 90 in the stones column and a number in the pounds (lbs) column that is equal to the larger number but in stone, e.g., if someone put "113" stone and "8" lbs (two mistakes)
+Someone mixed up the pound and the stone column.
+```{r merged data weight_an_lowest_st_unc weight entered twice and the wrong column check occurences}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_st_unc_numeric
+  ) %>%
+  filter(
+    (weight_an_lowest_st_unc_numeric > 90  & !is.na(weight_an_lowest_st_unc_numeric)) &
+      ( 
+        ((weight_an_lowest_st_unc_numeric/14)-0.5) < weight_an_lowest_lbs_unc_numeric & 
+          ((weight_an_lowest_st_unc_numeric/14)+0.5) > weight_an_lowest_lbs_unc_numeric
+      )
+  )
+```
+We are dividing the pounds (lbs) value mistakenly entered in the stone column by 14 to convert it to stone.
+```{r merged data weight_an_lowest_st_unc weight entered twice and the wrong column}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_st_tidied1 =
+      if_else(
+        condition = (weight_an_lowest_st_unc_numeric > 90  & !is.na(weight_an_lowest_st_unc_numeric)) &
+          ( 
+            ((weight_an_lowest_st_unc_numeric/14)-0.5) < weight_an_lowest_lbs_unc_numeric & 
+              ((weight_an_lowest_st_unc_numeric/14)+0.5) > weight_an_lowest_lbs_unc_numeric
+          ),
+        true = weight_an_lowest_st_unc_numeric/14, # Divide weight (mistakenly put in lbs in the stone column) by 14 to convert to stone.
+        false = weight_an_lowest_st_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_st_tidied1)
+```
+
+Checking the above chunk worked
+```{r merged data weight_an_lowest_st_unc weight entered twice and the wrong column checking above chunk worked}
+dat_an %>%
+  select(
+    weight_an_lowest_st_tidied1, # divided by 14
+    weight_an_lowest_st_unc_numeric,
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_lbs_tidied0
+  ) %>%
+  filter(
+    weight_an_lowest_st_unc_numeric > 90 &
+      weight_an_lowest_st_tidied1 < 40
+  )
+```
+
+
+```{r merged data weight_an_lowest_st_unc pulling IDs of weight entered twice}
+weight_entered_twice_IDs <- dat_an %>%
+  select(weight_an_lowest_st_unc_numeric,
+         weight_an_lowest_lbs_unc_numeric,
+         ID) %>%
+  filter(weight_an_lowest_st_unc_numeric > 90  & !is.na(weight_an_lowest_st_unc_numeric)) %>%
+  filter( 
+    ((weight_an_lowest_st_unc_numeric/14)-0.5) < weight_an_lowest_lbs_unc_numeric & 
+      ((weight_an_lowest_st_unc_numeric/14)+0.5) > weight_an_lowest_lbs_unc_numeric
+  ) %>%
+  pull(ID) # Pulls IDs from one column and puts them in a vector
+weight_entered_twice_IDs
+```
+
+Set lbs to 0
+```{r merged data weight_an_lowest_st_unc set lbs to 0}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs_tidied00 =
+      case_when(
+        ID %in% weight_entered_twice_IDs ~ 0, # Set value in lbs to 0
+        TRUE ~ weight_an_lowest_lbs_tidied0
+      )
+  )
+```
+
+
+Checking the above chunk worked
+```{r merged data weight_an_lowest_st_unc set lbs to 0 checking above chunk worked}
+dat_an %>%
+  select(
+    weight_an_lowest_st_tidied1, # divided by 14
+    weight_an_lowest_st_unc_numeric,
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_lbs_tidied0,
+    weight_an_lowest_lbs_tidied00
+  ) %>%
+  filter(
+    weight_an_lowest_st_unc_numeric > 90 &
+      weight_an_lowest_st_tidied1 < 40
+  )
+```
+
+Checking plausibility of high weights in stone by calculating the BMI to understand if the weight is possible in relation to the participant's height
+```{r merged data weight_an_lowest_st_unc cross-checking high weight with their heights and BMI}
+dat_an %>%
+  select(weight_an_lowest_st_tidied1,
+         weight_an_lowest_lbs_unc_numeric,
+         height_an_low_weight_cm_tidied8,
+         height_an_low_weight_ft,
+         height_an_low_weight_inches_unc_numeric
+  ) %>%
+  filter(weight_an_lowest_st_tidied1 > 90) %>%
+  mutate(bmi_kg =
+           round(
+             ((weight_an_lowest_st_tidied1*6.35) + (weight_an_lowest_lbs_unc_numeric/2.205) 
+             ) / (((height_an_low_weight_ft*30.48)+(height_an_low_weight_inches_unc_numeric*2.54))/100)^2,
+             digits = 2)
+  )
+```
+
+2021-10-03: Can't calculate BMI of individual because they no entry for height.
+
+If someone has entered over 90 in the stone column and also entered their weight in lbs, then they are implausible values.
+NB: -666 = implausible value.
+This takes care of the rest of the participants with weights above 90. 
+```{r merged data weight_an_lowest_st_unc two entries - implausible value}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_st_tidied2 =
+      if_else(
+        condition =
+          (weight_an_lowest_st_tidied1 > 90 & !is.na(weight_an_lowest_st_tidied1)) & # Weight in stone above 90
+          (weight_an_lowest_lbs_unc_numeric > 0 & !is.na(weight_an_lowest_lbs_unc_numeric)), # Weight in pounds above 0
+        true = -666, 
+        false = weight_an_lowest_st_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_st_tidied2)
+```
+
+If someone has entered over 90 but not entered anything in the pounds (lbs) column, it is likely they have actually given their entire weight in lbs (pounds).
+```{r merged data weight_an_lowest_st_unc above 90 whole weight in pounds (lbs) check occurence}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_st_tidied2
+  ) %>%
+  filter(
+    (weight_an_lowest_st_tidied2 > 90 & !is.na(weight_an_lowest_st_tidied2)) &
+      (is.na(weight_an_lowest_lbs_unc_numeric) |
+         weight_an_lowest_lbs_unc_numeric == 0)
+  )
+```
+
+
+There is no one who has entered only a value in the pounds (lbs) column. Therefore it's unlikely that someone has entered their whole weight in kg or pounds (lbs) in this column. If someone were in this column, you would need to cross-check their entry with their height to work out whether it's more likely that they have entered their entire weight in lbs or in kg.
+
+```{r merged data weight_an_lowest_st_unc above 90 whole weight in pounds (lbs)}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_st_tidied3 =
+      if_else(
+        condition = 
+          (weight_an_lowest_st_tidied2 > 90 & !is.na(weight_an_lowest_st_tidied2)) &
+          (is.na(weight_an_lowest_lbs_unc_numeric) |
+             weight_an_lowest_lbs_unc_numeric == 0),
+        true = weight_an_lowest_st_tidied2/14, # Divide weight (mistakenly put in lbs in the stone column) by 14 to convert back to stone.
+        false = weight_an_lowest_st_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_st_tidied3)
+```
+
+## GLAD & EDGI (merged): AN Weight in lbs (pounds)
+
+for an approximate result, divide the mass value by 2.205
+1 pound (lbs) = 0.453592 kg
+One would expect values between 0 and 13 pounds (lbs)
+```{r merged data weight_an_lowest_lbs_unc numeric inspection}
+dat_an %>%
+  freq(weight_an_lowest_lbs_unc_numeric)
+```
+
+
+Filtering the data set for values that are above 13 and therefore implausible or data entry mistakes.
+```{r merged data weight_an_lowest_lbs_unc filter for implausible values above 13}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_unc_numeric,
+    weight_an_lowest_st_unc_numeric,
+    weight_an_lowest_lbs_tidied00,
+    weight_an_lowest_kg_unc_numeric
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_unc_numeric > 13
+  )
+```
+2021-10-03 freeze: 65 participants have entered an implausible value or made a data entry mistake
+
+If someone has entered a number over 90 in the stones column and a number in the lbs column that is equal to the larger number but in stone, e.g., if someone put "113" stone and "8" lbs (i.e., has made two mistakes - entered the same weight twice and entered them in the wrong columns)
+```{r merged data weight_an_lowest_lbs_unc weight entered twice check occurence}
+dat_an %>% 
+  select(
+    weight_an_lowest_lbs_tidied00,
+    weight_an_lowest_st_unc_numeric,
+  ) %>%
+  filter(
+    (weight_an_lowest_lbs_tidied00 > 90 & !is.na(weight_an_lowest_st_unc_numeric)) &
+      ( 
+        ((weight_an_lowest_lbs_tidied00*14)-7) < weight_an_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+          ((weight_an_lowest_lbs_tidied00*14)+7) > weight_an_lowest_st_unc_numeric
+      )
+  )
+```
+
+2021-10-03: No one in the data set has made this data entry mistake
+
+Converting the stone entry in the pounds column to pounds and putting it in the pounds column.
+```{r merged data weight_an_lowest_lbs_unc weight entered twice}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs_tidied1 =
+      if_else(
+        condition = (weight_an_lowest_lbs_tidied00 > 90 & !is.na(weight_an_lowest_st_unc_numeric)) &
+          ( 
+            ((weight_an_lowest_lbs_tidied00*14)-7) < weight_an_lowest_st_unc_numeric & # leeway of half a stone (7 pounds)
+              ((weight_an_lowest_lbs_tidied00*14)+7) > weight_an_lowest_st_unc_numeric
+          ),
+        true = 0, # Change lbs to 0 as will keep weight in stone
+        false = weight_an_lowest_lbs_tidied00,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_lbs_tidied1)
+```
+
+Checking the above chunk worked
++++CH: Why do we have output here and the chunk above does not show any output?
+  +++HLD: I'm not sure I understand your question?
+```{r merged data weight_an_lowest_lbs_unc cross-checking high weight with their heights}
+dat_an %>%
+  select(
+    weight_an_lowest_st_tidied1,
+    weight_an_lowest_st_unc_numeric,
+    weight_an_lowest_lbs_tidied1,
+    weight_an_lowest_lbs_unc_numeric
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_tidied1 == 0 &
+      weight_an_lowest_lbs_unc_numeric > 0
+  )
+```
+
+For participants with entries of over 90 in the pounds (lbs) column and 0 in the stone (st) column, we can assume that they purposely entered their entire weight in pounds (lbs) in the pounds (lbs) column.
+Checking for entries in the lbs column over 90 with no entry in stone column and an entry of 0 in the stone column
+```{r merged data weight_an_lowest_lbs_unc checking values over 90 with stone entries}
+dat_an %>%
+  select(
+    weight_an_lowest_st_tidied1,
+    weight_an_lowest_st_unc_numeric,
+    weight_an_lowest_st_tidied3,
+    weight_an_lowest_lbs_tidied1,
+    weight_an_lowest_lbs_unc_numeric,
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_tidied1 > 90 &
+      weight_an_lowest_st_tidied3 == 0
+  )
+```
+
+For these people, need to re-calculate their weight into stone (st) and change pounds (lbs) to 0.
+```{r merged data weight_an_lowest_st_unc values over 90 in lbs and 0 in stone change lbs to stone}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_st_tidied4 =
+      if_else(
+        condition = (
+          (
+            weight_an_lowest_lbs_tidied1 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_an_lowest_lbs_tidied1))
+          ) & 
+            (
+              weight_an_lowest_st_tidied3 == 0 & # Value of 0 entered in stone column
+                !(is.na(weight_an_lowest_st_tidied3))
+            ) 
+        ),
+        true = weight_an_lowest_lbs_tidied1/14, # Change entry in lbs to stone and save in stone column
+        false = weight_an_lowest_st_tidied3,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_st_tidied4)
+```
+
+Change pounds (lbs) to 0 if they entered there whole weight in pounds (lbs) in the pounds column, because we converted it to stone and saved it to stone in the chunk before.
+```{r merged data weight_an_lowest_lbs_unc values over 90 in lbs and 0 in stone change lbs to 0}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs_tidied2 =
+      if_else(
+        condition = (
+          (
+            weight_an_lowest_lbs_tidied1 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_an_lowest_lbs_tidied1))
+          ) & 
+            (
+              weight_an_lowest_st_tidied3 == 0 & # Value of 0 entered in stone column
+                !(is.na(weight_an_lowest_st_tidied3))
+            ) 
+        ),
+        true = 0, # Change entry in lbs to 0 as their entry is now in stone in the stone column
+        false = weight_an_lowest_lbs_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_lbs_tidied2)
+```
+
+Check that the above worked 
+(look at cleanest weight_an_lowest_st_tidied4 and weight_an_lowest_lbs_tidied2 and compare with weight_an_lowest_lbs_tidied1 and weight_an_lowest_st_tidied3)
+```{r merged data weight_an_lowest_lbs_unc checking values over 90 code worked}
+dat_an %>%
+  select(
+    weight_an_lowest_st_tidied3,
+    weight_an_lowest_st_tidied4, # weight converted to stone
+    weight_an_lowest_lbs_tidied1, # old pounds column
+    weight_an_lowest_lbs_tidied2 # pounds set to zero
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_tidied1 > 90 &
+      (weight_an_lowest_st_tidied3 == 0)
+  )
+```
+
+Q for group: What should we do with people who have entered 14-30 lbs in the lbs section of the 'stone & lbs'?
+  Answer (discussed in meeting): They should be treated as implausible and we are setting all to -666 and will recontact them to clarify their values
+```{r merged data weight_an_lowest_lbs_unc inspection after cleaning}
+dat_an %>%
+  freq(weight_an_lowest_lbs_tidied2)
+```
+
+If someone were NA in the stone column and over 90 in the pounds (lbs) column, then it would be worth investigating whether they had entered their weight in lbs or in kg (by cross-checking with height). 
+
+```{r merged data weight_an_lowest_lbs_unc lbs over 90 and NA in stone columm}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_tidied2,
+    weight_an_lowest_st_tidied4,
+    height_an_low_weight_cm,
+    height_an_low_weight_ft,
+    height_an_low_weight_inches,
+    weight_an_lowest_lbs_unc_numeric
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_tidied2 > 90 
+    & is.na(weight_an_lowest_st_tidied4)
+  )
+```
+
+2021-10-03: No one has made this data entry mistake
+
+Checking plausibility of the above weights by cross-checking with BMI
+```{r merged data weight_an_lowest_lbs_unc cross-checking lbs over 90 with their BMI}
+dat_an %>%
+  select(weight_an_lowest_lbs_tidied2,
+         weight_an_lowest_st_tidied4,
+         weight_an_lowest_st_unc_numeric,
+         height_an_low_weight_cm,
+         height_an_low_weight_ft,
+         height_an_low_weight_inches,
+         weight_an_lowest_lbs_unc_numeric
+  ) %>%
+  filter(weight_an_lowest_lbs_tidied2 > 90 &
+           is.na(weight_an_lowest_st_tidied4)) %>%
+  mutate(bmi_kg =
+           round(
+             ((weight_an_lowest_lbs_tidied2/2.205) 
+             ) / (((height_an_low_weight_ft*30.48)+(height_an_low_weight_inches*2.54))/100)^2,
+             digits = 2)
+  )
+```
+2021-10-03: No one made the above mistake
+
+For these people, need to re-calculate their weight into stone and change lbs to 0.
+```{r merged data weight_an_lowest_st_unc values over 90 in lbs and NA in stone change lbs to stone}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_st =
+      if_else(
+        condition = (
+          (
+            weight_an_lowest_lbs_tidied2 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_an_lowest_lbs_tidied2))
+          ) & 
+            (
+              is.na(weight_an_lowest_st_tidied4) # NA in stone column
+            ) 
+        ),
+        true = weight_an_lowest_lbs_tidied2/14, # Change entry in lbs to stone and save in stone column
+        false = weight_an_lowest_st_tidied4,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_st)
+```
+
+Change lbs to 0
+```{r merged data weight_an_lowest_st_unc values over 90 in lbs and NA in stone change lbs to 0}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs_tidied3 =
+      if_else(
+        condition = (
+          (
+            weight_an_lowest_lbs_tidied2 > 90 &  # Entered over 90 pounds, probably whole weight in pounds reported
+              !(is.na(weight_an_lowest_lbs_tidied2))
+          ) & 
+            (
+              is.na(weight_an_lowest_st_tidied4) # NA in stone column
+            ) 
+        ),
+        true = 0, # Change entry in lbs to 0 as their entry is now in stone
+        false = weight_an_lowest_lbs_tidied2,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_lbs_tidied3)
+```
+
+Check that the above code worked
+```{r merged data weight_an_lowest_lbs_unc lbs over 90 and NA in stone columm checking code worked}
+dat_an %>%
+  select(
+    weight_an_lowest_lbs_tidied2,
+    weight_an_lowest_st_tidied4,
+    weight_an_lowest_lbs_tidied3,
+    weight_an_lowest_st
+  ) %>%
+  filter(
+    weight_an_lowest_lbs_tidied2 > 90
+    & is.na(weight_an_lowest_st_tidied4)
+  )
+```
+
+
+Change all leftover implausible values (i.e., 14+) to -666 
+```{r merged data weight_an_lowest_lbs_unc Change lbs values over 14 to -666}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_lbs =
+      case_when(
+        weight_an_lowest_lbs_tidied3 >= 14 ~ -666,
+        TRUE ~ weight_an_lowest_lbs_tidied3
+      )
+  )
+dat_an %>%
+  freq(weight_an_lowest_lbs)
+```
+
+2021-10-03: 24 participants are -666 above.
+
+## GLAD & EDGI (merged): AN Weight in kilogram (kg)
+
+One would expect values between 40 and 200 kilogram (kg).
+```{r merged data weight_an_lowest_kg_unc conversion to numeric inspection}
+dat_an %>%
+  freq(weight_an_lowest_kg_unc_numeric)
+```
+
+
+Cross-check low and high weights with their BMI
+```{r merged data weight_an_lowest_kg_unc cross-checking low and high weights with BMI}
+dat_an %>%
+  select(
+    ID,
+    weight_an_lowest_kg_unc_numeric,
+    height_an_low_weight_cm
+  ) %>%
+  filter(
+    weight_an_lowest_kg_unc_numeric > 200 |
+      weight_an_lowest_kg_unc_numeric < 45
+  ) %>%
+  mutate(
+    bmi =
+      round( # round two 2 digits after the floating point
+        weight_an_lowest_kg_unc_numeric/ # weight in kg
+          (height_an_low_weight_cm/100)^2, # conversion from cm to metres and squaring of the value
+        digits = 2
+      )
+  )
+```
+
++++ Check diagnoses - may have cancer or IBD (very low BMI)
++++ADD
+
+Convert implausible kg entered in stone (after looking at BMI) to kg
+```{r merged data weight_an_lowest_kg_unc coverting implausible kg entered in stone values to kg}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_kg_unc_tidied1 =
+      if_else(
+        condition = (
+          weight_an_lowest_kg_unc_numeric < 20 &  # Entered under 20 pounds (lbs) in the kg column
+            !(is.na(weight_an_lowest_kg_unc_numeric)
+            )
+        ),
+        true = weight_an_lowest_kg_unc_numeric*6.35029, # Change entry in the kg column entered in stone to kilos
+        false = weight_an_lowest_kg_unc_numeric,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_kg_unc_tidied1)
+```
+
+Convert implausible kg above 350 (there is a plausible entry of 300 kg) 
+
+Background information:
+Jon Brower Minnoch (September 29, 1941 – September 10, 1983) was an American man who, at his peak weight, was the heaviest human being ever recorded, weighing 1,400 lb (635 kilograms; 100 stone) (0.635 tons).
+At the age of 12, Minnoch weighed 294 lb (133 kilograms; 21.0 stone) with an estimated height of 5 ft 7 in (170 cm),[2] and by age 22 he was 6 ft 1 in (185 cm) in height and weighed 500 lb (230 kilograms; 36 stone).[3]
+BMI = 400/1.82^2 = 120.76
+
+We assume that participants with weights above 350 kg have put the floating point in the wrong position. Therefore, we are dividing their weight by 10 to move the floating point by one decimal.
+```{r merged data weight_an_lowest_kg_unc coverting implausible kg above 350}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_kg_unc_tidied2 =
+      if_else(
+        condition = (
+          weight_an_lowest_kg_unc_tidied1 > 350 &  # Entered over 350kg
+            !(is.na(weight_an_lowest_kg_unc_tidied1)
+            )
+        ),
+        true = weight_an_lowest_kg_unc_tidied1/10, # Change entry to plausible value by dividing by 10
+        false = weight_an_lowest_kg_unc_tidied1,
+        missing = NA_real_
+      )
+  )
+#Check
+dat_an %>%
+  freq(weight_an_lowest_kg_unc_tidied2)
+```
+
+2021-10-03: No weight above 300 kg.
+
+## GLAD & EDGI (merged): Derived and combined AN height in m
+
+Create height in metres variables
+```{r merged data height_an_low_weight_m_unc derive height in m}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_m_unc =
+      case_when(
+        height_an_low_weight_cm == -666 ~ -666, # implausible cm value remains implausible
+        !is.na(height_an_low_weight_cm) ~ height_an_low_weight_cm/100, # if the weight in centimetres (cm) is not NA it gets divided by 100 to convert to metres
+        height_an_low_weight_ft == -666 ~ -666, # implausible feet (ft) value remains implausible
+        height_an_low_weight_inches == -666 ~ -666, # implausible inches value remains implausible
+        !is.na(height_an_low_weight_ft) # value is not NA in feet
+        & !is.na(height_an_low_weight_inches) # and value is not NA in inches
+        ~ ((height_an_low_weight_ft*30.48)+(height_an_low_weight_inches*2.54))/100 # both values together get converted into metres
+      )
+  )
+# Check
+dat_an %>%
+  freq(height_an_low_weight_m_unc)
+```
+
+2021-10-03: 33 people are -666.
+
+Inspect implausible height in metre entries with their original height & weight entries
+```{r merged data height_an_low_weight_m_unc inspect implausble height in m}
+dat_an %>%
+  select(
+    height_an_low_weight_cm,
+    height_an_low_weight_ft,
+    height_an_low_weight_inches,
+    height_an_low_weight_m_unc,
+    weight_an_lowest_st,
+    weight_an_lowest_lbs,
+    weight_an_lowest_kg_unc_tidied2
+  ) %>%
+  filter(
+    height_an_low_weight_m_unc > 2.31 | # taller than 2 metres and 31 centimetres
+      (height_an_low_weight_m_unc < 1 # shorter than 1 metres
+       & height_an_low_weight_m_unc != -666 # and not implausible
+      )
+  )
+```
+
+The tallest persin in the world is 2.31 metres (m)
+```{r merged data height_an_low_weight_m_unc derived height min and max}
+height_upper_limit = 2.31 # Tallest person in the world is 2.31 metres
+height_lower_limit = 1
+```
+
+
+```{r merged data height_an_low_weight_m derived height number of outliers}
+dat_an %>%
+  filter(
+    height_an_low_weight_m_unc > height_upper_limit 
+    | (
+      height_an_low_weight_m_unc < height_lower_limit
+      & height_an_low_weight_m_unc != -666
+    )
+  ) %>%
+  nrow
+```
+
+Recode implausible values to -666
+```{r merged data height_an_low_weight_m_unc derived height recode implausible values to -666}
+dat_an <- dat_an %>%
+  mutate(
+    height_an_low_weight_m =
+      if_else(
+        height_an_low_weight_m_unc > height_upper_limit
+        | (height_an_low_weight_m_unc < height_lower_limit
+           & height_an_low_weight_m_unc != -666
+        ),
+        true = -666,
+        false = height_an_low_weight_m_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat_an %>%
+  freq(height_an_low_weight_m)
+```
+
+## GLAD & EDGI (merged): Dervied and combined AN weight in kg
+
+```{r merged data weight_an_lowest_kg_derived_unc derive weight in stone and lbs to kg}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_kg_derived_unc =
+      case_when(
+        weight_an_lowest_kg_unc_tidied2 == -666 ~ -666, # implausible kg remains implausible
+        !is.na(weight_an_lowest_kg_unc_tidied2) ~ weight_an_lowest_kg_unc_tidied2, # not NA kg remains its own value
+        weight_an_lowest_lbs == -666 ~ -666, # implausible pounds (lbs) remains implausible 
+        weight_an_lowest_st == -666 ~ -666, # implausible stone remains implausible
+        !is.na(weight_an_lowest_lbs) # is not NA in the pounds (lbs) column
+        & !is.na(weight_an_lowest_st) # is not NA in the stones (st) column
+        ~ ((weight_an_lowest_st*6.35) + (weight_an_lowest_lbs*2.205) # convert to kg and add up
+        )
+      )
+  )
+# Check
+dat_an %>%
+  freq(weight_an_lowest_kg_derived_unc)
+```
+
+Inspect implausible weight in kg entries with their original height & weight entries
+```{r merged data weight_an_lowest_kg_derived_unc inspect implausble height in m}
+dat_an %>%
+  select(
+    height_an_low_weight_ft_unc_numeric,
+    height_an_low_weight_inches_unc_numeric,
+    height_an_low_weight_ft_tidied4,
+    height_an_low_weight_inches_tidied8,
+    height_an_low_weight_cm_unc_numeric,
+    height_an_low_weight_cm_tidied8,
+    height_an_low_weight_m, # final cleaned height in metres
+    weight_an_lowest_st,
+    weight_an_lowest_lbs,
+    weight_an_lowest_kg_derived_unc # derived weight in kg to be cleaned
+  ) %>%
+  filter(
+    weight_an_lowest_kg_derived_unc > 300
+  )
+```
+
+Background information:
+  Jon Brower Minnoch (September 29, 1941 – September 10, 1983) was an American man who, at his peak weight, was the heaviest human being ever recorded, weighing 1,400 lb (635 kilograms; 100 stone) (0.635 tons).
+At the age of 12, Minnoch weighed 294 lb (133 kilograms; 21.0 stone) with an estimated height of 5 ft 7 in (170 cm),[2] and by age 22 he was 6 ft 1 in (185 cm) in height and weighed 500 lb (230 kilograms; 36 stone).[3]
+BMI = 400/1.82^2 = 120.76
+
+```{r merged data weight_an_lowest_kg_derived_unc derived weight min and max}
+weight_upper_limit = 300 # 
+weight_lower_limit = 25
+```
+
+```{r merged data weight_an_lowest_kg_derived_unc derived weight number of outliers}
+dat_an %>%
+  filter(
+    weight_an_lowest_kg_derived_unc > weight_upper_limit 
+    | (
+      weight_an_lowest_kg_derived_unc < weight_lower_limit
+      & weight_an_lowest_kg_derived_unc != -666
+    )
+  ) %>%
+  nrow()
+```
+2021-10-03: 39 people have lowest weight in kg > upper limit or < lower limit
+
+Recode implausible values to -666
+```{r merged data weight_an_lowest_kg_derived_unc derived weight recode implausible values to -666}
+dat_an <- dat_an %>%
+  mutate(
+    weight_an_lowest_kg =
+      if_else(
+        weight_an_lowest_kg_derived_unc > weight_upper_limit
+        | (weight_an_lowest_kg_derived_unc < weight_lower_limit
+           & weight_an_lowest_kg_derived_unc != -666
+        ),
+        true = -666,
+        false = weight_an_lowest_kg_derived_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat_an %>%
+  freq(weight_an_lowest_kg)
+```
+
+
+## GLAD & EDGI (merged): AN Lowest BMI 
+```{r merged data bmi_an_lowest_unc inspect}
+dat_an %>%
+  freq(bmi_an_lowest_unc)
+```
+
+NB: In GLAD & EDGI (merged), a few participants entered their data as raw BMI
+
+```{r merged data bmi_an_lowest_unc conversion to numeric}
+dat_an$bmi_an_lowest_unc_numeric <-
+  as.numeric(
+    dat_an$bmi_an_lowest_unc
+  )
+dat_an %>%
+  freq(bmi_an_lowest_unc_numeric)
+```
+
+```{r merged data bmi_an_lowest_derived_unc derive BMI}
+dat_an <- dat_an %>%
+  mutate(
+    bmi_an_lowest_derived_unc =
+      case_when(
+        weight_an_lowest_kg == - 666 # implausible weight in kg
+        | height_an_low_weight_m == - 666 ~ -666, # implausible height in m
+        
+         !is.na(bmi_an_lowest_unc_numeric) ~ bmi_an_lowest_unc_numeric, # In GLAD & EDGI (merged) as entering raw BMI was an option
+        
+        !is.na(weight_an_lowest_kg) # is not NA in the combined weight in kg column
+        & !is.na(height_an_low_weight_m) # is not NA in the combined height in m column
+        ~ weight_an_lowest_kg / height_an_low_weight_m^2 # calculate BMI
+      )
+  )
+# Check
+dat_an %>%
+  filter(bmi_an_lowest_derived_unc != -666) %>%
+  descr(bmi_an_lowest_derived_unc)
+```
+
+```{r merged data bmi_an_lowest_derived_unc top 10 BMIs}
+dat_an %>%
+  select(
+    bmi_an_lowest_derived_unc,
+    weight_an_lowest_kg,
+    height_an_low_weight_m,
+  ) %>%
+  slice_max(
+    order_by = bmi_an_lowest_derived_unc,
+    n = 10
+  )
+```
+
+```{r merged data bmi_an_lowest_derived_unc bottom 10 BMIs}
+dat_an %>%
+  select(
+    bmi_an_lowest_derived_unc,
+    weight_an_lowest_kg,
+    height_an_low_weight_m,
+  ) %>%
+  filter(
+    bmi_an_lowest_derived_unc != -666
+  ) %>%
+  slice_max(
+    order_by = -bmi_an_lowest_derived_unc,
+    n = 10
+  )
+```
+
+Minimum and maximum cleaning chunk for BMI
+We have sorted the tibble by BMI and are displaying the top 10 BMIs and the lowest 10 BMIs
+Based on the the two chunks before we have chosen these cutoffs: 7 and 91
+
++++CH: May want to change NBR BMI to 91 too?
++++HLD: I think this has been done?
+
+```{r merged data bmi_an_lowest_derived_unc derive BMI define limits}
+bmi_lower_limit = 7 # 
+bmi_upper_limit = 91
+```
+
+```{r merged data bmi_an_lowest_derived_unc derive BMI identify number of outliers}
+dat_an %>%
+  filter(
+    bmi_an_lowest_derived_unc > bmi_upper_limit |
+      bmi_an_lowest_derived_unc < bmi_lower_limit
+  ) %>%
+  nrow()
+```
+2021-10-03: 94 people have implausible BMIs, will be set to -666 (i.e., implausible value)
+
+```{r merged data bmi_an_lowest_derived_unc derive BMI set implausible values to -666}
+dat_an <- dat_an %>%
+  mutate(
+    bmi_an_lowest =
+      if_else(
+        bmi_an_lowest_derived_unc > bmi_upper_limit |
+          bmi_an_lowest_derived_unc < bmi_lower_limit,
+        true = -666,
+        false = bmi_an_lowest_derived_unc,
+        missing = NA_real_
+      )
+  )
+# Check
+dat_an %>%
+  descr(
+    bmi_an_lowest
+  )
+# Check
+dat_an %>%
+  filter(
+    bmi_an_lowest != -666
+  ) %>%
+  descr(
+    bmi_an_lowest
+  )
+```
+
++++ Will cross-check with people's diagnoses to see if any have implausible values
+
+# Select variables to export
+```{r variables to export}
+dat_to_export <- dat %>%
+  select(ID, 
+         sample,
+    dem.height_signup_ft = height_signup_ft,
+    dem.height_signup_inches = height_signup_inches,
+    dem.height_signup_cm = height_signup_cm,
+    dem.height_signup_m = height_signup_m,
+    dem.weight_lowest_st = weight_lowest_st,
+    dem.weight_lowest_lbs = weight_lowest_lbs,
+    dem.weight_lowest_kg = weight_lowest_kg,
+    dem.bmi_lowest = bmi_lowest, 
+  )
+  
+dat_an_to_export <- dat_an %>%
+  select(ID, 
+         sample,
+    an.height_at_low_weight_ft = height_an_low_weight_ft,
+    an.height_at_low_weight_inches = height_an_low_weight_inches,
+    an.height_at_low_weight_cm = height_an_low_weight_cm,
+    an.height_at_low_weight_m = height_an_low_weight_m,
+    an.weight_lowest_st = weight_an_lowest_st,
+    an.weight_lowest_lbs = weight_an_lowest_lbs,
+    an.weight_lowest_kg = weight_an_lowest_kg,
+    an.bmi_lowest = bmi_an_lowest
+    )
+
+# Merge
+dfs.list <- list(dat_an_to_export,
+                 dat_to_export
+                 )
+
+
+dat_merged <- plyr::join_all(dfs.list,
+                             by=c("ID",
+                                  "sample")
+)
+
+# Check
+dat_merged %>%
+  colnames()
+
+dat_merged %>%
+  nrow()
+```
+
+Combined object for excluded participants
+```{r GLAD EDGI NBR save excluded participants}
+glad_edgi_nbr_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_nbr_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_nbr_excluded) <- c("GLAD", "EDGI")
+glad_edgi_nbr_excluded
+```
+
+# GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat_merged %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/lowest_bmi_height_weight_glad_clean.rds")
+    )
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat_merged %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/lowest_bmi_height_weight_edgi_clean.rds")
+    )
+```
+
+# GLAD EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat_merged %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/lowest_bmi_height_weight_glad_edgi_clean.rds")
+    )
+```
+
+

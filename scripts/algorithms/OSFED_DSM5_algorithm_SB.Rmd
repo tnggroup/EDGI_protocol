@@ -1,0 +1,1221 @@
+---
+title: "OSFED DSM5 algorithms"
+author: "Saakshi Kakar, Shannon Bristow, Steven Bright, updated by Shannon Bristow"
+date: "30/08/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The purpose of this script is to write the algorithms for purging disorder,
+night eating syndrome, atypical BN, atypical BED, and atypical AN. This will 
+be needed for the EDGI protocol paper.
+
+## Standards
+All arguments should be in their own row, including the first argument
+Closing bracket should have its own row
+Functions with a single argument can have this on the same line
+One argument can be hashed out per line for debugging errors
+
+Chunk names should be all lower case except:
+Study name (e.g. GLAD/EDGI/NBR) all caps
+Capitalised first word
+Chunk names MUST be unique
+
+Add only one empty line between chunks
+Add one extra line when starting a new section
+Use hash syntax as appropriate for headings and subheadings, as per markdown syntax
+
+Points requiring user input are enclosed thus <>
+
+Ensure that you have deleted/untracked .DS_Store before your initial commit
+Ensure that your  .gitignore contains "**/.DS_Store" before your initial commit
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_labelled_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the recode_check function - used to check for implausible values when recoding
+Add the imp_clean function - used to check variables for implausible values
+Add the cont_clean function - used to check continuous variables for implausible values
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("sjlabelled",
+              "Amelia",
+              "gtsummary",
+              "summarytools",
+              "tidyverse")
+
+package_check(packages)
+```
+
+# Read in the data: Full Name of Questionnaire/Demographic
+Change this heading to the name of your questionnaire/demographic
+Load GLAD data first, then EDGI, then NBR, then RAMP
+
+Do not change variable names from the NLP names that are produced by the extraction
+EXCEPT in exceptional circumstances
+Document ANY changes to variable names in the issues spreadsheet "https://docs.google.com/spreadsheets/d/1a2gL8c0eH2pZXNTbnPzkDYQGeeVXbLKU8BUpYM0moe8/edit?usp=sharing"
+
+- For created variable names, use ONLY 'questionnaire.variable_name'
+- For dataset, only use snake_case naming
+- When using pipe operator '%>%', each function should begin on a new line
+- Do not add empty lines at the beginning or end of a chunk
+- Use only tidyverse functions wherever possible
+- When naming chunks, begin with the name of the dataset (GLAD, EDGI, NBR, RAMP) where appropriate
+
+## EDGI data
+
+```{r Create function to read in all files from a folder}
+directory_read <- function(folder_path, read_func){
+  
+  #Ensure tidyverse is installed
+  require(tidyverse)
+  
+  #Get names of files within the directory
+  files <- list.files(folder_path)
+  
+  #Pre-allocate output
+  files_list <- vector("list", length(files))
+  
+  #Read in the files
+  files_list_raw <- files %>% 
+    map(function(file_name){
+      read_func(paste0(folder_path, file_name))
+    })
+  
+  #Rename the file paths in the list as the file names instead
+  files_list <- files_list_raw %>% 
+    setNames(files)
+  
+  #Return list of read in files from the inputted folder
+  return(files_list)
+}
+```
+
+```{r EDGI load sign-up data}
+edgi_dat_list <- directory_read(
+  folder = paste0(ilovedata, "/data_raw/2022-09-16/edgi/"),
+  read_func = read_rds
+)
+
+names(edgi_dat_list) <- map(names(edgi_dat_list),
+  gsub, pattern = ".rds", replacement = "")
+
+#Check data
+edgi_dat_list %>% 
+  map(head)
+```
+
+```{r Read in EDGI lowest BMI data}
+edgi_bmi <- read_rds(
+  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/lowest_bmi_height_weight_edgi_clean.rds")
+  )
+# Inspect 
+edgi_bmi %>%
+  dim()
+
+edgi_bmi %>%
+  colnames()
+
+# Convert -666 to NA
+edgi_bmi <- edgi_bmi %>%
+  mutate(an.bmi_lowest =
+           case_when(
+           an.bmi_lowest == -666 ~ NA_real_,
+           TRUE ~ an.bmi_lowest
+  )
+  )
+
+#Drop sample column to allow data to be merged with other edgi data
+edgi_bmi <- edgi_bmi %>% 
+  select(-sample)
+```
+
+```{r Remove unneeded EDGI data sets}
+#Check names of edgi data sets
+edgi_dat_list %>% 
+  names()
+
+#Create vector of desired data sets
+desired_data <- c(
+  "an_edgi",
+  "aan_scr_edgi",
+  "aan_edgi",
+  "be_edgi",
+  "icb_edgi",
+  "nes_edgi"
+)
+
+#Subset list according to desired data
+edgi_dat_list <- edgi_dat_list[desired_data]
+
+#Check subsetted list
+edgi_dat_list %>% 
+  map(head)
+```
+
+```{r Wrap drop ids code into a function to iterate over EDGI data sets}
+excluded_IDs <- function(df){
+  df <- df %>%
+  select(externalDataReference) %>%
+  filter(duplicated(.)) %>%
+  count(., externalDataReference) %>%
+  select("EDGI Dropped IDs" = "n") %>%
+  colSums() + 1
+  }
+```
+
+```{r Check excluded IDs in EDGI data sets}
+edgi_excluded_ids <- edgi_dat_list %>% 
+  purrr::map(excluded_IDs)
+
+#Check excluded IDs
+edgi_excluded_ids %>% 
+  map(print)
+```
+
+```{r Wrap clean id chunk into a function to map over EDGI data sets}
+clean_ids <- function(df){
+  df %>% #new dataset with ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  dplyr::rename(
+    "ID" = "externalDataReference"
+  )
+  }
+```
+
+Select/rename relevant columns and de-duplicate/NA-remove ID column
+NB: If this is data from the COPING survey, add "_cop" to the end of each variable name, including startDate/endDate
+```{r clean EDGI ids}
+edgi_dat_id_list  <- edgi_dat_list %>% 
+  map(clean_ids)
+
+# Inspect colnames
+edgi_dat_id_list %>%
+  map(colnames)
+
+# Inspect dimensions of new data set
+edgi_dat_id_list %>%
+  map(dim)
+```
+
+```{r Remove duplicated columns in edgi data sets to allow them to be merged}
+edgi_dat_id_list <- edgi_dat_id_list %>% 
+  map2(desired_data, 
+       function(df, df_name){
+    if(df_name == "an_edgi"){
+      df
+    } else {
+      df <- df %>% 
+        select(-contains("date"),
+               -sample)
+    }
+  })
+
+#Check data
+edgi_dat_id_list %>% 
+  map(colnames)
+```
+
+```{r Add lowest BMI to the list of EDGI data}
+edgi_dat_id_list <- c(
+  edgi_dat_id_list,
+  bmi_lowest = list(as_tibble(edgi_bmi))
+)
+
+#Check data
+edgi_dat_id_list %>% 
+  map(head)
+```
+
+```{r Join all the desired EDGI sign-up data}
+edgi_dat_id <- edgi_dat_id_list %>% 
+  plyr::join_all(
+    by = c("ID"),
+    type = "full"
+  ) %>% 
+  as_tibble(.) #The output is in df format originally
+
+#Check data
+edgi_dat_id %>% 
+  head()
+
+edgi_dat_id %>% 
+  colnames()
+
+edgi_dat_id %>% 
+  dim()
+```
+
+Check missingness by missmap
+```{r EDGI missmap}
+edgi_dat_id %>% 
+  missmap()
+```
+
+
+
+#Algorithms
+
+There will be algorithms for:
+-Atypical anorexia ervosa
+-Atypical bulimia nervosa
+-Atypical binge eating disorder
+-Purging disorder
+-Night eating syndrome
+
+##Atypical AAN
+
+For atypical ANN, a pt can get a diagnosis by either:
+1) Completing the AN module but having a weight above 18.5
+2) Completing the AAN module
+
+Therefore, we will run the AAN algorithm twice: first with the variables from 
+the aan_edgi module and then with the an_edgi variables. We will then combine 
+the results of these algorithms to get a catch-all AAN cases and controls variable.
+
+###Work out AAN BMI
+```{r Convert amount of weight lost and weight before loss from pounds to kg}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.stone_pounds_lose_kg = 
+           case_when(
+             !is.na(aan.stone_pounds_lose_pounds) ~ round(aan.stone_pounds_lose_pounds/2.205, 2),
+             TRUE ~ aan.stone_pounds_lose_pounds
+           ))
+
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.weigh_prior_kg = 
+           case_when(
+             !is.na(aan.weigh_prior_stone_pounds) ~ round(aan.weigh_prior_stone_pounds/2.205, 2),
+             TRUE ~ aan.weigh_prior_stone_pounds
+           ))
+
+#Check data
+edgi_dat_id %>% 
+  freq(aan.stone_pounds_lose_kg)
+
+edgi_dat_id %>% 
+  freq(aan.weigh_prior_kg)
+```
+
+```{r Recode implausible values to have NA}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.weigh_prior_kg = 
+           case_when(
+             aan.weigh_prior_kg < 0 |
+               aan.weigh_prior_kg > 110 ~ NA_real_,
+             TRUE ~ aan.weigh_prior_kg
+           ))
+
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.weigh_prior_kg = 
+           case_when(
+             aan.weigh_prior_kg < 0 |
+               aan.weigh_prior_kg > 248 ~ NA_real_,
+             TRUE ~ aan.weigh_prior_kg
+           ))
+
+#Re-check values
+edgi_dat_id %>% 
+  freq(aan.stone_pounds_lose_kg)
+
+edgi_dat_id %>% 
+  freq(aan.weigh_prior_kg)
+```
+
+```{r Work out weight at period of significant weight loss}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.weight_kg = 
+           aan.weigh_prior_kg - aan.stone_pounds_lose_kg)
+
+#Check weight
+edgi_dat_id %>% 
+  freq(aan.weight_kg)
+```
+
+```{r Clean AAN weight kg}
+# Weight outlier
+# Define weight limits
+low_weight_upper_limit = 150
+low_weight_lower_limit = 25
+  
+# Identify number of outliers
+length(
+  which(
+    edgi_dat_id$aan.weight_kg > low_weight_upper_limit |
+      edgi_dat_id$aan.weight_kg< low_weight_lower_limit
+    )
+  )
+  
+# Remove weight outliers
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    aan.weight_kg =
+      if_else(
+        aan.weight_kg > low_weight_upper_limit |
+          aan.weight_kg < low_weight_lower_limit,
+        true = NA_real_,
+        false = aan.weight_kg,
+        missing = NA_real_
+        )
+    )
+  
+##Check
+edgi_dat_id %>%
+  freq(aan.weight_kg)
+```
+
+NB: We do not ask about height at low weight in the AAN module. Therefore, to work out their BMI during AAN, we have to use their adult height. This is fine unless they had AAN before they were at adult height. We do not have age of onset of low weight in the AAN module to cross-check (otherwise would only look at people with age of onset above 12/13). Will just need to note this as a limitation.
+
+```{r AAN Derive BMI COPING}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(aan.BMI = NA_real_)
+
+# Derived
+edgi_dat_id$aan.BMI <- 
+  if_else(condition = is.na(edgi_dat_id$aan.BMI), 
+         true = edgi_dat_id$aan.weight_kg/edgi_dat_id$dem.height_signup_m^2, # Derive from height and weight
+         false = NA_real_,
+         missing = NA_real_)
+
+# Check values
+edgi_dat_id %>% 
+  freq(aan.BMI)
+```
+
+```{r Recode outliers in aan bmi}
+# Define BMI limits
+bmi_upper_limit = 91 # From lowest BMI cleaning script
+bmi_lower_limit = 7 # From lowest BMI cleaning script
+
+# Identify number of outliers
+length(
+  which(
+    edgi_dat_id$aan.BMI > bmi_upper_limit |
+      edgi_dat_id$aan.BMI < bmi_lower_limit
+    )
+  )
+  
+# Remove BMI outliers
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(
+    aan.BMI =
+      if_else(
+        edgi_dat_id$aan.BMI > bmi_upper_limit |
+          edgi_dat_id$aan.BMI < bmi_lower_limit,
+        true = NA_real_,
+        false = aan.BMI,
+        missing = NA_real_
+        )
+    )
+  
+# Inspect variable
+edgi_dat_id %>%
+  freq(aan.BMI)
+```
+
+Atypical anorexia nervosa criteria:
+
+A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
+
+B. Intense fear of gaining weight or of becoming fat,or persistent behavior that interferes with weight gain, even though at a significantly low weight.
+
+C. Disturbance in the way in which one’s body weight or shape is experienced, undueinfluence of body weight or shape on self-evaluation, or persistent lack of recognition of the seriousness of the current low body weight.
+
+In addition to the three criteria, AAN requires BMI to be within a normal range
+(18.55 - 29.50)
+
+```{r AAN EDGI algorithm - aan_EDGI variables}
+#Atypical anorexia nervosa numeric variable
+edgi_dat_id$ed.DSM5_AN_atypical_binary_AAN_module_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+    
+# BMI Greater than or equal to 18.55
+  
+        (aan.BMI >= 18.55 &
+         
+        # Afraid of gaining weight 
+        (aan.1.gain_weight_afraid_fat == 2 | #Somewhat
+         aan.1.gain_weight_afraid_fat == 3 | #Very
+         aan.1.gain_weight_afraid_fat == 4) & #Extremely
+ 
+         # Self-worth dependent on body shape or weight
+        (
+          ( aan.1.not_at_all_dependentcompletely_dependent == 3 | 
+            aan.1.not_at_all_dependentcompletely_dependent == 4 |
+            aan.1.not_at_all_dependentcompletely_dependent == 5 |
+            aan.1.not_at_all_dependentcompletely_dependent == 6) | #Completely Dependent
+            # Feels fat even at low weight
+          (aan.1.feel_fat_period_significant == 2 | #Somewhat
+           aan.1.feel_fat_period_significant == 3 | #Very
+            aan.1.feel_fat_period_significant == 4) | #Extremely
+  
+           # No perception of negative consequences of low weight
+          aan.1.health_negative_consequences_significant == 0 | #Not at all
+  
+         # Perceived body parts to be larger than they were
+        (aan.1.people_thought_larger_parts == 1 | #Somewhat 
+         aan.1.people_thought_larger_parts == 2) #Very much
+        )
+        ),
+    true = 1,
+    false = 0,
+    missing = NA_real_
+ )
+)
+  
+# Recode numeric to factor
+edgi_dat_id$ed.DSM5_AN_atypical_binary_AAN_module <-
+  recode_factor(edgi_dat_id$ed.DSM5_AN_atypical_binary_AAN_module_numeric,
+                "0" = "No DSM-5 atypical AN BMI greater than 18.55",
+                "1" = "DSM-5 atypical AN BMI greater than 18.55")
+# Summary
+edgi_dat_id %>% 
+  freq(ed.DSM5_AN_atypical_binary_AAN_module_numeric)
+```
+
+```{r AAN EDGI algorithm - AN_EDGI variables}
+#Atypical anorexia nervosa numeric variable
+edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+    
+# BMI greater than or equal to 18.55
+  
+        (an.bmi_lowest >= 18.55 &
+         
+        # Afraid of gaining weight 
+        (an.gain_weight_afraid_fat == 2 | #Somewhat afraid
+         an.gain_weight_afraid_fat == 3 | #Very afraid
+         an.gain_weight_afraid_fat == 4) & #Extremely afraid
+ 
+         # Self-worth dependent on body shape or weight
+        (
+          ( an.not_at_all_dependentcompletely_dependent == 3 | 
+            an.not_at_all_dependentcompletely_dependent == 4 |
+            an.not_at_all_dependentcompletely_dependent == 5 |
+            an.not_at_all_dependentcompletely_dependent == 6) | #Completely Dependent
+            
+            # Feels fat even at low weight
+          (an.feel_fat_time_low == 2 | #Somewhat
+           an.feel_fat_time_low == 3 | #Very
+            an.feel_fat_time_low == 4) | #Extremely
+  
+           # No perception of negative consequences of low weight
+          an.health_low_weightbmi_negative == 0 | #"Not at all"
+  
+         # Perceived body parts to be larger than they were
+        (an.people_thought_larger_body == 1 | #Somewhat
+         an.people_thought_larger_body == 2) #Very much
+        )
+        ),
+    true = 1,
+    false = 0,
+    missing = NA_real_
+ )
+)
+
+# Recode numeric to factor
+edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module <-
+  recode_factor(edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module_numeric,
+                "0" = "No DSM-5 atypical AN BMI greater than 18.55",
+                "1" = "DSM-5 atypical AN BMI greater than 18.55")
+# Summary
+edgi_dat_id %>% 
+  freq(ed.DSM5_AN_atypical_binary_AN_module)
+```
+
+```{r Combine results of AAN_EDGI and AN_EDGI algorithms}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(ed.DSM5_AN_atypical_binary_numeric = 
+           case_when(
+             ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" |
+               ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ 1,
+             ed.DSM5_AN_atypical_binary_AAN_module == "No DSM-5 atypical AN BMI greater than 18.55" |
+               ed.DSM5_AN_atypical_binary_AN_module == "No DSM-5 atypical AN BMI greater than 18.55" ~ 0
+           ))
+
+# Recode numeric to factor
+edgi_dat_id$ed.DSM5_AN_atypical_binary <-
+  recode_factor(edgi_dat_id$ed.DSM5_AN_atypical_binary_numeric,
+                "0" = "No DSM-5 atypical AN BMI greater than 18.55",
+                "1" = "DSM-5 atypical AN BMI greater than 18.55")
+# Summary
+edgi_dat_id %>% 
+  freq(ed.DSM5_AN_atypical_binary)
+```
+
+##Atypical BED
+
+Sum number of binge eating behaviours 
+```{r Sum binge eating behaviours EDGI}
+#Turn non-answer values to na for binge eating behaviour variables
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(across(c("be.a_eat_much_more_rapidly_than_usual",
+                                  "be.b_eat_until_you_felt_uncomfortably_full",
+                                   "be.food_didnt_feel_physically",
+                                   "be.embarrassed_eat_eating_whathow",
+                                   "be.guilty_depressed_overeating_feel"),
+         ~replace(.x, which(.x < 0), NA_real_)
+         )
+        )
+
+#Get row sum of binge eating behaviours
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(ed.BE_behaviour_sum = 
+           rowSums(edgi_dat_id[ , 
+                                c("be.a_eat_much_more_rapidly_than_usual",
+                                  "be.b_eat_until_you_felt_uncomfortably_full",
+                                   "be.food_didnt_feel_physically",
+                                   "be.embarrassed_eat_eating_whathow",
+                                   "be.guilty_depressed_overeating_feel")],
+                   na.rm = TRUE)
+         )
+
+# Summary
+edgi_dat_id %>% 
+  freq(ed.BE_behaviour_sum)
+```
+
+One year = 52.1429 weeks
+One month = 4.34524 weeks 
+
+```{r Binge eating frequency conversion EDGI}
+edgi_dat_id$ed.BE_freq_per_week <- NA
+
+#Variable names - have I mapped them correctly below? Code taken from ED_DSM5_algorithm
+edgi_dat_id %>% 
+  select(contains("be.")) %>% 
+  select(contains(".txt")) %>% 
+  colnames()
+
+# Calculate frequency per week - EDGI
+edgi_dat_id$ed.BE_freq_per_week <- 
+  with(edgi_dat_id,
+    case_when(
+      be.binge_eating_experience_episodes.txt.1 > 0 ~ round(be.binge_eating_experience_episodes.txt.1/52.1429, digits = 2),
+      be.binge_eating_episodes_enter.txt > 0 ~ round(be.binge_eating_episodes_enter.txt/4.34524, digits = 2),
+      be.binge_eating_episodes_enter.txt > 0 ~  be.binge_eating_episodes_enter.txt
+      )
+  )
+  
+# Summary
+edgi_dat_id$ed.BE_freq_per_week %>%
+  freq()
+```
+
+Converting to smallest unit first gives you more accurate estimates
+One year = 365.25 days; One month = 30.4167 days
+
+```{r Binge eating duration conversion EDGI}
+edgi_dat_id$ed.BE_duration_months <- NA
+
+# Change to numeric
+edgi_dat_id$be.duration_years_numeric <- as.numeric(edgi_dat_id$be.years)
+edgi_dat_id$be.duration_months_numeric <- as.numeric(edgi_dat_id$be.months)
+
+# Sum years and months into months
+edgi_dat_id$ed.BE_duration_months <- 
+  if_else(condition = is.na(edgi_dat_id$ed.BE_duration_months),
+         true = ((edgi_dat_id$be.duration_years_numeric*365.25) + (edgi_dat_id$be.duration_months_numeric*30.4167)) / 30.4167, 
+        false = NA_real_,
+        missing = NA_real_)
+
+# Summary
+edgi_dat_id %>%
+  freq(ed.BE_duration_months)
+
+##Change below 0 to NA
+##Just temporary - all negative values should be cleaned when you select columns...
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(ed.BE_duration_months = 
+           replace(ed.BE_duration_months, which(ed.BE_duration_months < 0), NA_real_))
+
+# Re-check
+edgi_dat_id %>% 
+  freq(ed.BE_duration_months)
+```
+
+Definition of atypical BED:
+
+Binge eating disorder (of low frequency and/or limited duration) – where someone 
+has all of the symptoms of binge eating disorder, except the binges don’t happen 
+as often or over as long a period of time as doctors would expect.
+
+Source: https://www.beateatingdisorders.org.uk/get-information-and-support/about-eating-disorders/types/osfed/
+
+Criteria for typical BED:
+
+A. Recurrent episodes of binge eating. An episode of binge eating is characterized by both of the following:
+  1. Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most people would eat in a similar period of time under similar circumstances.
+
+2. A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating).
+
+B. The binge-eating episodes are associated with three (or more) of the following:
+  1. Eating much more rapidly than normal.
+  2. Eating until feeling uncomfortably full.
+  3. Eating large amounts of food when not feeling physically hungry.
+  4. Eating alone because of feeling embarrassed by how much one is eating.
+  5. Feeling disgusted with oneself, depressed, or very guilty afterward.
+
+C. Marked distress regarding binge eating is present.
+
+D. The binge eating occurs, on average, at least once a week for 3 months
+
+*Note: less frequent for atypical BED*
+
+E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nen/osa and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.
+
+```{r Rename variables for the BED algorithm}
+edgi_dat_id <- edgi_dat_id %>% 
+  rename("icb.lasted_vomit_laxative_making" = "icb.icb_bingeing_engage_months",
+         "icb.none_of_the_above.1" = "icb.none.1")
+
+# Need to recode those 'Seen but not answered' for use in BED algorithm . Don't want these people to be recoded an NA. Want to keep TRUE NA_real_ to those who were NOT shown the question. Those who did but not answer (-77) should NOT be counted as NA_real_ but kept as another number. **TEMPORARY SOLUTION**
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(be.experience_regular_episodes_lowest_seen_but_not_answered =
+           case_when(be.experience_regular_episodes_lowest == -77 ~ 1
+                     )
+  )
+
+# Check variable
+edgi_dat_id %>% 
+  freq(icb.lasted_vomit_laxative_making)
+
+edgi_dat_id %>% 
+  freq(icb.none_of_the_above.1)
+
+edgi_dat_id %>% 
+  freq(be.experience_regular_episodes_lowest_seen_but_not_answered)
+```
+
+```{r DSM-5 binge-eating disorder algorithm EDGI}
+# BED numeric variable
+edgi_dat_id$ed.DSM5_BED_atypical_binary_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+
+    # A. Recurrent episodes of binge eating. An episode of binge eating is characterized by both of the following:
+#1)Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most people would eat in a similar period of time under similar circumstances
+    be.short_period_ate_regard == 1 & 
+  
+   # 2) A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating)
+     
+      (
+        be.binge_eating_stop_eating == 1 | #Slightly
+       be.binge_eating_stop_eating == 2 | #Somewhat 
+       be.binge_eating_stop_eating == 3 | #Very
+       be.binge_eating_stop_eating == 4 # "Extremely"
+       ) & 
+  # B. The binge-eating episodes are associated with three (or more) of the following:
+# 1. Eating much more rapidly than normal.
+# 2. Eating until feeling uncomfortably full.
+# 3. Eating large amounts of food when not feeling physically hungry.
+# 4. Eating alone because of feeling embarrassed by how much one is eating.
+# 5. Feeling disgusted with oneself, depressed, or very guilty afterward.
+  ed.BE_behaviour_sum >= 3 & 
+
+  # C. Marked distress regarding binge eating is present.       
+  (
+    be.binge_eating_distressed_make == 2 | #Somewhat
+         be.binge_eating_distressed_make == 3 | #Very
+         be.binge_eating_distressed_make == 4 #Extremely
+    ) & 
+
+  # D. The binge eating occurs, on average, at least once a week for 3 months - Less frequent for atypical BED
+  # The duration and frequency of symptoms is based on the diagnostic criteria for BED
+  (ed.BE_freq_per_week < 1 & # Binge eating per week is less than 1
+      ed.BE_duration_months < 2.95 & #Binge eating duration is less than 3 months
+     ed.BE_duration_months != 0) & # but not equal to 0
+
+  # E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nervosa... "Did you ever have periods of time that lasted three months or more when you had binge-eating episodes without regularly engaging in any of the following: making yourself vomit, laxative use, diuretic use, taking weight loss pills, excessively exercising ?"
+  (
+  (
+    icb.lasted_vomit_laxative_making == 1 | #Yes, 3 months DID NOT engage in ICB while bingeing 
+     icb.none_of_the_above.1 == 0 | # Never engaged in compensatory behaviours after bingeing
+
+    #...Or never engaged in ANY behaviour to control weight or shape, so never got asked about comp behaviours for binge eating OR whether they've had periods of time of bingeing without engaging in weight loss behaviours (this is the logic in EDGI)
+      (icb.fasted_or_did_not_eat == 0 & #Never for allthese compensatory behaviours
+      icb.used_diet_pills == 0 &
+      icb.exercised_excessively == 0 &
+      icb.made_yourself_vomit == 0 &
+      icb.used_laxatives == 0 &
+      icb.used_diuretics == 0 &
+      icb.any_other_methods_not_previously_listed == 0)
+    ) & 
+
+  #...and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.  
+  (
+    be.experience_regular_episodes_lowest == 2 | #At times of low weight and at times outside of low weight
+     be.experience_regular_episodes_lowest == 0 | #No
+    (is.na(be.experience_regular_episodes_lowest) &
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it.
+    )
+  ),
+    true = 1,
+    false = 0,
+    missing = NA_real_)
+    )
+    
+# Recode numeric to factor
+edgi_dat_id$ed.DSM5_BED_atypical_binary <-
+  recode_factor(edgi_dat_id$ed.DSM5_BED_atypical_binary_numeric,
+                "0" = "No DSM-5 atypical BED",
+                "1" = "DSM-5 atypical BED")
+
+# Summary
+edgi_dat_id %>%
+  freq(ed.DSM5_BED_atypical_binary)
+```
+
+##Atypical BN
+
+Definition of atypical BN:
+
+Bulimia nervosa (of low frequency and/or limited duration) – where someone has 
+all of the symptoms of bulimia, except the binge/purge cycles don’t happen as 
+often or over as long a period of time as doctors would expect.
+
+Source: https://www.beateatingdisorders.org.uk/get-information-and-support/about-eating-disorders/types/osfed/
+
+Criteria for bulimia nervosa:
+
+A. Recurrent episodes of binge eating. An episode of binge eating is characterized by both of the following:
+
+1. Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most individuals would eat in a similar period of time under similar circumstances.
+
+2. A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating).
+
+B. Recurrent inappropriate compensatory behaviors in order to prevent weight gain,such as self-induced vomiting; misuse of laxatives, diuretics, or other medications; fasting; or excessive exercise.
+
+C. The binge eating and inappropriate compensatory behaviors both occur, on average, at least once a week for 3 months.
+
+*Note: This can be less frequent for atypical bulimia nervosa*
+
+D. Self-evaluation is unduly influenced by body shape and weight.
+
+E. The disturbance does not occur exclusively during episodes of anorexia nervosa.
+
+NB: Response from Laura T 12/11/21 about whether to include the calculated BE and ICB freq/dur, "We just use the “Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 3 months?” This is because people are required to use compensatory behaviors  for BN but they can use any combination.
+ 
+Someone might exercise and also use laxatives and vomiting, but each only a few times a month, to compensate for the binge episodes."
+
+```{r Rename edgi variables to match BN algorithm}
+edgi_dat_id <- edgi_dat_id %>% 
+  rename("icb.3months_average_time_week" = "icb.binge_eating_average_months")
+
+#Check variables
+edgi_dat_id %>% 
+  freq(icb.3months_average_time_week)
+```
+
+```{r DSM-5 bulimia nervosa algorithm EDGI}
+# Bulimia nervosa numeric variable
+edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+
+#A. Recurrent episodes of binge eating. An episode of binge eating is characterized by both of the following:
+
+    #1. Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most individuals would eat in a similar period of time under similar circumstances.
+    
+    ##Have you ever had regular episodes of overeating or eating binges when you ate what most people would regard as an unusually large amount of food in a short period of time?
+    be.short_period_ate_regard == 1 & 
+
+      #2. A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating).
+      
+      #When you were having regularly occurring episodes of binge eating or overeating, did you feel that your eating was out of control such that you felt you could not stop eating, or that you could not control what or how much you were eating?
+      
+        (
+         be.binge_eating_stop_eating == 1 | #Slightly
+         be.binge_eating_stop_eating == 2 | #Somewhat
+         be.binge_eating_stop_eating == 3 | #Very
+         be.binge_eating_stop_eating == 4 #Extremely
+         ) & 
+
+      #B. Recurrent inappropriate compensatory behaviors in order to prevent weight gain, such as self-induced vomiting; misuse of laxatives, diuretics, or other medications; fasting; or excessive exercise. 
+      
+            # Self-induced vomiting to control weight or shape
+          #  (icb.made_yourself_vomit == 1 | #A few times
+          #icb.made_yourself_vomit == 2 | #Often
+            
+            # Self-induced vomiting to compensate for binge eating
+            (icb.making_yourself_vomit.1 == 1) & #Making yourself vomit
+            
+            # Laxatives to control weight or shape
+          #(icb.used_laxatives == 1 | #A few times
+          #icb.used_laxatives == 2 | #Often
+            
+            # Laxatives to compensate for binge eating
+            (icb.laxatives.1 == 1) & #Laxatives
+            
+            # Diuretics to control weight or shape
+          #(icb.used_diuretics == 1 | #A few times
+          #icb.used_diuretics == 2 | #Often
+            
+            # Diuretics to compensate for binge eating
+            (icb.diuretics == 1) & #Diuretics
+            
+            # Diet pills to control weight or shape
+          #(icb.used_diet_pills == 1 | #A few times
+          #icb.used_diet_pills == 2 | #Often
+            
+            # Diet pills to compensate for binge eating
+           (icb.weight_loss_pills.1 == 1) & #Weight loss pills 
+            
+            # Excessive exercise to control weight or shape
+        #  (icb.exercised_excessively == 1 | #A few times
+        #  icb.exercised_excessively == 2 | #Often
+            
+            # Excessive exercise to compensate for binge eating
+           (icb.excessive_exercise.1 == 1) & #Excessive exercise
+            
+            # Fasting to control weight or shape
+        #  (icb.fasted_or_did_not_eat == 1 | #A few times
+        #  icb.fasted_or_did_not_eat == 2 | #Often
+            
+            # Fasting to compensate for binge eating
+          (icb.fasting.1 == 1) & #Fasting
+
+      # C. The binge eating and inappropriate compensatory behaviors both occur, on average, at least once a week for 3 months.
+      
+  # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 3 months?
+      (
+        icb.3months_average_time_week == 0 #No - can be less frequent for people with atypical BN 
+        ) & 
+
+    # D. Self-evaluation is unduly influenced by body shape and weight.
+         
+    #During the time when you were binge eating, how dependent was your self-worth on your body shape or weight?
+    (
+      be.not_at_all_dependentcompletely_dependent == 3 |
+      be.not_at_all_dependentcompletely_dependent == 4 |
+      be.not_at_all_dependentcompletely_dependent == 5 |
+      be.not_at_all_dependentcompletely_dependent == 6 #Completely dependent
+  ) &
+
+    #E. The disturbance does not occur exclusively during episodes of anorexia nervosa.
+        (
+          be.experience_regular_episodes_lowest == 2 | #"At times of low weight and at times outside of low weight"
+         be.experience_regular_episodes_lowest == 0 | #No
+    (is.na(be.experience_regular_episodes_lowest) &
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it.
+         ),
+    true = 1,
+    false = 0,
+    missing = NA_real_)
+  )
+
+# Recode numeric variable to factor
+edgi_dat_id$ed.DSM5_BN_atypical_binary <-
+  recode_factor(edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric,
+                "0" = "No DSM-5 atypical BN",
+                "1" = "DSM-5 atypical BN")
+
+# Summary
+edgi_dat_id %>%
+  freq(ed.DSM5_BN_atypical_binary)
+```
+
+##NES
+
+```{r Coerce variables needed for algorithm to numeric}
+#Duration in months of eating after evening meal
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(nes.consuming_long_evening_meal.1 = 
+           as.numeric(nes.consuming_long_evening_meal.1))
+
+#Duration in months of waking up during the night to eat at a particular frequency
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(nes.frequency_long_eat.1 = 
+           as.numeric(nes.frequency_long_eat.1))
+
+#Check data
+edgi_dat_id %>% 
+  freq(nes.consuming_long_evening_meal.1)
+
+edgi_dat_id %>% 
+  freq(nes.frequency_long_eat.1)
+```
+
+DSM-5 definition of Night Eating Syndrome (NES):
+
+NES: Recurrent episodes of night eating, as manifested by eating after awakening 
+from sleep or by excessive food consumption after the evening meal. There is 
+awareness and recall of the eating. The night eating is not better explained by 
+external influences such as changes in the individual’s sleep-wake cycle 
+or by local social  norms. The night eating causes significant distress and/or 
+impairment in functioning.  The  disordered  pattern  of eating  is  not  better 
+explained  by  binge-eating  disorder or another mental disorder,  including 
+substance use, and is not attributable to another medical disorder or to an 
+effect of medication.
+
+Key criterions summarised:
+
+-Criterion A: Recurrent episodes of night eating or excessive eating after evening meal
+-Criterion B: Awareness and recall of night time eating
+-Criterion C: Night eating not explained by other factors, e.g. social norms, external influences
+-Criterion D: Causes significant distress and/or impairment
+-Criterion E: Not explained by other ED, MH disorder, substance use, or medication
+
+```{r DSM-5 night eating syndrome algorithm EDGI}
+edgi_dat_id$ed.DSM5_NES_binary_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+    
+    #Criterion A: Re-occuring awakenings to eat or regularly eating after evening meals
+    #The duration of 3 months is based on the diagnostic criteria for BED
+    (
+      (nes.awake_sleep_eat_food == 1 & #Yes, getting up to eat in the night
+        nes.awake_sleep_eat_food.txt > 0 & #Frequency of getting up to eat is more than 0
+        nes.frequency_long_eat.1 >= 3) | #Has been continuing for >= 3 months
+        
+      (nes.generally_eat_percentage_daily.1 >= 20 & #Consuming 20% of food intake after evening
+        nes.consuming_long_evening_meal.1 >= 3) #Has been continuing for >= 3 months
+      ) & 
+    
+    #Criterion B: Awareness and recall of night time eating
+    (
+      nes.aware_night_eating == 3 | #Somewhat aware
+        nes.aware_night_eating == 5 | #Extremely aware
+        
+      nes.recall_night_eating_day == 2 | #Sometimes recall
+        nes.recall_night_eating_day == 3 #Always recall
+      ) &
+    
+    #Criterion C: Night eating/post-evening meal eating not explained by external factors
+    (
+      nes.do_you_have_sleep_apnea == 0 & #Do not have sleep apnea
+        nes.night_shift_evening_regularly == 0 #Do not work night shifts
+      ) &
+    
+    #Criterion D: Significant distress and/or impairment
+    (
+      nes.upset_night_eating == 3 | #Somewhat upset
+        nes.upset_night_eating == 5 | #Extremely upset
+      
+      nes.night_impaired_eating_daily == 3 | #Somewhat impairing
+        nes.night_impaired_eating_daily == 5 #Extremely impairing
+      ) &
+    
+    #Criterion E: Not due to other ED, MH disorder, substance use, or medication
+    (nes.general_feeling_depressed_isyour != 3 & #Not experiencing daily depressive symptoms in the evening/night time
+       nes.general_feeling_depressed_isyour != -77 &
+       !is.na(nes.general_feeling_depressed_isyour)
+     ),
+    
+    true = 1,
+    false = 0,
+    missing = NA_real_
+    )
+  )
+
+#Recode numeric to factor
+edgi_dat_id$ed.DSM5_NES_binary <-
+  recode_factor(edgi_dat_id$ed.DSM5_NES_binary_numeric,
+                "0" = "No DSM5 night eating syndrome",
+                "1" = "DSM5 night eating syndrome")
+
+#Summary
+edgi_dat_id %>% 
+  freq(ed.DSM5_NES_binary)
+```
+
+##Purging disorder
+Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications) in the absence of binge eating.
+
+```{r DSM-5 purging disorder EDGI}
+edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <- 
+  with(edgi_dat_id,
+  dplyr::if_else(
+#Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications)
+
+          (
+          # Vomiting to control weight or shape
+          (icb.made_yourself_vomit == 1 | #"A few times"
+          icb.made_yourself_vomit == 2 ) | #"Often"
+          
+          # Laxatives to control weight or shape
+          (icb.used_laxatives == 1 | # "A few times"
+          icb.used_laxatives == 2 ) | # "Often"
+  
+          # Diuretics to control weight or shape
+          (icb.used_diuretics  == 1 | # "A few times"
+          icb.used_diuretics  == 2 ) | #"Often"
+            
+          # Diet pills to control weight or shape
+          (icb.used_diet_pills == 1 | #"A few times"
+          icb.used_diet_pills == 2 ) # "Often"
+          ) & 
+          
+# Not included fasting and/or exercise because they are not purging behaviours but included diet pills as "other medication"
+  
+# ...in the absence of binge eating.
+  
+# Was there ever a time when you engaged in compensatory behaviors on average,once a week for 3 months when you were not also binge-eating?
+  
+   (icb.wasthere_binge_eating_made == 1 # Yes
+   ), 
+
+    true = 1,
+    false = 0,
+    missing = NA_real_)
+)
+  
+#Recode numeric to factor
+edgi_dat_id$ed.DSM5_purging_disorder_binary <-
+  recode_factor(edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric,
+                "0" = "No DSM5 purging disorder",
+                "1" = "DSM5 purging disorder")
+
+#Summary
+freq(edgi_dat_id$ed.DSM5_purging_disorder_binary)
+```
+
+# Combining Data
+
+```{r Put algorithm variables into a vector}
+#Retrieve algorithm variable names
+algorithm_vars <- edgi_dat_id %>% 
+  select(contains("DSM5")) %>% 
+  colnames()
+
+#List algorithm variables to remove
+remove_vars <- edgi_dat_id %>% 
+  select(contains("module")) %>% 
+  colnames()
+
+#Create df with just the desired algorithm variables
+dat <- edgi_dat_id %>% 
+  select(ID,
+         sample,
+         all_of(algorithm_vars)) %>% 
+  select(-all_of(remove_vars))
+
+#Check data
+dat %>% 
+  head()
+```
+
+Extract and save labels
+```{r Extract save labels}
+# Save variable labels
+question_labels <- sjlabelled::get_label(dat)
+
+# Save value labels
+answer_labels <- sjlabelled::get_labels(dat, values = "as.name")
+
+# Change -77 to -777 in value labels names
+chng <- rapply(sapply(answer_labels, names),
+               function(x) ifelse(x==-77, -777, x),
+               how = "replace")
+
+# Add multiple lines here as necessary to change other nonanswer values in labels
+# chng <- rapply(chng,
+#                function(x) ifelse(x==-88, -888, x),
+#                how = "replace")
+
+# Substitute new value labels into answer_labels
+for (i in 1:length(chng)){
+  if(!is.null(answer_labels[[i]])){
+  names(answer_labels[[i]]) <- chng[[i]]
+  }
+}
+```
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(where(is.numeric),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)
+                )
+         )
+
+# Re-add labels after mutate
+dat <- sjlabelled::set_label(dat, question_labels)
+dat <- sjlabelled::set_labels(dat, labels = answer_labels)
+```
+
+Create list of all labels and attributes
+This chunk supersedes all categorical/numeric cleaning
+It gives you an output of c(the question label, all value-label pairs)
+for each variable
+Check for errors in the output of this chunk, including:
+- Label spelling errors (for questions and answers)
+- Incorrect values
+- Mismatches between labels and values
+- Scale errors
+- Variable naming issues from the data extraction
+- Any other issues you can see
+All issues/changes need to be logged as a to-do on Teams with yourself and Saakshi/Mika tagged
+At this point, you also need to pick out any continuous, date or text variables 
+to be cleaned in the later chunks
+```{r List labels attrs}
+label_list <- sapply(dat, function(x) c(attr(x, "label"), attr(x, "labels")))
+label_list
+```
+
+# Save cleaned data
+
+Combined object for excluded participants
+```{r GLAD EDGI NBR save excluded participants}
+#glad_edgi_nbr_excluded <- as.data.frame(cbind(glad_excluded, edgi_excluded, nbr_excluded))
+#glad_edgi_nbr_excluded
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  #filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean.rds")
+    )
+```

@@ -1,0 +1,700 @@
+---
+title: "Cleaning education variables and deriving highest education variable in GLAD & EDGI"
+author: "Chelsea Mika Malouf"
+date: "29/07/2021"
+output: html_document
+---
+
+This is the cleaning script for the education variables in GLAD & EDGI and the chunks of code to create a derived variable for "highest education". 
+Please note that the numeric variables contain -777, but for some reason these are dropped in the non-numeric versions (i.e., the non-numeric versions do not have "Seen but not answered" in them.)
+
+# Set up 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+)
+```
+
+```{r Delete everything in your global environment}
+remove(list = ls())
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+
+```{r Install load dependencies}
+packages <- c("summarytools",
+              "sjlabelled",
+              "Amelia",
+              "gtsummary",
+              "tidyverse")
+
+package_check(packages)
+```
+
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+
+# Read in the data
+
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")
+  )
+  
+# Check variable names in dataframe
+glad_dat %>%
+  colnames()
+
+# Inspect dimensions of dataframe 
+glad_dat %>%
+  dim()
+```
+
+```{r GLAD specify excluded columns}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate"
+  )
+```
+
+Select & rename relevant columns
+```{r GLAD select}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  distinct(externalDataReference, .keep_all = TRUE) %>% # Keeps only the first line of the duplicates
+  add_column(sample = "GLAD",
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate,
+         dem.college_or_university_degree, #Which of the qualifications do you have?
+         dem.a_levelsas_levels_or_equivalent , #Which of the qualifications do you have?
+         dem.o_levelsgcses_or_equivalent , #Which of the qualifications do you have?
+         dem.cses_or_equivalent , #Which of the qualifications do you have?
+         dem.nvq_or_hnd_or_hnc_or_equivalent , #Which of the qualifications do you have?
+         dem.other_professional_qualifications , #Which of the qualifications do you have?
+         dem.none_of_the_above #Which of the qualifications do you have?# other columns as necessary
+         )%>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+glad_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1] - dim(glad_dat)[1]
+glad_excluded
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+glad_miss_map <- glad_dat_id %>% 
+  missmap()
+
+glad_miss_map
+```
+
+## EDGI demographics data
+```{r EDGI Read in data}
+edgi_dat <- read_rds(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+  
+# Check variable names in dataframe
+edgi_dat %>%
+  colnames()
+
+# Inspect dimensions of dataframe 
+edgi_dat %>%
+  dim()
+
+```
+
+Find differences between colnames of GLAD and EDGI dataframes
+`setdiff()` gives the items in the first argument that are not in the second argument
+```{r Check colnames}
+setdiff(colnames(edgi_dat), colnames(glad_dat))
+```
+
+Select & rename relevant columns
+```{r EDGI select & rename relevant columns}
+edgi_dat_id <- edgi_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  distinct(externalDataReference, .keep_all = TRUE) %>% # Keeps only the first line of the duplicates
+  add_column(sample = "EDGI",
+             .after = "externalDataReference") %>% # Create new sample column
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate,
+         dem.college_or_university_degree, 
+         dem.a_levelsas_levels_or_equivalent,
+         dem.o_levelsgcses_or_equivalent, 
+         dem.cses_or_equivalent,
+         dem.nvq_or_hnd_or_hnc_or_equivalent,
+         dem.other_professional_qualifications,
+         dem.none_of_the_above
+         ) %>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+edgi_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions
+dim(edgi_dat_id)
+
+#Differences 
+edgi_excluded <- dim(edgi_dat_id)[1]-dim(edgi_dat)[1]
+edgi_excluded
+```
+
+Check missingness by missmap
+```{r EDGI inspect missingness}
+edgi_miss_map <- edgi_dat_id %>% 
+  missmap()
+
+edgi_miss_map
+```
+
+# Bind rows of GLAD & EDGI
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id)
+
+# Check
+dat %>% glimpse()
+```
+
+
+# Data cleaning 
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(ends_with("numeric"),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)))
+```
+
+
+# Numeric variables
+
+The following variables are coded 0 for no, 1 for yes (yes/no response)
+
+## Vector of numeric values 
+```{r Vector numeric values}
+values_numeric_0_1 <- c(
+  -777, # only seen but not answered
+  0,
+  1,
+  NA
+  )
+values_numeric_0_1
+```
+
+## Vector of answer options for numeric variables
+```{r Vector of answer options for numeric variables}
+variables_numeric_0_1 <-
+  c(
+    "dem.college_or_university_degree_numeric" ,
+    "dem.a_levelsas_levels_or_equivalent_numeric" ,
+    "dem.o_levelsgcses_or_equivalent_numeric" ,
+    "dem.cses_or_equivalent_numeric" ,
+    "dem.nvq_or_hnd_or_hnc_or_equivalent_numeric" ,
+    "dem.other_professional_qualifications_numeric" ,
+    "dem.none_of_the_above_numeric"
+    )
+variables_numeric_0_1
+```
+
+
+```{r imp_check numeric variables}
+imp_check(data = dat,
+          variables = variables_numeric_0_1,
+          values = values_numeric_0_1)
+```
+
+# Non-numeric variables 
+
+## Vector of variable name for Uni/College
+```{r Vector of variable name for Uni/College}
+variables_categorical_0_1_uni <-
+  c(
+    "dem.college_or_university_degree"
+    )
+variables_categorical_0_1_uni
+```
+
+## Vector of answer options for University or College degree
+```{r Vector of answer options for University or College degree}
+values_categorical_0_1_uni <- 
+  c(
+  "Not College or university degree" ,
+  "College or university degree" ,
+  NA
+  )
+values_categorical_0_1_uni
+```
+
+## Imp_check variable University or College degree
+```{r imp_check variable University or College degree}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_uni,
+          values = values_categorical_0_1_uni)
+
+#++Variable names for EDGI do not match GLAD. Need to mutate variable
+```
+
+### Making the names the same across EDGI and GLAD College/University. Remove once fixed on Qualtrics
+++ EDGI had College/University whereas GLAD had College or university degree. Changed to match GLAD
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics. 
+```{r Unify labels for University or College degree}
+dat <- dat %>%  
+  mutate(dem.college_or_university_degree = 
+           fct_recode(dem.college_or_university_degree,
+    "Not College or university degree" = "Not College/University",
+    "College or university degree" = "College/University")
+    )
+```
+
+## Re do imp_check University or College degree
+```{r Re do imp_check University or College degree}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_uni,
+          values = values_categorical_0_1_uni)
+```
+
+## Vector of variable name for A levels
+```{r Vector of variable name A levels}
+variables_categorical_0_1_a_levels <-
+  c(
+    "dem.a_levelsas_levels_or_equivalent"
+    )
+variables_categorical_0_1_a_levels
+```
+
+## Vector of answer options for A levels
+```{r Vector of answer options for A levels}
+values_categorical_0_1_a_levels <- 
+  c(
+  "Not A levels/AS levels or equivalent" ,
+  "A levels/AS levels or equivalent" ,
+  NA
+  )
+values_categorical_0_1_a_levels
+```
+
+## imp_check A levels
+```{r imp_check A levels}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_a_levels,
+          values = values_categorical_0_1_a_levels)
+```
+
+###Making the names the same across EDGI and GLAD A levels. Remove once fixed on Qualtrics
+Changed to make EDGI match GLAD
+++ There were implausible values for all variables, so in this section the variable is recoded to match GLAD. Numeric variables were fine
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics. 
+```{r unify all labels A levels}
+dat <- dat %>%  
+  mutate(dem.a_levelsas_levels_or_equivalent = 
+           fct_recode(dem.a_levelsas_levels_or_equivalent,
+    "Not A levels/AS levels or equivalent" = "Not As/A Levels",
+    "A levels/AS levels or equivalent" = "As/A Levels")
+    )
+```
+
+## Re do imp_check A levels
+```{r Re do imp_check A levels}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_a_levels,
+          values = values_categorical_0_1_a_levels)
+```
+
+## Vector of variable name for O levels/GCSEs
+```{r Vector of variable names O levels/GCSEs}
+variables_categorical_0_1_o_levels <-
+  c(
+    "dem.o_levelsgcses_or_equivalent"
+    )
+variables_categorical_0_1_o_levels
+```
+
+## Vector of answer options for O levels/GCSEs
+```{r Vector of answer options for O levels/GCSEs}
+values_categorical_0_1_o_levels <-
+  c(
+    "Not O levels/GCSEs or equivalent" ,
+    "O levels/GCSEs or equivalent" ,
+    NA
+    )
+values_categorical_0_1_o_levels
+```
+
+## Imp_check O levels/GCSEs
+```{r imp_check O levels/GCSEs}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_o_levels,
+          values = values_categorical_0_1_o_levels)
+
+#++EDGI variable does not match GLAD. variable needs to be mutated to match
+```
+
+### Making the names the same across EDGI and GLAD GCSE. Remove once fixed on Qualtrics
+EDGI codes changed to match GLAD
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics. 
+```{r Unify all labels O levels/GCSEs}
+dat <- dat %>%  
+  mutate(dem.o_levelsgcses_or_equivalent = 
+           fct_recode(dem.o_levelsgcses_or_equivalent,
+    "Not O levels/GCSEs or equivalent" = "Not GCSE",
+    "O levels/GCSEs or equivalent" = "GCSE")
+    )
+```
+
+## Re do imp_check O levels/GCSEs
+```{r Re do imp_check O levels/GCSEs}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_o_levels,
+          values = values_categorical_0_1_o_levels)
+
+#++no more implausible values
+```
+
+## Vector of variable name for CSES or equivalent
+```{r Vector of variables CSEs or equivalent }
+variables_categorical_0_1_cses <-
+  c(
+    "dem.cses_or_equivalent"
+    )
+variables_categorical_0_1_cses
+```
+
+## Vector of answer options for CSES or equivalent 
+```{r Vector of answer options for CSES or equivalent }
+values_categorical_0_1_cses <-
+  c(
+    "Not CSEs or equivalent"  ,
+    "CSEs or equivalent" ,
+    NA
+    )
+values_categorical_0_1_cses
+```
+
+## imp_check CSEs or equivalent
+```{r imp_check CSEs or equivalent}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_cses,
+          values = values_categorical_0_1_cses)
+#++EDGI variable does not match GLAD. variable needs to be mutated to match
+```
+
+### Making the names the same across EDGI and GLAD CSE. Remove once fixed on Qualtrics
+EDGI codes changed to match GLAD
+++ There were implausible values for all variables, so in this section the variable is recoded to match GLAD. Numeric variables were fine
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics. 
+```{r unify all labels CSEs or equivalent}
+dat <- dat %>%  
+  mutate(dem.cses_or_equivalent = 
+           fct_recode(dem.cses_or_equivalent,
+    "Not CSEs or equivalent" = "Not CSE",
+    "CSEs or equivalent" = "CSE")
+    )
+```
+
+## Re do imp_check CSEs or equivalent
+```{r Re do imp_check CSEs or equivalent}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_cses,
+          values = values_categorical_0_1_cses)
+```
+
+## Vector of variable name for NVQ or equivalent
+```{r Vector of variable name for NVQ or equivalent}
+variables_categorical_0_1_nvq <-
+  c(
+    "dem.nvq_or_hnd_or_hnc_or_equivalent"
+    )
+variables_categorical_0_1_nvq
+```
+
+## Vector of answer options for NVQ or equivalent
+```{r Vector of answer options for NVQ or equivalent}
+values_categorical_0_1_nvq <-
+  c(
+    "Not NVQ or HND or HNC or equivalent" ,
+    "NVQ or HND or HNC or equivalent" ,
+    NA
+    )
+values_categorical_0_1_nvq
+```
+
+## imp_check NVQ or equivalent
+```{r imp_check NVQ or equivalent}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_nvq,
+          values = values_categorical_0_1_nvq)
+#++EDGI variable does not match GLAD. variable needs to be mutated to match
+```
+
+### Making the names the same across EDGI and GLAD NVQ. Remove once fixed on Qualtrics
+EDGI codes changed to match GLAD
+++ There were implausible values for all variables, so in this section the variable is recoded to match GLAD. Numeric variables were fine
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics. 
+```{r unify all labels NVQ or equivalent}
+dat <- dat %>%  
+  mutate(dem.nvq_or_hnd_or_hnc_or_equivalent = 
+           fct_recode(dem.nvq_or_hnd_or_hnc_or_equivalent,
+    "Not NVQ or HND or HNC or equivalent" = "Not NVQ",
+    "NVQ or HND or HNC or equivalent" = "NVQ")
+  )
+```
+
+## Re do imp_check NVQ or equivalent
+```{r Re do imp_check NVQ or equivalent}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_nvq,
+          values = values_categorical_0_1_nvq)
+```
+
+## Vector of variable name for Other Professional Qualifications
+```{r Vector variable name for Other Professional Qualifications}
+variables_categorical_0_1_other <-
+  c(
+    "dem.other_professional_qualifications"
+    )
+variables_categorical_0_1_other
+```
+
+## Vector of answer options for Other Professional Qualifications
+```{r Vector of answer options Other Professional Qualifications}
+values_categorical_0_1_other <-
+  c(
+    "Not Other professional qualifications"  ,
+    "Other professional qualifications" ,
+    NA
+    )
+values_categorical_0_1_other
+```
+
+## imp_check Other Professional Qualifications
+```{r imp_check Other Professional Qualifications}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_other,
+          values = values_categorical_0_1_other)
+#++EDGI variable does not match GLAD. variable needs to be mutated to match
+```
+
+### Making the names the same across EDGI and GLAD Other qualifications. Remove once fixed on Qualtrics
+EDGI codes changed to match GLAD
+++ There were implausible values for all variables, so in this section the variable is recoded to match GLAD. Numeric variables were fine
+++ Mika Malouf messaged Molly Davies to change the variables in EDGI to match that of GLAD in Qualtrics.
+```{r Unify all labels Other Professional Qualifications}
+dat <- dat %>%  
+  mutate(dem.other_professional_qualifications = 
+           fct_recode(dem.other_professional_qualifications,
+    "Not Other professional qualifications" = "Not Other",
+    "Other professional qualifications" = "Other")
+  )
+```
+
+## Re do imp_check Other Professional Qualifications
+```{r Re do imp_check Other Professional Qualifications}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_other,
+          values = values_categorical_0_1_other)
+```
+
+
+## Vector of variable name for none of the above
+```{r Vector of variable name for None of the above}
+variables_categorical_0_1_none <-
+  c(
+    "dem.none_of_the_above"
+    )
+variables_categorical_0_1_none
+```
+
+## Vector of answer options for None the above 
+```{r Vector of answer options for None the above e}
+values_categorical_0_1_none <-
+  c(
+    "Not None of the above" ,
+    "None of the above" ,
+    NA
+    )
+values_categorical_0_1_none
+```
+
+## imp_check None of the above
+```{r imp_check None of the above}
+imp_check(data = dat,
+          variables = variables_categorical_0_1_none,
+          values = values_categorical_0_1_none)
+#++no implausible values. can leave as is
+```
+
+
+# Make a categorical variable where highest_education is the variable and qualifications are categories - collapsed
+dem.highest_education in similar style as PANCHANGE created variable. None of the above category is added.
+### This variable is for purpose of merging data with RAMP to allow consistency across datasets
+```{r Create highest education collapsed variable}
+dat <- dat %>%
+  mutate(
+    dem.highest_education_collapsed_numeric =
+      case_when(
+        dem.college_or_university_degree_numeric == "1" ~ 4,
+        dem.a_levelsas_levels_or_equivalent_numeric == "1" ~ 3,
+        dem.nvq_or_hnd_or_hnc_or_equivalent_numeric == "1" ~ 2,
+        dem.o_levelsgcses_or_equivalent_numeric == "1" ~ 1,
+        dem.cses_or_equivalent_numeric == "1" ~ 1,
+        dem.none_of_the_above_numeric == "1" ~ 0 )
+    )
+
+# recode the numeric version into a factor
+dat <- dat %>%
+  mutate(
+    dem.highest_education_collapsed =
+      recode_factor(
+        dem.highest_education_collapsed_numeric,
+        `0` = "None of the above" ,
+        `1` = "GCSEs/CSEs/O-levels or equivalent",
+        `2` = "NVQ/HND/HNC or equivalent",
+        `3` = "A-levels/AS-levels or equivalent",
+        `4` = "University")
+    )
+
+dat %>%
+  select(dem.highest_education_collapsed,
+         dem.highest_education_collapsed_numeric) %>% 
+  freq()
+```
+
+# Make a categorical variable where highest_education is the variable and qualifications are categories - finegrained
+dem.highest_education in similar style as PANCHANGE created variable. None of the above category is added.
+```{r Create highest education finegrained variable}
+dat <- dat %>%
+  mutate(
+    dem.highest_education_finegrained_numeric =
+      case_when(
+        dem.college_or_university_degree_numeric == "1" ~ 5,
+        dem.a_levelsas_levels_or_equivalent_numeric == "1" ~ 4,
+        dem.nvq_or_hnd_or_hnc_or_equivalent_numeric == "1" ~ 3,
+        dem.o_levelsgcses_or_equivalent_numeric == "1" ~ 2,
+        dem.cses_or_equivalent_numeric == "1" ~ 1,
+        dem.none_of_the_above_numeric == "1" ~ 0 )
+    )
+
+# recode the numeric version into a factor
+dat <- dat %>%
+  mutate(
+    dem.highest_education_finegrained =
+      recode_factor(
+        dem.highest_education_finegrained_numeric,
+        `0` = "None of the above" ,
+        `1` = "CSEs or equivalent",
+        `2` = "O-levels/GCSEs or equivalent",
+        `3` = "NVQ/HND/HNC or equivalent",
+        `4` = "AS-levels/A-levels or equivalent",
+        `5` = "University degree or equivalent"
+        )
+    )
+
+dat %>%
+  select(dem.highest_education_finegrained,
+         dem.highest_education_finegrained_numeric) %>% 
+  freq()
+```
+
+
+# Save cleaned data
+
+## Check colnames before exporting final dataset
+```{r check colnames}
+dat %>% colnames()
+```
+
+## Combined object for excluded participants
+```{r GLAD EDGI save excluded participants}
+glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
+glad_edgi_excluded
+```
+
+## GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/highest_education_glad_clean.rds")
+    )
+```
+
+## EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/highest_education_edgi_clean.rds")
+    )
+```
+
+## GLAD & EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/highest_education_glad_edgi_clean.rds")
+    )
+```
