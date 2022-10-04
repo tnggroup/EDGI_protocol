@@ -68,75 +68,6 @@ summary_table <-
         
         by =  mixed_eating_disorders_all,
         
-        label = list(
-        mhd.depression_and_anxiety ~
-        "Depression and Anxiety",
-        mhd.depressive_disorders ~
-        "Depressive Disorders",
-        mhd.anxiety_disorders ~
-        "Anxiety Disorders",
-        mhd.ptsd_numeric~
-        "PTSD",
-        mhd.obsessive_compulsive_disorders ~
-        "Obessive Compulsive Disorders",
-        mhd.personality_disorder_diagnosed_numeric ~
-        "Personality Disorder",
-        mhd.bipolar_and_schizophrenia ~
-        "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
-        mhd.psychotic_disorders ~
-        "Psychotic Disorders",
-        mhd.bipolar_disorder_numeric ~
-        "Bipolar Disorder",
-        mhd.autism_spectrum_disorder ~
-        "ASD" # do we want consistency in whether we are spelling out in full or abbreviating?
-         ),
-                
-          type = list(mhd.depression_and_anxiety ~
-            "categorical",,
-          mhd.depressive_disorders ~
-           "categorical",
-          mhd.anxiety_disorders ~
-            "categorical",
-          mhd.ptsd_numeric~
-            "categorical",
-          mhd.obsessive_compulsive_disorders ~
-            "categorical",
-        mhd.personality_disorder_diagnosed_numeric ~
-            "categorical",
-        mhd.bipolar_and_schizophrenia ~
-            "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
-        mhd.psychotic_disorders ~
-            "categorical",
-        mhd.bipolar_disorder_numeric ~
-            "categorical",
-        mhd.autism_spectrum_disorder ~
-            "categorical" # do we want consistency in whether we are spelling out in full or abbreviating?
-        ),
-
-          statistic = list(
-                             
-            all_categorical() ~ "{n} ({p}%)",
-            
-            all_continuous2() ~ c("{mean} ({sd})",
-                                  "{median} ({p25}, {p75})",
-                                  "{min}, {max}"
-                                  )
-                ), 
-              
-              missing = "always")  %>% 
-  add_n()
-```
-
-
-
-
-```{r summary_table_long table}
-summary_table_long <-
-  dat_somatic_dx_longer %>%
-  gtsummary::tbl_summary(
-        
-        by =  Disorder,
-        
        label = list(
         dem.epilepsy_or_convulsions ~
           "Epilepsy or Convulsions",
@@ -157,11 +88,11 @@ summary_table_long <-
         dem.other_allergy ~
           "Other Allergies",
         dem.osteoporosis ~
-          "Osteoporosis"
+          "Osteoporosis",
         dem.osteoarthritis ~
-          "Osteoarthriris"
+          "Osteoarthriris",
         dem.rheumatoid_arthritis ~
-          "Rheumatoid Arthritis"
+          "Rheumatoid Arthritis",
         dem.other_arthritis ~
           "Any Other Arthritis",
         dem.asthma ~
@@ -290,6 +221,188 @@ summary_table_long <-
         dem.thyroid_disease ~
           "categorical"
         ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+```
+
+
+
+
+```{r summary_table_long table}
+summary_table_long <-
+  dat_somatic_dx_longer %>%
+  gtsummary::tbl_summary(
+        
+        by =  Disorder,
+        
+       label = list(
+        dem.epilepsy_or_convulsions ~
+          "Epilepsy or Convulsions",
+        dem.migraines ~
+          "Migraines",
+        dem.multiple_sclerosis ~
+          "Multiple Sclerosis",
+        dem.parkinsons_disease ~
+          "Parkinson's Disease",
+        dem.severe_memory_loss ~
+          "Severe Memory Loss",
+        dem.hay_fever ~
+          "Hay Fever",
+        dem.drug_allergy ~                                                 
+          "Drug Allergy",                                               
+        dem.food_allergy ~
+          "Food Allergy",
+        dem.other_allergy ~
+          "Other Allergies",
+        dem.osteoporosis ~
+          "Osteoporosis",
+        dem.osteoarthritis ~
+          "Osteoarthriris",
+        dem.rheumatoid_arthritis ~
+          "Rheumatoid Arthritis",
+        dem.other_arthritis ~
+          "Any Other Arthritis",
+        dem.asthma ~
+          "Asthma",
+        dem.emphysema_or_chronic_bronchitis ~
+          "Emphysema or Chronic Bronchitis",
+        dem.heart_attack_or_angina ~
+          "Heart Attack or Angina",
+        dem.high_blood_cholesterol ~
+          "High Cholesterol",
+        dem.high_blood_pressure ~   
+          "High Blood Pressure",
+        dem.atrial_fibrillation ~
+          "Atrial Fibrillation",
+        dem.stroke ~
+          "Stroke",
+        dem.crohns_disease ~
+          "Crohn's Disease",
+        dem.ulcerative_colitis ~
+          "Ulcerative Colitis",
+        dem.coeliac_disease ~
+          "Coeliac Disease",
+        dem.diabetes_type_1 ~
+          "Diabetes Type 1",
+        dem.diabetes_type_2 ~   
+          "Diabetes Type 2",
+        dem.pain_due_to_diabetes ~
+          "Diabetic-related Pain",
+        dem.pain_due_to_virus ~
+            "Viral-related Pain",
+        dem.breast_cancer ~
+          "Breast Cancer",
+        dem.lung_cancer ~
+          "Lung Cancer",
+        dem.stomach_cancer ~
+          "Stomach Cancer",
+        dem.colon_cancer ~
+          "Colon Cancer",
+        dem.uterus_cancer ~
+          "Uterus Cancer",
+        dem.prostate_cancer ~
+          "Prostate Cancer",
+        dem.psoriasis ~
+          "Psoriasis",
+        dem.vitiligo ~
+          "Vitiligo",
+        dem.eczema ~
+          "Eczema",
+        dem.thyroid_disease ~
+          "Thyroid Disease"
+        ),
+                
+          type = list(
+            dem.epilepsy_or_convulsions ~
+          "dichotomous",
+        dem.migraines ~
+          "categorical",
+        dem.multiple_sclerosis ~
+          "categorical",
+        dem.parkinsons_disease ~
+          "categorical",
+        dem.severe_memory_loss ~
+          "categorical",
+        dem.hay_fever ~
+          "categorical",
+        dem.drug_allergy ~                                                 
+          "categorical",                                               
+        dem.food_allergy ~
+          "categorical",
+        dem.other_allergy ~
+          "categorical",
+        dem.osteoporosis ~
+          "categorical",
+        dem.osteoarthritis ~
+          "categorical",
+        dem.rheumatoid_arthritis ~
+          "categorical",
+        dem.other_arthritis ~
+          "categorical",
+        dem.asthma ~
+          "categorical",
+        dem.emphysema_or_chronic_bronchitis ~
+          "categorical",
+        dem.heart_attack_or_angina ~
+          "categorical",
+        dem.high_blood_cholesterol ~
+          "categorical",
+        dem.high_blood_pressure ~   
+          "categorical",
+        dem.atrial_fibrillation ~
+          "categorical",
+        dem.stroke ~
+          "categorical",
+        dem.crohns_disease ~
+          "categorical",
+        dem.ulcerative_colitis ~
+          "categorical",
+        dem.coeliac_disease ~
+          "categorical",
+        dem.diabetes_type_1 ~
+          "categorical",
+        dem.diabetes_type_2 ~   
+          "categorical",
+        dem.pain_due_to_diabetes ~
+          "categorical",
+        dem.pain_due_to_virus ~
+            "categorical",
+        dem.breast_cancer ~
+          "categorical",
+        dem.lung_cancer ~
+          "categorical",
+        dem.stomach_cancer ~
+          "categorical",
+        dem.colon_cancer ~
+          "categorical",
+        dem.uterus_cancer ~
+          "categorical",
+        dem.prostate_cancer ~
+          "categorical",
+        dem.psoriasis ~
+          "categorical",
+        dem.vitiligo ~
+          "categorical",
+        dem.eczema ~
+          "categorical",
+        dem.thyroid_disease ~
+          "categorical"
+        ),
+       
+       value =
+       list(
+       dem.epilepsy_or_convulsions = "Epilepsy or convulsions"),
 
           statistic = list(
                              

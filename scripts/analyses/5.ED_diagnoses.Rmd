@@ -26,15 +26,20 @@ Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
 Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
 
 ```{r Load packages}
 library(tidyverse)
+library(flextable)
+library(officer)
 library(gtsummary)
 ```
 
@@ -55,65 +60,6 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 names(selfreport_algo_sex)
 ```
 
-
-```{r format table}
-summary_table <-
-  gtsummary::tbl_strata(
-    data = dat_summary_table, 
-    strata = ed.DSM5_AN_binary,
-    .tbl_fun =
-      ~ .x %>%
-      tbl_summary(
-        
-        by =  ed.DSM5_BED_binary,
-        
-        label = list(
-        dem.which_gender_do_you_identify_with ~
-          "Gender",
-        dem.what_is_your_sexual_orientation ~
-          "Sexual Orientation",
-        dem.do_you_identify_as_transgender ~
-          "Transgender"
-        ),
-                
-          type = list(dem.which_gender_do_you_identify_with ~ 
-            "categorical",
-          dem.what_is_your_sexual_orientation ~
-            "categorical",
-          dem.do_you_identify_as_transgender ~
-            "categorical"),
-
-          statistic = list(
-                             
-            all_categorical() ~ "{n} ({p}%)",
-            
-            all_continuous2() ~ c("{mean} ({sd})",
-                                  "{median} ({p25}, {p75})",
-                                  "{min}, {max}"
-                                  )
-                ), 
-              
-              missing = "always")  %>% 
-  add_n()
-  )
-```
-
-Add bold labels to table
-
-```{r table with bold labels}
-summary_table %>% 
-  bold_labels() 
-```
-
-Save as a word document
-
-```{r table as word document}
-summary_table %>%
-  as_flex_table() %>%
-  flextable::save_as_docx(
-    path = "../results/ARFID_ASD_sex.docx"
-  )
-```
 
 
 # Table of frequency of eating disorder
@@ -160,7 +106,7 @@ dat_eds_binary_sex_numeric <- dat %>%
 dat_eds_binary_sex_numeric
 ```
 
-```{r upset plot}
+```{r upset plot, fig.height=6, fig.width=7}
 # Create numeric binary variables needed
 dat <- dat %>% 
   mutate(ed.DSM5_AN_binge_purge_binary_numeric = 
@@ -223,61 +169,8 @@ UpSetR::upset(dat_upset,
     
 ```
 
-Label variables for table and select type of data
-
-```{r tbl_summary}
-summary_table <- summary %>% 
-  tbl_summary(
-              label = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "Patient's biological sex",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "Age in years",
-                 asd_diagnosis ~ 
-                  "Comorbid autism spectrum disorder diagnosis",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "BMI-for-age z-score",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "A1: Weight loss or difficulty maintaining weight/growth", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "A2: Nutritional deficiency", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "A3: Enteral feeding or oral supplement", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "A4: Psychosocial impairment"),
-              
-              
-              type = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "categorical",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "continuous2",
-                 asd_diagnosis ~
-                  "categorical",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "continuous2",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "categorical"), 
-              
-              statistic = list(
-                all_categorical() ~ "{n} ({p}%)",
-                all_continuous2() ~ c("{mean} ({sd})",
-                                      "{median} ({p25}, {p75})",
-                                      "{min}, {max}")
-                ), 
-              
-              missing = "no"
-    ) 
-```
-
 ```{r modify labls and run table}
-summary_table %>% 
+dat_eds_binary_sex_numeric_mod <- dat_eds_binary_sex_numeric %>% 
   modify_caption("**Table 1. Patient Characteristics**") %>%  
   modify_footnote(all_stat_cols() ~ "n(%) or Mean(SD)") %>% 
   bold_labels() %>% 
@@ -286,3 +179,25 @@ summary_table %>%
 ```
 
 
+Save as a word document
+
+```{r word properties}
+sect_properties <- officer::prop_section(
+  page_size = page_size(
+    orient = "landscape",
+    width = 8.3, height = 11.7
+  ),
+  type = "continuous",
+  page_margins = page_mar()
+)
+```
+
+
+```{r summary_table_long as word document}
+dat_eds_binary_sex_numeric_mod %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../../results/EDGI_dx.docx",
+    pr_section = sect_properties
+  )
+```
