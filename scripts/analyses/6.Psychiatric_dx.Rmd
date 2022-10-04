@@ -24,17 +24,21 @@ Add the add_numeric function - used to convert character variables into numeric 
 Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
 
 ```{r Load packages}
 library(tidyverse)
+library(flextable)
+library(officer)
 library(gtsummary)
 ```
 
@@ -56,32 +60,57 @@ names(dat_psych_dx)
 ```
 
 
-```{r format table}
+```{r summary_table table}
 summary_table <-
-  gtsummary::tbl_strata(
-    data = dat_summary_table, 
-    strata = ed.DSM5_AN_binary,
-    .tbl_fun =
-      ~ .x %>%
-      tbl_summary(
+  dat_demographics %>%
+  gtsummary::tbl_summary(
         
-        by =  ed.DSM5_BED_binary,
+        by =  mixed_eating_disorders_all,
         
         label = list(
-        dem.which_gender_do_you_identify_with ~
-          "Gender",
-        dem.what_is_your_sexual_orientation ~
-          "Sexual Orientation",
-        dem.do_you_identify_as_transgender ~
-          "Transgender"
-        ),
+        mhd.depression_and_anxiety ~
+        "Depression and Anxiety",
+        mhd.depressive_disorders ~
+        "Depressive Disorders",
+        mhd.anxiety_disorders ~
+        "Anxiety Disorders",
+        mhd.ptsd_numeric~
+        "PTSD",
+        mhd.obsessive_compulsive_disorders ~
+        "Obessive Compulsive Disorders",
+        mhd.personality_disorder_diagnosed_numeric ~
+        "Personality Disorder",
+        mhd.bipolar_and_schizophrenia ~
+        "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
+        mhd.psychotic_disorders ~
+        "Psychotic Disorders",
+        mhd.bipolar_disorder_numeric ~
+        "Bipolar Disorder",
+        mhd.autism_spectrum_disorder ~
+        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
+         ),
                 
-          type = list(dem.which_gender_do_you_identify_with ~ 
+          type = list(mhd.depression_and_anxiety ~
             "categorical",
-          dem.what_is_your_sexual_orientation ~
+          mhd.depressive_disorders ~
+           "categorical",
+          mhd.anxiety_disorders ~
             "categorical",
-          dem.do_you_identify_as_transgender ~
-            "categorical"),
+          mhd.ptsd_numeric~
+            "categorical",
+          mhd.obsessive_compulsive_disorders ~
+            "categorical",
+        mhd.personality_disorder_diagnosed_numeric ~
+            "categorical",
+        mhd.bipolar_and_schizophrenia ~
+            "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
+        mhd.psychotic_disorders ~
+            "categorical",
+        mhd.bipolar_disorder_numeric ~
+            "categorical",
+        mhd.autism_spectrum_disorder ~
+            "categorical", # do we want consistency in whether we are spelling out in full or abbreviating?
+        ),
 
           statistic = list(
                              
@@ -95,23 +124,123 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
-  )
 ```
+
+
+
+
+```{r summary_table_long table}
+summary_table_long <-
+  dat_demographics_long %>%
+  gtsummary::tbl_summary(
+        
+        by =  Disorder,
+        
+        label = list(
+        mhd.depression_and_anxiety ~
+        "Depression and Anxiety",
+        mhd.depressive_disorders ~
+        "Depressive Disorders",
+        mhd.anxiety_disorders ~
+        "Anxiety Disorders",
+        mhd.ptsd_numeric~
+        "PTSD",
+        mhd.obsessive_compulsive_disorders ~
+        "Obessive Compulsive Disorders",
+        mhd.personality_disorder_diagnosed_numeric ~
+        "Personality Disorder",
+        mhd.bipolar_and_schizophrenia ~
+        "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
+        mhd.psychotic_disorders ~
+        "Psychotic Disorders",
+        mhd.bipolar_disorder_numeric ~
+        "Bipolar Disorder",
+        mhd.autism_spectrum_disorder ~
+        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
+         ),
+                
+          type = list(mhd.depression_and_anxiety ~
+            "categorical",
+          mhd.depressive_disorders ~
+           "categorical",
+          mhd.anxiety_disorders ~
+            "categorical",
+          mhd.ptsd_numeric~
+            "categorical",
+          mhd.obsessive_compulsive_disorders ~
+            "categorical",
+        mhd.personality_disorder_diagnosed_numeric ~
+            "categorical",
+        mhd.bipolar_and_schizophrenia ~
+            "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
+        mhd.psychotic_disorders ~
+            "categorical",
+        mhd.bipolar_disorder_numeric ~
+            "categorical",
+        mhd.autism_spectrum_disorder ~
+            "categorical", # do we want consistency in whether we are spelling out in full or abbreviating?
+        ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+```
+
+
 
 Add bold labels to table
 
-```{r table with bold labels}
+```{r summary_table with bold labels}
 summary_table %>% 
   bold_labels() 
 ```
 
+```{r summary_table_long with bold labels}
+summary_table_long %>% 
+  bold_labels() 
+```
+
+
 Save as a word document
 
-```{r table as word document}
+```{r word properties}
+sect_properties <- officer::prop_section(
+  page_size = 
+    page_size(
+      orient = "landscape",
+      width = 8.3,
+      height = 11.7
+      ),
+  type = "continuous",
+  page_margins = page_mar()
+)
+```
+
+
+```{r summary_table as word document}
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../results/EDGI_psychiatric_dx.docx"
+    path = "../../results/EDGI_psychiatric_dx.docx",
+    pr_section = sect_properties
+  )
+```
+
+```{r summary_table_long as word document}
+summary_table_long %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../../results/EDGI_psychiatric_dx_long.docx",
+    pr_section = sect_properties
   )
 ```
 
