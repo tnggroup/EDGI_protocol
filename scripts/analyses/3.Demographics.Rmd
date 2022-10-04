@@ -2,7 +2,9 @@
 title: "Demographics"
 author: "Christopher Huebel, Helena Davies, Dina Monssen"
 date: "2022-08-24"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -38,6 +40,7 @@ Load packages
 ```{r Load packages}
 library(tidyverse)
 library(flextable)
+library(officer)
 library(gtsummary)
 ```
 
@@ -59,7 +62,7 @@ names(dat_demographics)
 ```
 
 
-```{r format table}
+```{r summary_table table}
 summary_table <-
   dat_demographics %>%
   gtsummary::tbl_summary(
@@ -128,7 +131,7 @@ summary_table <-
 ```
 
 
-```{r format table}
+```{r summary_table_long table}
 summary_table_long <-
   dat_demographics_long %>%
   gtsummary::tbl_summary(
@@ -212,11 +215,24 @@ summary_table_long %>%
 
 Save as a word document
 
+```{r word properties}
+sect_properties <- officer::prop_section(
+  page_size = page_size(
+    orient = "landscape",
+    width = 8.3, height = 11.7
+  ),
+  type = "continuous",
+  page_margins = page_mar()
+)
+```
+
+
 ```{r summary_table as word document}
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/EDGI_demographics.docx"
+    path = "../../results/EDGI_demographics.docx",
+    pr_section = sect_properties
   )
 ```
 
@@ -224,7 +240,8 @@ summary_table %>%
 summary_table_long %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/EDGI_demographics_long.docx"
+    path = "../../results/EDGI_demographics_long.docx",
+    pr_section = sect_properties
   )
 ```
 
