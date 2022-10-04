@@ -1,0 +1,48 @@
+---
+title: "Untitled"
+author: "Christopher Huebel, Helena Davies, Dina Monssen"
+date: "2022-10-03"
+output: html_document
+---
+
+```{r}
+dat_eds_binary <- dat %>%
+  select(
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa,
+    atypical_binge_eating_disorder,
+    atypical_bulimia_nervosa,
+    night_eating_syndrome,
+    pica,
+    avoidant_restrictive_food_intake_disorder,
+    rumination_disorder
+  ) %>%
+  gtsummary::tbl_summary()
+
+dat_eds_binary
+```
+
+
+```{r}
+dat_eds_binary_numeric <- dat %>%
+  select(
+    "Anorexia nervosa" = anorexia_nervosa_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric
+  ) %>%
+  gtsummary::tbl_summary()
+
+dat_eds_binary_numeric
+```
+
