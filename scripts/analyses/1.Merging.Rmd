@@ -271,8 +271,8 @@ mhd <- mhd %>%
 
 # Somatic comorbidity
 ```{r read in somatic data}
-somatic <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "/demographics/disability_medical_edgi_clean.rds"))
+somatic <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/disability_illness_edgi_clean.rds"))
   
 # Check
 somatic %>%
