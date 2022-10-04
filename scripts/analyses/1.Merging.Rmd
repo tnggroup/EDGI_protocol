@@ -19,20 +19,22 @@ Clear global environment prior to initiation
 remove(list = ls())
 ```
 
-Read in file with path to data channel
-```{r Read in file with path to data channel on teams}
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
 source(file = "../credentials/paths.R")
 ```
 
-Add the add_numeric function - used to convert character variables into numeric variables
-Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the add_numeric function - used to convert character variables into numeric variables.
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Use package_check to install and load dependencies
@@ -51,8 +53,8 @@ date
 
 # Read in gender 
 ```{r read in gender sex and sexuality data}
-sex_gender_sexuality <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/sex_gender_sexuality_edgi_clean.rds"))
+sex_gender_sexuality <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/sex_gender_sexuality_edgi_clean.rds"))
   
 # Check
 sex_gender_sexuality %>%
@@ -66,15 +68,15 @@ sex_gender_sexuality <- sex_gender_sexuality %>%
   select(ID,
          sample,
          dem.sex,
-         demographics.what_gender_do_you_identify_with,
+         demographics.what_gender_do_you_identify_with = dem.which_gender_do_you_identify_with  ,
          dem.what_is_your_sexual_orientation,
          dem.do_you_identify_as_transgender)
 ```
 
 # Read in 'Ethnicity'
 ```{r read in ethnicity}
-ethnicity <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/ethnicity_edgi_clean.rds"))
+ethnicity <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/ethnicity_edgi_clean.rds"))
   
 # Check
 ethnicity %>%
@@ -91,8 +93,8 @@ ethnicity <- ethnicity %>%
 
 # Education
 ```{r read in education}
-education <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/highest_education_edgi_clean.rds"))
+education <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/highest_education_edgi_clean.rds"))
   
 # Check
 education %>%
@@ -108,8 +110,8 @@ education <- education %>%
 ```
 
 ```{r read in years of education}
-years_of_education <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/years_of_education_edgi_clean.rds"))
+years_of_education <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/years_of_education_edgi_clean.rds"))
   
 # Check
 years_of_education %>%
@@ -121,13 +123,13 @@ years_of_education %>%
 # Select variables we need 
 years_of_education <- years_of_education %>%
   select(ID,
-         dem.years_schoolplease_include_preschool.txt)
+         dem.university_education_attend_school.txt)
 ```
 
 # Employment
 ```{r read in employment}
-employment <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/employment_edgi_clean.rds"))
+employment <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/employment_edgi_clean.rds"))
   
 # Check
 employment %>%
@@ -144,8 +146,8 @@ employment <- employment %>%
 
 # Relationship status
 ```{r read in relationship status}
-relationship_status <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/marital_status_edgi_clean.rds"))
+relationship_status <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/marital_status_edgi_clean.rds"))
   
 # Check
 relationship_status %>%
@@ -163,8 +165,8 @@ relationship_status <- relationship_status %>%
 # Smoking status 
 Note: This script needs further reviewing. HLD has done a quick review.
 ```{r read in smoking status}
-smoking_status <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/smoking_pack_year_edgi_clean.rds"))
+smoking_status <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/smoking_pack_year_edgi_clean.rds"))
   
 # Check
 smoking_status %>%
@@ -200,8 +202,8 @@ treatment <- treatment %>%
 
 # Age
 ```{r read in age data}
-age <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/age_edgi_clean.rds"))
+age <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/age_edgi_clean.rds"))
   
 # Check
 age %>%
@@ -216,11 +218,19 @@ age <- age %>%
          dem.how_old_are_you_now.txt,
          dem.dob_age,
          dem.age_category)
+
+# Check
+age %>%
+  freq(dem.how_old_are_you_now.txt)
+
+age %>%
+  freq(dem.dob_age)
+
 ```
 
 # Eating disorder diagnosis: algorithm-derived
 ```{r read in eating disorder algorithm data}
-eating_disorder_algorithm <- readRDS(file = paste0(filepath_edgi_cleaned,
+eating_disorder_algorithm <- readRDS(file = paste0(filepath_cleaned_data,
                                      "algorithms/ed_algorithms_diagnostics_edgi_clean.rds"))
   
 # Check
@@ -242,7 +252,7 @@ eating_disorder_algorithm <- eating_disorder_algorithm %>%
 
 # Self-report (MHD)
 ```{r read in mhd data}
-mhd <- readRDS(file = paste0(filepath_edgi_cleaned,
+mhd <- readRDS(file = paste0(filepath_cleaned_data,
                                      "clinical/mhd_edgi_clean.rds"))
   
 # Check
@@ -254,15 +264,15 @@ mhd %>%
 
 # Select columns
 mhd <- mhd %>%
-  select(-endDate,
-           -startDate,
+  select(#-endDate,
+         #  -startDate,
            -sample)
 ```
 
 # Somatic comorbidity
 ```{r read in somatic data}
 somatic <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/disability_medical_edgi_clean.rds"))
+                                     "/demographics/disability_medical_edgi_clean.rds"))
   
 # Check
 somatic %>%
@@ -279,15 +289,28 @@ somatic <- somatic %>%
 ```
 
 # Age at diagnosis
-```{r read in age at diagnosis data, eval=FALSE, include=FALSE}
-age_at_diagnosis <- readRDS(file = paste0(filepath_edgi_cleaned,
-                                     "demographics/age_at_diagnosis_edgi_clean.rds"))
+```{r read in age at diagnosis data}
+age_at_diagnosis <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/demographics/age_at_diagnosis_edgi_clean.rds"))
   
 # Check
 age_at_diagnosis %>%
   colnames()
 
 age_at_diagnosis %>%
+  dim()
+```
+
+# OSFED / other diagnoses
+```{r read in OSFED diagnoses}
+OSFED_other_eating_disorders <- readRDS(file = paste0(filepath_cleaned_data,
+                                     "/algorithms/osfed_dsm5_algorithms_edgi_clean.rds"))
+  
+# Check
+OSFED_other_eating_disorders %>%
+  colnames()
+
+OSFED_other_eating_disorders %>%
   dim()
 ```
 
@@ -304,9 +327,10 @@ dat <- list(sex_gender_sexuality,
                 age,
                 eating_disorder_algorithm,
                 mhd,
-                somatic
+                somatic,
+                OSFED_other_eating_disorders,
+                age_at_diagnosis
                 ) %>%
-               # age_at_diagnosis) %>%
   reduce(full_join,
          by = "ID")
 ```
