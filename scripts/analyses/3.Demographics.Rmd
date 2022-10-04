@@ -84,10 +84,10 @@ summary_table <-
           "Current Employment Status",
         dem.what_is_your_current_maritalrelationship_status ~
           "Current Marital/Relationship Status",
-        dem.pack_year ~ # is this smoking?
-          "Smoking status",
         mhd.eating_disorder_received_treatment ~
-            "Received Treatment"
+            "Received Treatment",
+        dem.pack_year ~
+          "Smoking status: pack years"
         ),
         
           type = list(
@@ -148,14 +148,13 @@ summary_table_long <-
           "Ethnic Origin",
         dem.highest_education_finegrained ~
           "Highest Education Level",
-        #there was a gap between these in other script. do i need one here?
         dem.what_is_your_current_employment_status ~
           "Current Employment Status",
         dem.what_is_your_current_maritalrelationship_status ~
           "Current Marital/Relationship Status",
         mhd.eating_disorder_received_treatment ~
             "Received Treatment",
-                dem.pack_year ~ # is this smoking?
+          dem.pack_year ~
           "Smoking status: pack years"
         ),
         
@@ -178,8 +177,8 @@ summary_table_long <-
             "categorical",          
           mhd.eating_disorder_received_treatment ~
             "categorical",
-          dem.pack_year ~ # is this smoking?
-            "continuous"
+          dem.pack_year ~
+            "continuous2"
           ),
 
           statistic = list(
@@ -213,18 +212,20 @@ summary_table_long %>%
 
 Save as a word document
 
-```{r table as word document}
+```{r summary_table as word document}
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../results/EDGI_demographics.docx"
+    path = "../../results/EDGI_demographics.docx"
   )
 ```
 
-```{r table as word document}
+```{r summary_table_long as word document}
 summary_table_long %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../results/EDGI_demographics.docx"
+    path = "../../results/EDGI_demographics_long.docx"
   )
 ```
+
+
