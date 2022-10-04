@@ -881,6 +881,7 @@ imp_check(data = dat,
            variables = variables_categorical_neurological_prefer_not_to_answer,
           values = values_categorical_neurological_prefer_not_to_answer)
 ```
+
 ## Recoding people who answered "None of the above" to 0
 *Nervous System Problems*
 Epilepsy or convulsions 
@@ -924,6 +925,7 @@ dat %>%
   select(all_of(nervous_system_problems_numeric)) %>%
   freq()
 ```
+
 
 ## Allergy/arthritis
 Create vector of categorical values for variables: Hay Fever
@@ -1284,6 +1286,7 @@ imp_check(data = dat,
           values = values_categorical_allergy_dont_know)
 ```
 
+
 ## Recoding people who answered "None of the above" to 0
 *Allergy & arthritis*
 
@@ -1329,6 +1332,7 @@ dat %>%
   select(all_of(allergy_arthritis_numeric)) %>%
   freq()
 ```
+
 
 
 ## Respiratory/heart
@@ -1651,6 +1655,7 @@ imp_check(data = dat,
           values = values_categorical_respiratory_dont_know)
 ```
 
+
 ## Recoding people who answered "None of the above" to 0
 *Respiratory*
 
@@ -1689,6 +1694,7 @@ dat %>%
   select(all_of(respiratory_numeric)) %>%
   freq()
 ```
+
 ## Digestive/diabetes
 Create vector of categorical values for variables: Crohn's disease
 ```{r vector of categorical labels}
@@ -2137,6 +2143,65 @@ imp_check(data = dat,
           values = values_categorical_digestive_dont_know)
 ```
 
+## Digestive/diabetes - Recoding people who answered "None of the above" to 0
+*Digestive/diabetes*
+
+
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+  "dem.crohns_disease_numeric",
+  "dem.ulcerative_colitis_numeric",
+  "dem.coeliac_disease_numeric",
+  "dem.diabetes_type_1_numeric",
+  "dem.diabetes_type_2_numeric",
+  "dem.diabetes_type_1_early_onset_numeric",
+  "dem.diabetes_type_1_late_onset_numeric",
+  "dem.diabetes_type_2_late_onset_numeric",
+  "dem.pain_due_to_diabetes_numeric",
+  "dem.pcos_numeric",
+  "dem.digestive_none_numeric",
+  "dem.digestive_dont_know_numeric",
+  "dem.digestive_prefer_not_to_answer_numeric",
+
+
+### Vector of digestive diabetes
+```{r Vector of numeric digestive diabetes variables for recoding}
+digestive_diabetes_numeric <- c(
+  "dem.crohns_disease_numeric",
+  "dem.ulcerative_colitis_numeric",
+  "dem.coeliac_disease_numeric",
+  "dem.diabetes_type_1_numeric",
+  "dem.diabetes_type_2_numeric",
+  "dem.diabetes_type_1_early_onset_numeric",
+  "dem.diabetes_type_1_late_onset_numeric",
+  "dem.diabetes_type_2_late_onset_numeric",
+  "dem.pain_due_to_diabetes_numeric",
+  "dem.pcos_numeric"
+)
+```
+
+
+```{r Recode numeric digestive diabetes variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       digestive_diabetes_numeric)),
+            ~case_when(
+         dem.digestive_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.digestive_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.digestive_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(digestive_diabetes_numeric)) %>%
+  freq()
+```
+
+
 ## Cancer
 Create vector of categorical values for variables: Breast cancer
 ```{r vector of categorical labels}
@@ -2385,7 +2450,63 @@ imp_check(data = dat,
           values = values_categorical_cancer_dont_know)
 ```
 
-## Skin
+
+## Cancer - Recoding people who answered "None of the above" to 0
+*Cancer*
+
+
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+  "dem.breast_cancer_numeric",
+  "dem.lung_cancer_numeric",
+  "dem.stomach_cancer_numeric",
+  "dem.colon_cancer_numeric",
+  "dem.uterus_cancer_numeric",
+  "dem.prostate_cancer_numeric",
+  "dem.cancer_none_numeric",
+  "dem.cancer_dont_know_numeric",
+  "dem.cancer_prefer_not_to_answer_numeric",
+
+
+### Vector of cancer
+```{r Vector of numeric cancer variables for recoding}
+cancer_numeric <- c(
+  "dem.breast_cancer_numeric",
+  "dem.lung_cancer_numeric",
+  "dem.stomach_cancer_numeric",
+  "dem.colon_cancer_numeric",
+  "dem.uterus_cancer_numeric",
+  "dem.prostate_cancer_numeric",
+)
+```
+
+
+```{r Recode numeric cancer variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       cancer_numeric)),
+            ~case_when(
+         dem.cancer_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.cancer_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.cancer_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(cancer_numeric)) %>%
+  freq()
+```
+
+
+
+
+
+## Skin & Thyroid
+
 Create vector of categorical values for variables: Psoriasis
 ```{r vector of categorical labels}
 values_categorical_psoriasis <- c(
@@ -2620,7 +2741,57 @@ imp_check(data = dat,
 ```
 
 
+## Skin & Thyroid - Recoding people who answered "None of the above" to 0
+*Skin and Thyroid*
+Psoriasis
+Vitiligo
+Eczema
+Thyroid disease
+Pain due to virus (Post herpetic neuralgia)
 
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+    "dem.psoriasis_numeric",
+    "dem.vitiligo_numeric", 
+    "dem.eczema_numeric",
+    "dem.thyroid_disease_numeric",
+    "dem.pain_due_to_virus_numeric",
+    "dem.skin_none_numeric",
+    "dem.skin_dont_know_numeric",
+    "dem.skin_prefer_not_to_answer_numeric",
+
+
+### Vector of Skin & Thyroid
+```{r Vector of numeric Skin & Thyroid variables for recoding}
+skin_thyroid_numeric <- c(
+  "dem.psoriasis",
+  "dem.vitiligo",
+  "dem.eczema",
+  "dem.thyroid_disease",
+  "dem.pain_due_to_virus"
+)
+```
+
+
+```{r Recode numeric depression, anxiety, OCD and PTSD related disorders variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       skin_thyroid_numeric)),
+            ~case_when(
+         dem.skin_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.skin_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.skin_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(skin_thyroid_numeric)) %>%
+  freq()
+```
 
 
 
