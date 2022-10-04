@@ -251,7 +251,7 @@ edgi_dat_id <- edgi_dat %>% # New dataset with ID
          dem.multiple_sclerosis,
          dem.parkinsons_disease,
          dem.brain_tumour = dem.brain_tumour,
-         dem.severe_memory_loss_,
+         dem.severe_memory_loss = dem.severe_memory_loss_, # rename to same as GLAD
          dem.neurological_none = dem.none,
          dem.neurological_dont_know = dem.dont_know,
          dem.neurological_prefer_not_to_answer = dem.prefer_not_to_say,
@@ -881,6 +881,49 @@ imp_check(data = dat,
            variables = variables_categorical_neurological_prefer_not_to_answer,
           values = values_categorical_neurological_prefer_not_to_answer)
 ```
+## Recoding people who answered "None of the above" to 0
+*Nervous System Problems*
+Epilepsy or convulsions 
+Brain tumour 
+Migraine 
+Multiple sclerosis 
+Parkinson’s disease 
+Severe memory loss (like Alzheimer’s disease) 
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+### Vector of Epilepsy or convulsions , Brain tumour , Migraine , Multiple sclerosis , Parkinson’s disease , Severe memory loss (like Alzheimer’s disease) 
+```{r Vector of numeric neurological}
+nervous_system_problems_numeric <- c(
+  "dem.epilepsy_or_convulsions_numeric",
+  "dem.brain_tumour_numeric", # Note that all GLAD participants will be NA for this variable because it is not asked in GLAD.
+  "dem.migraines_numeric",
+  "dem.multiple_sclerosis_numeric",
+  "dem.parkinsons_disease_numeric",
+  "dem.severe_memory_loss_numeric"
+
+)
+```
+
+
+```{r Recode neurological variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       nervous_system_problems_numeric)),
+            ~case_when(
+         dem.neurological_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.neurological_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.neurological_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(nervous_system_problems_numeric)) %>%
+  freq()
+```
 
 ## Allergy/arthritis
 Create vector of categorical values for variables: Hay Fever
@@ -1241,6 +1284,53 @@ imp_check(data = dat,
           values = values_categorical_allergy_dont_know)
 ```
 
+## Recoding people who answered "None of the above" to 0
+*Allergy & arthritis*
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+### Vector of allergy and athritis variables 
+```{r Vector of numeric allergy and arthritis}
+allergy_arthritis_numeric <- c(
+"dem.hay_fever_numeric",
+    "dem.drug_allergy_numeric",
+    "dem.food_allergy_numeric",
+    "dem.other_allergy_numeric",
+    "dem.ankylosing_spondylitis_numeric", # Not in GLAD
+    "dem.osteoporosis_numeric",
+    "dem.hypermobility_numeric", # Not in GLAD
+    "dem.osteoarthritis_numeric",
+    "dem.rheumatoid_arthritis_numeric",
+    "dem.other_arthritis_numeric",
+    "dem.allergy_none_numeric",
+    "dem.allergy_prefer_not_to_answer_numeric",
+    "dem.allergy_dont_know_numeric"
+  
+
+)
+```
+
+
+```{r Recode neurological variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       allergy_arthritis_numeric)),
+            ~case_when(
+         dem.allergy_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.allergy_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.allergy_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(allergy_arthritis_numeric)) %>%
+  freq()
+```
+
+
 ## Respiratory/heart
 Create vector of categorical values for variables: Asthma
 ```{r vector of categorical labels}
@@ -1561,6 +1651,44 @@ imp_check(data = dat,
           values = values_categorical_respiratory_dont_know)
 ```
 
+## Recoding people who answered "None of the above" to 0
+*Respiratory*
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+### Vector of respiratory variables 
+```{r Vector of numeric respiratory}
+respiratory_numeric <- c(
+"dem.asthma_numeric",
+    "dem.emphysema_or_chronic_bronchitis_numeric",
+    "dem.heart_attack_or_angina_numeric",
+    "dem.high_blood_cholesterol_numeric",
+    "dem.high_blood_pressure_numeric",
+    "dem.atrial_fibrillation_numeric",
+    "dem.stroke_numeric",
+    "dem.pots_numeric" # Not in GLAD
+)
+```
+
+
+```{r Recode neurological variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       respiratory_numeric)),
+            ~case_when(
+         dem.respiratory_none_numeric == 1 ~ 0,                           # recode to "No" (0)
+         dem.respiratory_dont_know_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         dem.respiratory_prefer_not_to_answer_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(respiratory_numeric)) %>%
+  freq()
+```
 ## Digestive/diabetes
 Create vector of categorical values for variables: Crohn's disease
 ```{r vector of categorical labels}
@@ -2490,59 +2618,6 @@ imp_check(data = dat,
            variables = variables_categorical_skin_dont_know,
           values = values_categorical_skin_dont_know)
 ```
-
-## Recoding people who answered "None of the above" to 0
-*Nervous System Problems*
-Epilepsy or convulsions 
-Brain tumour 
-Migraine 
-Multiple sclerosis 
-Parkinson’s disease 
-Severe memory loss (like Alzheimer’s disease) 
-
-### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
-In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
-
-### Vector of Epilepsy or convulsions , Brain tumour , Migraine , Multiple sclerosis , Parkinson’s disease , Severe memory loss (like Alzheimer’s disease) 
-```{r Vector of numeric depression, anxiety, OCD and PTSD related disorders variables for recoding}
-nervous_system_problems <- c(
-  "mhd.mdd_numeric",
-  "mhd.perinatal_depression_numeric",
-  "mhd.pmdd_numeric",
-  "mhd.bipolar_disorder_numeric",
-  "mhd.gad_numeric",
-  "mhd.social_anxiety_numeric",
-  "mhd.specific_phobia_numeric",
-  "mhd.agoraphobia_numeric",
-  "mhd.panic_disorder_numeric",
-  "mhd.panic_attacks_numeric",
-  "mhd.ptsd_numeric",
-  "mhd.ocd_numeric",
-  "mhd.bdd_numeric",
-  "mhd.other_ocd_numeric"
-)
-```
-
-
-```{r Recode numeric depression, anxiety, OCD and PTSD related disorders variables}
-dat <- dat %>%
-  mutate_at(vars(
-      all_of(
-       dep_anx_ocd_ptsd_numeric)),
-            ~case_when(
-         mhd.none_dep_anx_ocd_ptsd_numeric == 1 ~ 0,                           # recode to "No" (0)
-         mhd.dont_know_dep_anx_ocd_ptsd_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
-         mhd.pnta_dep_anx_ocd_ptsd_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
-         TRUE ~ .                                                              # leave everything else as it is
-             )
-    )
-# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
-dat %>%
-  select(all_of(dep_anx_ocd_ptsd_numeric)) %>%
-  freq()
-```
-
-
 
 
 
