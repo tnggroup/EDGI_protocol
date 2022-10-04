@@ -56,6 +56,7 @@ Overview variables
 ```{r Overview variables}
 names(dat)
 ```
+
 # Check response options
 ```{r check response options}
 dat %>%
@@ -77,7 +78,6 @@ dat %>%
   freq(mhd.bed_numeric
        )
 ```
-
           
 # Self-report and algorithm-derived ED diagnosis
 ```{r deriving self-report and algorithm-derived ED diagnosis}
@@ -139,8 +139,6 @@ dat %>%
 dat %>%
   freq(binge_eating_disorder)
 ```
-
-
 
 ```{r numeric deriving self-report and algorithm-derived ED diagnosis}
 dat <- dat %>%
@@ -222,8 +220,6 @@ dat <- dat %>%
       )
     
 ```
-
-
 
 ```{r Mixed presentation primary}
 dat <- dat %>%
@@ -389,30 +385,8 @@ dat %>%
   nrow()
 ```
       
-# Table of frequency of eating disorder by age
-```{r table freq EDs}
-dat_eds_binary_sex_numeric <- dat %>%
-  select(
-    "Anorexia nervosa" = anorexia_nervosa_subtype_numeric,
-    "Bulimia nervosa" = bulimia_nervosa_numeric,
-    "Binge-eating disorder" = binge_eating_disorder_numeric,
-    "Purging disorder" = purging_disorder_numeric,
-    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
-    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
-    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
-    "Night-eating syndrome" = night_eating_syndrome_numeric,
-    "Pica" = pica_numeric,
-    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
-    "Ruminiation disorder" = rumination_disorder_numeric,
-    dem.sex
-  ) %>%
-  gtsummary::tbl_summary(missing = "no",
-                         by = dem.sex)
-
-dat_eds_binary_sex_numeric
-```
-
-```{r}
+# Checking missing data
+```{r check missing}
 # All missing =  3,222
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
@@ -524,7 +498,7 @@ dat %>%
   nrow()
 ```
 
-
+# Dataset creation: Demographics
 ```{r demographics}
 exclude_columns_from_pivoting <-
   c(
@@ -540,10 +514,10 @@ exclude_columns_from_pivoting <-
     "mhd.eating_disorder_received_treatment"
   )
 
-
+# Exclusive
 dat_demographics <- dat %>%
   select(
-    mixed_eating_disorders_primary,
+   # mixed_eating_disorders_primary,
     mixed_eating_disorders_all,
     dem.sex,
     demographics.what_gender_do_you_identify_with,
@@ -557,18 +531,19 @@ dat_demographics <- dat %>%
     mhd.eating_disorder_received_treatment
   )
 
+# Long
 dat_demographics_long <- dat %>%
   select(
-    
-  all_of(exclude_columns_from_pivoting),
-  
-    # Disorder
+    all_of(exclude_columns_from_pivoting),
+  # Disorder
     anorexia_nervosa,
     bulimia_nervosa,
-    binge_eating_disorder
+    binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa
     ) %>%
   pivot_longer(
-    -exclude_columns_from_pivoting,
+    -all_of(exclude_columns_from_pivoting),
 #    names_to = "Old_variable",
     values_to = "Disorder"
     ) %>%
@@ -581,11 +556,13 @@ dat_demographics_long %>%
 ```
 
 
-# Table:  Age distribution of EDGI UK sample by age range and sex
+# Dataset creation: Age distribution of EDGI UK sample by age range and sex
 ```{r select age distribution data}
+# Exclusive
 age_sex_distribution <- dat %>%
   select(
-    mixed_eating_disorders_primary,
+   # mixed_eating_disorders_primary,
+    mixed_eating_disorders_all,
          dem.dob_age, 
          dem.sex)
 
@@ -603,7 +580,10 @@ age_sex_distribution_long <- dat %>%
         # Disorder
         anorexia_nervosa,
         bulimia_nervosa,
-        binge_eating_disorder
+        binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa
+    
         ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
@@ -617,18 +597,24 @@ age_sex_distribution_long <- dat %>%
 age_sex_distribution_long
 ```
 
-# Table: Self-report and algorithm derived eating disorder diagnosis distribution in EDGI UK sample, split by sex
+# Dataset creation: Self-report and algorithm derived eating disorder diagnosis distribution in EDGI UK sample, split by sex
 ```{r select age distribution data}
+# Exclusive
 selfreport_algo_sex <- dat %>%
   select(
          dem.sex,
          # Algorithm-derived
          ed.DSM5_AN_binary,
          ed.DSM5_AN_restricting_binary,
-         ed.DSM5_AN_restricting_binary,
+         ed.DSM5_AN_binge_purge_binary,
          ed.DSM5_BED_binary, 
          ed.DSM5_BN_binary,
-         # Add purging, NES, and all atypical disorder (AN, BN, BED) algorithms
+        ed.DSM5_purging_disorder_binary,
+        ed.DSM5_AN_atypical_binary,
+        ed.DSM5_BED_atypical_binary,
+        ed.DSM5_BN_atypical_binary,
+        ed.DSM5_NES_binary,
+        
          # Self-report
          mhd.an_numeric,                                                    
          mhd.atypical_an_numeric,                                  
@@ -653,7 +639,12 @@ exclude_columns_from_pivoting <-
      "ed.DSM5_AN_restricting_binary",
      "ed.DSM5_BED_binary", 
      "ed.DSM5_BN_binary",
-      # +++Add purging, NES, and all atypical disorder (AN, BN, BED) algorithms
+      "ed.DSM5_purging_disorder_binary",
+      "ed.DSM5_AN_atypical_binary",
+      "ed.DSM5_BED_atypical_binary",
+      "ed.DSM5_BN_atypical_binary",
+      "ed.DSM5_NES_binary",
+      
       # Self-report
      "mhd.an_numeric",                                                    
      "mhd.atypical_an_numeric",                                  
@@ -673,6 +664,12 @@ exclude_columns_from_pivoting <-
 selfreport_algo_sex_long <- dat %>%
   select(
     all_of(exclude_columns_from_pivoting),
+    # Disorder
+        anorexia_nervosa,
+        bulimia_nervosa,
+        binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa
         ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
@@ -685,9 +682,6 @@ selfreport_algo_sex_long <- dat %>%
 
 selfreport_algo_sex_long
 ```
-
-
-
 
 ```{r Psychiatric comorbidities}
 exclude_columns_from_pivoting <-
@@ -713,7 +707,8 @@ exclude_columns_from_pivoting <-
 # mixed 
 dat_psych_dx <- dat %>%
   select(
-    mixed_eating_disorders_primary,
+    #mixed_eating_disorders_primary,
+    mixed_eating_disorders_all,
     
     all_of(exclude_columns_from_pivoting)
   )
@@ -726,7 +721,10 @@ dat_psych_dx_longer <- dat %>%
     # Diagnosis
     anorexia_nervosa,
     bulimia_nervosa,
-    binge_eating_disorder
+    binge_eating_disorder,
+     purging_disorder,
+    atypical_anorexia_nervosa
+    
   ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
@@ -751,24 +749,16 @@ exclude_columns_from_pivoting <-
  ,"dem.multiple_sclerosis"                                             
  ,"dem.parkinsons_disease"                                             
  ,"dem.severe_memory_loss"                                             
- ,"dem.neurological_none"                                              
- ,"dem.neurological_dont_know"                                         
- ,"dem.neurological_prefer_not_to_answer"                              
+                       
  ,"dem.hay_fever"                                                      
  ,"dem.drug_allergy"                                                   
- ,"dem.drug_allergy_txt"                                               
  ,"dem.food_allergy"                                                   
- ,"dem.food_allergy_txt"                                               
  ,"dem.other_allergy"                                                  
- ,"dem.other_allergy_txt"                                              
  ,"dem.osteoporosis"                                                   
  ,"dem.osteoarthritis"                                                 
  ,"dem.rheumatoid_arthritis"                                           
  ,"dem.other_arthritis"                                                
- ,"dem.other_arthritis_txt"                                            
- ,"dem.allergy_none"                                                   
- ,"dem.allergy_prefer_not_to_answer"                                   
- ,"dem.allergy_dont_know"                                              
+                                           
  ,"dem.asthma"                                                         
  ,"dem.emphysema_or_chronic_bronchitis"                                
  ,"dem.heart_attack_or_angina"                                         
@@ -776,9 +766,7 @@ exclude_columns_from_pivoting <-
  ,"dem.high_blood_pressure"                                            
  ,"dem.atrial_fibrillation"                                            
  ,"dem.stroke"                                                         
- ,"dem.respiratory_none"                                               
- ,"dem.respiratory_prefer_not_to_answer"                               
- ,"dem.respiratory_dont_know"                                          
+                                         
  ,"dem.crohns_disease"                                                 
  ,"dem.ulcerative_colitis"                                             
  ,"dem.coeliac_disease"                                                
@@ -786,26 +774,20 @@ exclude_columns_from_pivoting <-
  ,"dem.diabetes_type_2"                                                
  ,"dem.pain_due_to_diabetes"                                           
  ,"dem.pain_due_to_virus"                                              
- ,"dem.digestive_none"                                                 
- ,"dem.digestive_dont_know"                                            
- ,"dem.digestive_prefer_not_to_answer"                                 
+                               
  ,"dem.breast_cancer"                                                  
  ,"dem.lung_cancer"                                                    
  ,"dem.stomach_cancer"                                                 
  ,"dem.colon_cancer"                                                   
  ,"dem.uterus_cancer"                                                  
  ,"dem.prostate_cancer"
- ,"dem.cancer_none"
- ,"dem.cancer_dont_know"
- ,"dem.cancer_prefer_not_to_answer"
+
  ,"dem.psoriasis"
  ,"dem.vitiligo"
  ,"dem.eczema"
  ,"dem.thyroid_disease"
- ,"dem.thyroid_disease_txt"
- ,"dem.skin_none"
- ,"dem.skin_dont_know"
- ,"dem.skin_prefer_not_to_answer"
+
+
   )
 ```
 
@@ -814,8 +796,8 @@ exclude_columns_from_pivoting <-
 # mixed 
 dat_somatic_dx <- dat %>%
   select(
-    mixed_eating_disorders_primary,
-    
+   # mixed_eating_disorders_primary,
+    mixed_eating_disorders_all,
     all_of(exclude_columns_from_pivoting)
   )
 
@@ -827,7 +809,9 @@ dat_somatic_dx_longer <- dat %>%
     # Diagnosis
     anorexia_nervosa,
     bulimia_nervosa,
-    binge_eating_disorder
+    binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa
   ) %>%
   pivot_longer(
     -exclude_columns_from_pivoting,
@@ -842,7 +826,6 @@ dat_somatic_dx_longer <- dat %>%
 dat_somatic_dx_longer %>%
   head()
 ```
-
 
 ```{r}
 save.image(file = paste0(filepath_cleaned_data, "tables.Rdata"))

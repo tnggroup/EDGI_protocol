@@ -137,7 +137,7 @@ dat_eds_binary_numeric <- dat %>%
 dat_eds_binary_numeric
 ```
 
-# Table of frequency of eating disorder by age
+# Table of frequency of eating disorder by sex
 ```{r table freq EDs}
 dat_eds_binary_sex_numeric <- dat %>%
   select(
