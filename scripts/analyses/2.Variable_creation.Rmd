@@ -15,20 +15,22 @@ Clear Global Environment
 rm(list = ls(all.names = TRUE)) 
 ```
 
-Read in file with path to data channel
-```{r Read in file with path to data channel on teams}
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
 source(file = "../credentials/paths.R")
 ```
 
-Add the add_numeric function - used to convert character variables into numeric variables
-Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the add_numeric function - used to convert character variables into numeric variables.
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
@@ -54,10 +56,31 @@ Overview variables
 ```{r Overview variables}
 names(dat)
 ```
+# Check response options
+```{r check response options}
+dat %>%
+  freq(ed.DSM5_AN_binary)
 
+dat %>%
+  freq(mhd.an_numeric)
+
+dat %>%
+  freq(ed.DSM5_BN_binary)
+
+dat %>%
+  freq(mhd.bn_numeric)
+
+dat %>%
+  freq(ed.DSM5_BED_binary)
+
+dat %>%
+  freq(mhd.bed_numeric
+       )
+```
+
+          
 # Self-report and algorithm-derived ED diagnosis
 ```{r deriving self-report and algorithm-derived ED diagnosis}
-# Anorexia nervosa
 dat <- dat %>%
   mutate(
     anorexia_nervosa =
@@ -73,18 +96,139 @@ dat <- dat %>%
     binge_eating_disorder =
            case_when(
              ed.DSM5_BED_binary == "DSM-5 BED" |
-               mhd.bed_numeric == 1 ~ "Binge-eating disorder")
+               mhd.bed_numeric == 1 ~ "Binge-eating disorder"),
+             
+      purging_disorder =
+        case_when(ed.DSM5_purging_disorder_binary_numeric == 1 |
+                    mhd.purging_disorder_numeric == 1 ~ "Purging disorder"),
     
-    )
+    atypical_anorexia_nervosa =
+      case_when(mhd.atypical_an_numeric == 1 |
+                  ed.DSM5_AN_atypical_binary_numeric == 1 ~ "Atypical anorexia nervosa"),
+                
+      atypical_binge_eating_disorder =
+        case_when(mhd.atypical_bed_numeric == 1 |
+                   ed.DSM5_BED_atypical_binary_numeric == 1 ~ "Atypical binge-eating disorder"),
+                  
+      atypical_bulimia_nervosa =
+        case_when(ed.DSM5_BN_atypical_binary_numeric == 1 |
+                   mhd.atypical_bn_numeric == 1 ~ "Atypical bulimia nervosa"),
+      
+      night_eating_syndrome = 
+        case_when(ed.DSM5_NES_binary_numeric == 1 |
+                    mhd.nighteating_syndrome_numeric == 1 ~ "Night eating syndrome"),
+      
+      pica =
+        case_when(mhd.pica_numeric == 1 ~ "Pica"),
+      
+      avoidant_restrictive_food_intake_disorder =
+        case_when(mhd.avoidantrestrictive_food_intake_disorder_numeric == 1~ "ARFID"),
+      
+       rumination_disorder =
+        case_when(mhd.rumination_disorder_numeric == 1 ~ "Rumination disorder"),
+      
+      )
+      
+# Check n
+dat %>%
+  freq(anorexia_nervosa)
+
+dat %>%
+  freq(bulimia_nervosa)
+
+dat %>%
+  freq(binge_eating_disorder)
 ```
 
 
 
-
-```{r Mixed presentation}
+```{r numeric deriving self-report and algorithm-derived ED diagnosis}
 dat <- dat %>%
   mutate(
-    mixed_eating_disorders =
+    anorexia_nervosa_numeric =
+      case_when(ed.DSM5_AN_binary == "DSM5 AN" |
+          mhd.an_numeric == 1 ~ 1,
+          
+          TRUE ~ 0),
+    
+    anorexia_nervosa_subtype_numeric =
+      case_when(
+        ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging"  ~ "Binge-eating/purging",
+        
+        ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ "Restricting",
+        
+        ed.DSM5_AN_binary == "DSM5 AN" |
+          mhd.an_numeric == 1 ~ "Unknown subtype",
+        
+        TRUE ~ NA_character_),
+
+    bulimia_nervosa_numeric =
+      case_when(
+        ed.DSM5_BN_binary == "DSM-5 BN" |
+          mhd.bn_numeric == 1 ~ 1,
+        
+         TRUE ~ 0),
+    
+    binge_eating_disorder_numeric =
+           case_when(
+             ed.DSM5_BED_binary == "DSM-5 BED" |
+               mhd.bed_numeric == 1 ~ 1,
+             
+             TRUE ~ 0),
+             
+      purging_disorder_numeric =
+        case_when(ed.DSM5_purging_disorder_binary_numeric == 1 |
+                    mhd.purging_disorder_numeric == 1 ~ 1,
+                  
+                  TRUE ~ 0),
+    
+    atypical_anorexia_nervosa_numeric =
+      case_when(mhd.atypical_an_numeric == 1 |
+                  ed.DSM5_AN_atypical_binary_numeric == 1 ~ 1,
+                
+                TRUE ~ 0),
+                
+      atypical_binge_eating_disorder_numeric =
+        case_when(mhd.atypical_bed_numeric == 1 |
+                   ed.DSM5_BED_atypical_binary_numeric == 1 ~ 1,
+                  
+                  TRUE ~ 0),
+                  
+      atypical_bulimia_nervosa_numeric =
+        case_when(ed.DSM5_BN_atypical_binary_numeric == 1 |
+                   mhd.atypical_bn_numeric == 1 ~ 1,
+                  
+                  TRUE ~ 0),
+      
+      night_eating_syndrome_numeric = 
+        case_when(ed.DSM5_NES_binary_numeric == 1 |
+                    mhd.nighteating_syndrome_numeric == 1 ~ 1,
+                  
+                  TRUE ~ 0),
+      
+      pica_numeric =
+        case_when(mhd.pica_numeric == 1 ~ 1,
+                  TRUE ~ 0),
+      
+      avoidant_restrictive_food_intake_disorder_numeric =
+        case_when(mhd.avoidantrestrictive_food_intake_disorder_numeric == 1 ~ 1,
+                  TRUE ~ 0),
+      
+       rumination_disorder_numeric =
+        case_when(mhd.rumination_disorder_numeric == 1 ~ 1,
+                  
+                  TRUE ~ 0),
+      
+      )
+    
+```
+
+
+
+```{r Mixed presentation primary}
+dat <- dat %>%
+  mutate(
+    mixed_eating_disorders_primary =
       case_when(
         anorexia_nervosa == "Anorexia nervosa" &
         bulimia_nervosa == "Bulimia nervosa" &
@@ -106,20 +250,279 @@ dat <- dat %>%
         binge_eating_disorder == "Binge-eating disorder" ~ "BED"
       )
   )
-```
 
-```{r}
+# Check n
 dat %>%
-  freq(mixed_eating_disorders)
+  freq(mixed_eating_disorders_primary
+       )
 ```
 
+```{r Mixed presentation primary plus purging and AAN}
+dat <- dat %>%
+  mutate(
+    mixed_eating_disorders_all =
+      case_when(
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "All",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" 
+          ~ "AN & BN & BED & PUR",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & BN & BED & AAN",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & BN & PUR & AAN",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & BED & PUR & AAN",
+        
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "BN & BED & PUR & AAN",
+        
+       binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "BED & PUR & AAN",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & PUR & AAN",
+        
+       anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & BN & AAN",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" 
+          ~ "AN & BN & BED",
+        
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" 
+          ~ "BN & BED & PUR",
+       
+        anorexia_nervosa == "Anorexia nervosa" &
+         purging_disorder == "Purging disorder" 
+          ~ "AN & PUR",
+       
+       anorexia_nervosa == "Anorexia nervosa" &
+         atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "AN & AAN",
+       
+        bulimia_nervosa == "Bulimia nervosa" &
+        purging_disorder == "Purging disorder" 
+          ~ "BN & PUR",
+       
+        bulimia_nervosa == "Bulimia nervosa" &
+         atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "BN & AAN",
+       
+        binge_eating_disorder == "Binge-eating disorder" &
+        purging_disorder == "Purging disorder" 
+          ~ "BED & PUR",
+       
+        binge_eating_disorder == "Binge-eating disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "BED & AAN",
+       
+         purging_disorder == "Purging disorder" &
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+          ~ "PUR & AAN",
+       
+        bulimia_nervosa == "Bulimia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "BN & BED",
+        
+        anorexia_nervosa == "Anorexia nervosa" &
+        binge_eating_disorder == "Binge-eating disorder" ~ "AN & BED",
+      
+        anorexia_nervosa == "Anorexia nervosa" &
+        bulimia_nervosa == "Bulimia nervosa" ~ "AN & BN",
+       
+        anorexia_nervosa == "Anorexia nervosa" ~ "AN",
+        
+        bulimia_nervosa == "Bulimia nervosa" ~ "BN",
+        
+        binge_eating_disorder == "Binge-eating disorder" ~ "BED",
+       
+        purging_disorder == "Purging disorder" ~ "PUR",
+       
+        atypical_anorexia_nervosa == "Atypical anorexia nervosa" ~ "AAN"
+      )
+  )
 
+# Check n
+dat %>%
+  freq(mixed_eating_disorders_all
+       )
+
+# Should be 0
+dat %>% 
+  filter(is.na(mixed_eating_disorders_all) &
+         is.na(anorexia_nervosa_numeric) &
+          is.na(bulimia_nervosa_numeric) &
+          is.na(binge_eating_disorder_numeric) &
+          is.na(purging_disorder_numeric) &
+          is.na(atypical_anorexia_nervosa_numeric)) %>%
+  nrow()
+```
+      
+# Table of frequency of eating disorder by age
+```{r table freq EDs}
+dat_eds_binary_sex_numeric <- dat %>%
+  select(
+    "Anorexia nervosa" = anorexia_nervosa_subtype_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric,
+    dem.sex
+  ) %>%
+  gtsummary::tbl_summary(missing = "no",
+                         by = dem.sex)
+
+dat_eds_binary_sex_numeric
+```
 
 ```{r}
-dat %>% 
-  dim
-```
+# All missing =  3,222
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder)
+         ) %>%
+           select(
+            # Other self-report
+           mhd.other_eating_disordertext.txt,                              
+           mhd.suspected_eating_disorder_diagnosed_numeric,                 
+           mhd.eating_disorder_received_treatment_numeric,                     
+            mhd.feeding_eating_disorder_numeric,                                
+           mhd.other_eating_disorder_numeric,                              
+           mhd.none_eds_numeric,                                             
+           mhd.dont_know_eds_numeric
+           )
 
+# Missing for received treatment = 951
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder) &
+          is.na(mhd.eating_disorder_received_treatment_numeric)
+         ) %>%
+  nrow()
+
+
+# Missing for received treatment and suspected eating disorder = 951
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder) &
+          is.na(mhd.eating_disorder_received_treatment_numeric) &
+           is.na(mhd.suspected_eating_disorder_diagnosed_numeric)
+         ) %>%
+  nrow()
+
+# Missing for received treatment and suspected eating disorder & text response = 951
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder) &
+          is.na(mhd.eating_disorder_received_treatment_numeric) &
+           is.na(mhd.suspected_eating_disorder_diagnosed_numeric) &
+           is.na(mhd.other_eating_disordertext.txt)
+         ) %>%
+  nrow()
+
+# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric = 750
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder) &
+          is.na(mhd.eating_disorder_received_treatment_numeric) &
+           is.na(mhd.suspected_eating_disorder_diagnosed_numeric) &
+           is.na(mhd.other_eating_disordertext.txt) &
+           is.na(mhd.feeding_eating_disorder_numeric)
+         ) %>%
+  nrow()
+
+# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric & AGE = 265
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder) &
+          is.na(mhd.eating_disorder_received_treatment_numeric) &
+           is.na(mhd.suspected_eating_disorder_diagnosed_numeric) &
+           is.na(mhd.other_eating_disordertext.txt) &
+           is.na(mhd.feeding_eating_disorder_numeric) &
+           is.na(dem.age_category) &
+           is.na(dem.dob_age)
+         ) %>%
+  nrow()
+```
 
 
 ```{r demographics}
@@ -140,7 +543,8 @@ exclude_columns_from_pivoting <-
 
 dat_demographics <- dat %>%
   select(
-    mixed_eating_disorders,
+    mixed_eating_disorders_primary,
+    mixed_eating_disorders_all,
     dem.sex,
     demographics.what_gender_do_you_identify_with,
     dem.do_you_identify_as_transgender,
@@ -152,8 +556,6 @@ dat_demographics <- dat %>%
     dem.pack_year,
     mhd.eating_disorder_received_treatment
   )
-
-
 
 dat_demographics_long <- dat %>%
   select(
@@ -183,7 +585,7 @@ dat_demographics_long %>%
 ```{r select age distribution data}
 age_sex_distribution <- dat %>%
   select(
-    mixed_eating_disorders,
+    mixed_eating_disorders_primary,
          dem.dob_age, 
          dem.sex)
 
@@ -311,7 +713,7 @@ exclude_columns_from_pivoting <-
 # mixed 
 dat_psych_dx <- dat %>%
   select(
-    mixed_eating_disorders,
+    mixed_eating_disorders_primary,
     
     all_of(exclude_columns_from_pivoting)
   )
@@ -412,7 +814,7 @@ exclude_columns_from_pivoting <-
 # mixed 
 dat_somatic_dx <- dat %>%
   select(
-    mixed_eating_disorders,
+    mixed_eating_disorders_primary,
     
     all_of(exclude_columns_from_pivoting)
   )
@@ -440,7 +842,6 @@ dat_somatic_dx_longer <- dat %>%
 dat_somatic_dx_longer %>%
   head()
 ```
-
 
 
 ```{r}

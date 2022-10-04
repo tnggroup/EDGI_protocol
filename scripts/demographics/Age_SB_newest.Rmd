@@ -133,7 +133,7 @@ dat %>%
   freq(dem.how_old_are_you_now.txt_unc)
 ```
 
-###Convert negative values of age to positive values and convert to numeric (this helps bind all datatsets at the end)
+### Convert negative values of age to positive values and convert to numeric (this helps bind all datatsets at the end)
 ```{r  EDGI dem.how_old_are_you_now.txt_unc conversion to positive value}
 dat <- dat %>%
   mutate(

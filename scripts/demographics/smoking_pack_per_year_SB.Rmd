@@ -342,6 +342,6 @@ saveRDS(
 saveRDS(
   object =
     edgi_dat.exp,
-  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/", "Smoking_pack_year_EDGI_", date, ".rds")
+  file = paste0(ilovedata, "/EDGI_protocol/data/demographics/", "smoking_pack_year_edgi_clean.rds")
 )
 ```

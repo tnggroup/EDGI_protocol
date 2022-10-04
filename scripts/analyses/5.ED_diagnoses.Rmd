@@ -116,7 +116,112 @@ summary_table %>%
 ```
 
 
+# Table of frequency of eating disorder
+```{r table freq EDs}
+dat_eds_binary_numeric <- dat %>%
+  select(
+    "Anorexia nervosa" = anorexia_nervosa_subtype_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric
+  ) %>%
+  gtsummary::tbl_summary(missing = "no")
 
+dat_eds_binary_numeric
+```
+
+# Table of frequency of eating disorder by age
+```{r table freq EDs}
+dat_eds_binary_sex_numeric <- dat %>%
+  select(
+    "Anorexia nervosa" = anorexia_nervosa_subtype_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric,
+    dem.sex
+  ) %>%
+  gtsummary::tbl_summary(missing = "no",
+                         by = dem.sex)
+
+dat_eds_binary_sex_numeric
+```
+
+```{r upset plot}
+# Create numeric binary variables needed
+dat <- dat %>% 
+  mutate(ed.DSM5_AN_binge_purge_binary_numeric = 
+    case_when(ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging" ~ 1,
+         ed.DSM5_AN_binge_purge_binary == "No DSM5 AN binge eating/purging" ~ 0
+    )
+  )
+
+dat <- dat %>% 
+  mutate(ed.DSM5_AN_restricting_binary_numeric = 
+    case_when(ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ 1,
+         ed.DSM5_AN_restricting_binary == "No DSM5 AN restricting" ~ 0
+    )
+  )
+
+
+dat <- dat %>% 
+  mutate(anorexia_nervosa_subtype_unknown_numeric = 
+    case_when(anorexia_nervosa_subtype_numeric == "Unknown subtype" ~ 1,
+         
+              anorexia_nervosa_subtype_numeric == "Binge-eating/purging" |
+                anorexia_nervosa_subtype_numeric == "Restricting" ~ 0
+    )
+  )
+
+
+dat_upset <- dat %>% 
+   select(
+     "Anorexia nervosa restricting" = ed.DSM5_AN_binge_purge_binary_numeric,
+     "Anorexia nervosa binge-eating/purging" = ed.DSM5_AN_restricting_binary_numeric,
+     "Anorexia nervosa (subtype unknown)" = anorexia_nervosa_subtype_unknown_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric,
+   ) %>%
+  as.data.frame()
+
+UpSetR::upset(dat_upset,
+              sets = c("Anorexia nervosa (subtype unknown)",
+                      "Anorexia nervosa restricting",
+                      "Anorexia nervosa binge-eating/purging",
+    "Bulimia nervosa",
+    "Binge-eating disorder",
+    "Purging disorder",
+    "Atypical anorexia nervosa" ,
+    "Atypical binge-eating disorder",
+    "Atypical bulimia nervosa",
+    "Night-eating syndrome",
+    "Pica",
+    "Avoidant/restrictive food intake disorder",
+    "Ruminiation disorder"),
+    order.by = "freq") 
+    
+```
 
 Label variables for table and select type of data
 
@@ -179,3 +284,5 @@ summary_table %>%
   add_n() %>% 
   modify_header(label ~ "**Variable**") 
 ```
+
+
