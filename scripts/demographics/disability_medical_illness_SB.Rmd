@@ -1,0 +1,2595 @@
+---
+title: "Disability and illness"
+author: "Alicia Peel & Elena Triantafillopoulos"
+date: "09/06/2021"
+output: html_document
+---
+
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+Read in file with path to ilovedata channel on Teams
+Ensure that your credentials directory is correctly located
+```{r Read in paths file}
+source(file = "../credentials/paths.R")
+```
+
+Add the add_numeric function - used to convert character variables into numeric variables.
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+```{r Read in functions}
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c(
+  "summarytools", 
+  "sjlabelled", 
+  "Amelia", 
+  "gtsummary", 
+  "tidyverse"
+  )
+package_check(packages)
+```
+
+Retrieve recent date
+We are using the recent date to save files with paste0() as an extension to not overwrite old versions
+```{r Recent date}
+date <- Sys.Date()
+date
+```
+
+
+# Read in the data: Demographics
+
+## GLAD data
+```{r GLAD read in data}
+glad_dat <- readRDS(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/glad/dem_glad.rds")
+  )
+  
+# Check variable names in dataframe
+glad_dat %>%
+  colnames()
+# Inspect dimensions of dataframe 
+glad_dat %>%
+  dim()
+```
+
+Specify columns to be excluded from add_numeric function
+```{r GLAD specify excluded columns}
+exclude_cols_numeric <- c(
+  "ID",
+  "sample",
+  "startDate",
+  "endDate",
+  "dem.disability_txt",
+  "dem.drug_allergy__text.txt", #dem.drug_allergy_txt",
+  "dem.food_allergy_text.txt",
+  "dem.other_allergy_text.txt",
+  "dem.other_arthritis_text.txt",
+  "dem.thyroid_disease_text.txt",
+  "dem.listed_previously_told_illness_txt"
+  )
+```
+
+Select & rename relevant columns
+```{r GLAD select}
+glad_dat_id <- glad_dat %>% #new dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "GLAD", 
+             .after = "externalDataReference") %>% # Create new sample column
+  select(ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate,
+         
+         dem.disability, # disability
+         dem.disability_txt = dem.pleasetell_us_more.txt,
+         dem.metal_implants = dem.body_suffered_injury_involving, # implants/fragments
+         
+         dem.epilepsy_or_convulsions, # neurological
+         dem.migraines,
+         dem.multiple_sclerosis,
+         dem.parkinsons_disease,
+         dem.severe_memory_loss,
+         dem.neurological_none = dem.none,
+         dem.neurological_dont_know = dem.dont_know,
+         dem.neurological_prefer_not_to_answer = dem.prefer_not_to_answer.3,
+         
+         dem.hay_fever, #allergy/arthritis
+         dem.drug_allergy,
+         dem.drug_allergy_text = dem.drug_allergy__text.txt,
+         dem.food_allergy,
+         dem.food_allergy_txt = dem.food_allergy_text.txt,
+         dem.other_allergy,
+         dem.other_allergy_txt = dem.other_allergy_text.txt,
+         dem.osteoporosis,
+         dem.osteoarthritis,
+         dem.rheumatoid_arthritis,
+         dem.other_arthritis,
+         dem.other_arthritis_txt = dem.other_arthritis_text.txt,
+         dem.allergy_none = dem.none.1,
+         dem.allergy_prefer_not_to_answer = dem.prefer_not_answer,
+         dem.allergy_dont_know = dem.dont_know.1,
+         
+         dem.asthma, # respiratory/heart
+         dem.emphysema_or_chronic_bronchitis,
+         dem.heart_attack_or_angina,
+         dem.high_blood_cholesterol,
+         dem.high_blood_pressure,
+         dem.atrial_fibrillation,
+         dem.stroke,
+         dem.respiratory_none = dem.none.2,
+         dem.respiratory_prefer_not_to_answer = dem.prefer_not_to_answer.4,
+         dem.respiratory_dont_know = dem.dont_know.2,
+         
+         dem.crohns_disease, # digestive/diabetes
+         dem.ulcerative_colitis,
+         dem.coeliac_disease,
+         dem.diabetes_type_1,
+         dem.diabetes_type_2,
+         dem.pain_due_to_diabetes,
+         dem.pain_due_to_virus,
+         dem.digestive_none = dem.none.3,
+         dem.digestive_dont_know = dem.dont_know.3,
+         dem.digestive_prefer_not_to_answer = dem.prefer_not_to_answer.5,
+         
+         dem.breast_cancer, # cancer
+         dem.lung_cancer,
+         dem.stomach_cancer,
+         dem.colon_cancer,
+         dem.uterus_cancer,
+         dem.prostate_cancer,
+         dem.cancer_none = dem.none.4,
+         dem.cancer_dont_know = dem.dont_know.3,
+         dem.cancer_prefer_not_to_answer = dem.prefer_not_to_say,
+         
+         dem.psoriasis, # skin/thyroid
+         dem.vitiligo,
+         dem.eczema,
+         dem.thyroid_disease,
+         dem.thyroid_disease_txt = dem.thyroid_disease_text.txt,
+         dem.skin_none = dem.none.5,
+         dem.skin_dont_know = dem.dont_know.4,
+         dem.skin_prefer_not_to_answer = dem.prefer_not_to_say.1,
+         
+         dem.listed_previously_told_illness, # other not listed
+         dem.listed_previously_told_illness_txt = dem.listed_previously_told_illness.txt
+         ) %>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+glad_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r GLAD number excluded}
+# Inspect dimensions of new data set
+glad_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+glad_excluded <- dim(glad_dat_id)[1] - dim(glad_dat)[1]
+glad_excluded
+```
+
+Inspect numeric variables
+```{r GLAD inspect numeric variables}
+glad_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+```{r GLAD inspect missingness}
+ glad_miss_map <- glad_dat_id %>% 
+   missmap()
+
+ glad_miss_map
+```
+
+## EDGI data
+```{r EDGI read in data}
+edgi_dat <- readRDS(
+  file = paste0(ilovedata, "/data_raw/2022-09-16/edgi/dem_edgi.rds")
+  )
+  
+# Check variable names in dataframe
+edgi_dat %>%
+  colnames()
+# Inspect dimensions of dataframe 
+edgi_dat %>%
+  dim()
+```
+
+Find differences between colnames of GLAD and EDGI dataframes
+```{r Check colnames}
+setdiff(colnames(glad_dat), colnames(edgi_dat))
+```
+
+Select & rename relevant columns (will be a function at some point)
+```{r EDGI select}
+edgi_dat_id <- edgi_dat %>% # New dataset with ID
+  drop_na(externalDataReference) %>% # Drop participants with no ID
+  remove_duplicates("externalDataReference") %>% # Remove duplicate IDs
+  add_column(sample = "EDGI", 
+             .after = "externalDataReference") %>% # Create new sample column 
+  select(
+         ID = externalDataReference, # ID
+         sample,
+         startDate,
+         endDate, 
+         
+         dem.disability,                                       
+         dem.disability_txt = dem.please_tell_us_more_about_your_disability_.txt,
+        # dem.metal_implants = dem.aneurysm_clips_pacemakers_suffered, # implants/fragments
+
+         dem.epilepsy_or_convulsions = dem.epilepsy_or_convulsions, # neurological
+         dem.migraines,
+         dem.multiple_sclerosis,
+         dem.parkinsons_disease,
+         dem.brain_tumour = dem.brain_tumour,
+         dem.severe_memory_loss_,
+         dem.neurological_none = dem.none,
+         dem.neurological_dont_know = dem.dont_know,
+         dem.neurological_prefer_not_to_answer = dem.prefer_not_to_say,
+         
+         dem.hay_fever, # allergy/arthritis
+         dem.drug_allergy,
+         dem.drug_allergy_txt = dem.drug_allergytext.txt,
+         dem.food_allergy,
+         dem.food_allergy_txt = dem.food_allergytext.txt,
+         dem.other_allergy,
+         dem.other_allergy_txt = dem.other_allergytext.txt,
+         dem.ankylosing_spondylitis = dem.ankylosing_spondylitis,
+         dem.osteoporosis,
+         dem.hypermobility = dem.hypermobility,
+         dem.osteoarthritis,
+         dem.rheumatoid_arthritis,
+         dem.other_arthritis = dem.other_arthritis,
+         dem.other_arthritis_txt = dem.other_arthritistext.txt,
+         dem.allergy_none = dem.none.1,
+         dem.allergy_prefer_not_to_answer = dem.prefer_not_to_answer.3,
+         dem.allergy_dont_know = dem.dont_know.1,
+         
+         dem.asthma, # respiratory/heart
+         dem.emphysema_or_chronic_bronchitis = dem.emphysema_or_chronic_bronchitis,
+         dem.heart_attack_or_angina = dem.heart_attack_or_angina,
+         dem.high_blood_cholesterol,
+         dem.high_blood_pressure,
+         dem.atrial_fibrillation,
+         dem.stroke,
+         dem.pots = dem.paroxysmal_tachycardia_syndrome_,
+         dem.respiratory_none = dem.none.2,
+         dem.respiratory_prefer_not_to_answer = dem.prefer_not_to_say.1,
+         dem.respiratory_dont_know = dem.dont_know.2,
+         
+         dem.crohns_disease, # digestive/diabetes
+         dem.ulcerative_colitis,
+         dem.coeliac_disease,
+         dem.diabetes_type_1_early_onset = dem.diabetes_type_1_,                                   
+         dem.diabetes_type_1_late_onset = dem.diabetes_type_1_.1,
+         dem.diabetes_type_2_late_onset = dem.diabetes_type_2_,
+         dem.pain_due_to_diabetes = dem.pain_due_to_diabetes_,                              
+         dem.pcos = dem.polycystic_ovary_syndrome_,
+         dem.digestive_none = dem.none.3,
+         dem.digestive_dont_know = dem.dont_know.3,
+         dem.digestive_prefer_not_to_answer = dem.prefer_not_to_answer.5,
+         
+         dem.breast_cancer, # cancer
+         dem.lung_cancer,
+         dem.stomach_cancer,
+         dem.colon_cancer,
+         dem.uterus_cancer,
+         dem.prostate_cancer,
+         dem.cancer_none = dem.none.4,
+         dem.cancer_dont_know = dem.dont_know.4,
+         dem.cancer_prefer_not_to_answer = dem.prefer_not_to_answer.6,
+         
+         dem.psoriasis, # skin
+         dem.vitiligo, 
+         dem.eczema,
+         dem.thyroid_disease,
+         dem.thyroid_disease_txt = dem.thyroid_diseasetext.txt,
+         dem.pain_due_to_virus = dem.post_herpectic_neuralgia_,                          
+         dem.skin_none = dem.none.5,
+         dem.skin_dont_know = dem.dont_know.5,
+         dem.skin_prefer_not_to_answer = dem.prefer_not_to_answer.7,
+         
+         dem.listed_previously_told_illness = dem.listed_previously_told_doctor,                     
+         dem.listed_previously_told_illness_txt = dem.listed_previously_told_doctor.txt,
+         ) %>%
+  add_numeric(exclude = exclude_cols_numeric)
+
+# Inspect colnames
+edgi_dat_id %>%
+  colnames()
+```
+
+Look at number of people excluded
+```{r EDGI number excluded}
+# Inspect dimensions of new data set
+edgi_dat_id %>%
+  dim()
+
+# Inspect number of rows dropped
+edgi_excluded <- dim(edgi_dat_id)[1] - dim(edgi_dat)[1]
+edgi_excluded
+```
+
+Inspect numeric variables
+```{r EDGI inspect numeric variables}
+edgi_dat_id %>%
+  select(all_of(ends_with("numeric"))) %>%
+  tbl_summary(missing_text = "Missing")
+```
+
+Check missingness by missmap
+```{r EDGI inspect missingness}
+ edgi_miss_map <- edgi_dat_id %>% 
+   missmap()
+edgi_miss_map
+```
+
+# Bind rows of EDGI and GLAD data
+Read in data, bind datasets, then clean all together
+```{r Merge data sets}
+dat <- glad_dat_id %>%
+  bind_rows(edgi_dat_id)
+#Check
+dat %>% glimpse()
+```
+
+Recode Non-answer values to 3 digits
+-555 'Not applicable' response from participant
+-777 Seen but not answered
+-888 Don't know
+-999 Prefer not to answer/Prefer not to say
+`NA` Were not shown the question (genuinely missing value)
+When we code someone as being 'not applicable' by deduction, we use `NA_real_`
+```{r Recode NA values}
+dat <- dat %>%
+  mutate(across(ends_with("numeric -dem.drug_allergy_text_numeric"),
+                ~case_when(
+                  . == -55 ~ -555,
+                  . == -77 ~ -777,
+                  . == -88 ~ -888,
+                  . == -99 ~ -999,
+                  TRUE ~ .)))
+```
+
+# Numeric 0-1 variables
+
+Cleaning numeric variables
+```{r vector of numeric values}
+values_numeric_0_1 <- c(
+  0,
+  1,
+  -777,
+  -888,
+  -999,
+  NA
+  )
+values_numeric_0_1
+```
+
+Create vector of variable names for numeric variables
+```{r vector numeric variables}
+variables_numeric_0_1 <- c(
+    "dem.disability_numeric",                                       
+    "dem.metal_implants_numeric",
+    "dem.epilepsy_or_convulsions_numeric",
+    "dem.migraines_numeric",
+    "dem.multiple_sclerosis_numeric",
+    "dem.parkinsons_disease_numeric",
+    "dem.brain_tumour_numeric",
+    "dem.severe_memory_loss_numeric",
+    "dem.neurological_none_numeric",
+    "dem.neurological_dont_know_numeric",
+    "dem.neurological_prefer_not_to_answer_numeric",
+    "dem.hay_fever_numeric",
+    "dem.drug_allergy_numeric",
+    "dem.food_allergy_numeric",
+    "dem.other_allergy_numeric",
+    "dem.ankylosing_spondylitis_numeric",
+    "dem.osteoporosis_numeric",
+    "dem.hypermobility_numeric",
+    "dem.osteoarthritis_numeric",
+    "dem.rheumatoid_arthritis_numeric",
+    "dem.other_arthritis_numeric",
+    "dem.allergy_none_numeric",
+    "dem.allergy_prefer_not_to_answer_numeric",
+    "dem.allergy_dont_know_numeric",
+    "dem.asthma_numeric",
+    "dem.emphysema_or_chronic_bronchitis_numeric",
+    "dem.heart_attack_or_angina_numeric",
+    "dem.high_blood_cholesterol_numeric",
+    "dem.high_blood_pressure_numeric",
+    "dem.atrial_fibrillation_numeric",
+    "dem.stroke_numeric",
+    "dem.pots_numeric",
+    "dem.respiratory_none_numeric",
+    "dem.respiratory_prefer_not_to_answer_numeric",
+    "dem.respiratory_dont_know_numeric",
+    "dem.crohns_disease_numeric",
+    "dem.ulcerative_colitis_numeric",
+    "dem.coeliac_disease_numeric",
+    "dem.diabetes_type_1_numeric",
+    "dem.diabetes_type_2_numeric",
+    "dem.diabetes_type_1_early_onset_numeric",
+    "dem.diabetes_type_1_late_onset_numeric",
+    "dem.diabetes_type_2_late_onset_numeric",
+    "dem.pain_due_to_diabetes_numeric",
+    "dem.pcos_numeric",
+    "dem.digestive_none_numeric",
+    "dem.digestive_dont_know_numeric",
+    "dem.digestive_prefer_not_to_answer_numeric",
+    "dem.breast_cancer_numeric",
+    "dem.lung_cancer_numeric",
+    "dem.stomach_cancer_numeric",
+    "dem.colon_cancer_numeric",
+    "dem.uterus_cancer_numeric",
+    "dem.prostate_cancer_numeric",
+    "dem.cancer_none_numeric",
+    "dem.cancer_dont_know_numeric",
+    "dem.cancer_prefer_not_to_answer_numeric",
+    "dem.psoriasis_numeric",
+    "dem.vitiligo_numeric", 
+    "dem.eczema_numeric",
+    "dem.thyroid_disease_numeric",
+    "dem.pain_due_to_virus_numeric",
+    "dem.skin_none_numeric",
+    "dem.skin_dont_know_numeric",
+    "dem.skin_prefer_not_to_answer_numeric",
+    "dem.listed_previously_told_illness_numeric"
+  )
+variables_numeric_0_1
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check numeric variables}
+imp_check(data = dat,
+           variables = variables_numeric_0_1,
+          values = values_numeric_0_1)
+```
+
+# Categorical 0-1 variables
+
+## Disability
+Create vector of categorical values for variables: Disability
+```{r vector of categorical labels}
+values_categorical_disability <- c(
+  "Yes",
+  "No",
+  "Seen but not answered",
+  NA
+  )
+values_categorical_disability
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_disability <- c(
+    "dem.disability"
+  )
+variables_categorical_disability
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_disability,
+          values = values_categorical_disability)
+```
+
+Create vector of categorical values for variables: Implants
+```{r vector of categorical labels}
+values_categorical_implants <- c(
+  "Yes",
+  "No",
+  "Seen but not answered",
+  "Don't know",
+  NA
+  )
+values_categorical_implants
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_implants <- c(
+    "dem.metal_implants"
+  )
+variables_categorical_implants
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_implants,
+          values = values_categorical_implants)
+```
+
+Create vector of categorical values for variables: Disability
+```{r vector of categorical labels}
+values_categorical_other <- c(
+  "Yes",
+  "No",
+  "Seen but not answered",
+  "Prefer not to answer",
+  NA
+  )
+values_categorical_other
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_other <- c(
+    "dem.listed_previously_told_illness"
+  )
+variables_categorical_other
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_other,
+          values = values_categorical_other)
+```
+
+Create vector of categorical values for variables: Implants
+```{r vector of categorical labels}
+values_categorical_implants <- c(
+  "Yes",
+  "No",
+  "Seen but not answered",
+  "Don't know",
+  NA
+  )
+values_categorical_implants
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_implants <- c(
+    "dem.metal_implants"
+  )
+variables_categorical_implants
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_implants,
+          values = values_categorical_implants)
+```
+
+Create vector of categorical values for variables: Other
+```{r vector of categorical labels}
+values_categorical_other <- c(
+  "Yes",
+  "No",
+  "Seen but not answered",
+  "Prefer not to answer",
+  NA
+  )
+values_categorical_other
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_other <- c(
+    "dem.listed_previously_told_illness"
+  )
+variables_categorical_other
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_other,
+          values = values_categorical_other)
+```
+
+
+## Neurological
+Create vector of categorical values for variables: Epilepsy
+```{r vector of categorical labels}
+values_categorical_epilepsy <- c(
+  "Epilepsy or convulsions",
+  "Not Epilepsy or convulsions",
+  NA
+  )
+values_categorical_epilepsy
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_epilepsy <- c(
+    "dem.epilepsy_or_convulsions"
+  )
+variables_categorical_epilepsy
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.epilepsy_or_convulsions = 
+           recode_factor(dem.epilepsy_or_convulsions,
+                        "Epilepsy or Convulsions" = "Epilepsy or convulsions",
+                        "Not Epilepsy or Convulsions" = "Not Epilepsy or convulsions"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_epilepsy,
+          values = values_categorical_epilepsy)
+```
+
+Create vector of categorical values for variables: Migraines
+```{r vector of categorical labels}
+values_categorical_migraines <- c(
+  "Migraines",
+  "Not Migraines",
+  NA
+  )
+values_categorical_migraines
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_migraines <- c(
+    "dem.migraines"
+  )
+variables_categorical_migraines
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_migraines,
+          values = values_categorical_migraines)
+```
+
+Create vector of categorical values for variables: Multiple Sclerosis
+```{r vector of categorical labels}
+values_categorical_multiple_sclerosis <- c(
+  "Multiple sclerosis",
+  "Not Multiple sclerosis",
+  NA
+  )
+values_categorical_multiple_sclerosis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_multiple_sclerosis <- c(
+    "dem.multiple_sclerosis"
+  )
+variables_categorical_multiple_sclerosis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_multiple_sclerosis,
+          values = values_categorical_multiple_sclerosis)
+```
+
+Create vector of categorical values for variables: Parkinson's
+```{r vector of categorical labels}
+values_categorical_parkinsons_disease <- c(
+  "Parkinson's disease",
+  "Not Parkinson's disease",
+  NA
+  )
+values_categorical_parkinsons_disease
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_parkinsons_disease <- c(
+    "dem.parkinsons_disease"
+  )
+variables_categorical_parkinsons_disease
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_parkinsons_disease,
+          values = values_categorical_parkinsons_disease)
+```
+
+Create vector of categorical values for variables: Brain tumour
+```{r vector of categorical labels}
+values_categorical_brain_tumour <- c(
+  "Brain tumour",
+  "Not Brain tumour",
+  NA
+  )
+values_categorical_brain_tumour
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_brain_tumour <- c(
+    "dem.brain_tumour"
+  )
+variables_categorical_brain_tumour
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_brain_tumour,
+          values = values_categorical_brain_tumour)
+```
+Create vector of categorical values for variables: Severe memory loss
+```{r vector of categorical labels}
+values_categorical_severe_memory_loss <- c(
+  "Severe memory loss",
+  "Not Severe memory loss",
+  NA
+  )
+values_categorical_severe_memory_loss
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_severe_memory_loss <- c(
+    "dem.severe_memory_loss"
+  )
+variables_categorical_severe_memory_loss
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.severe_memory_loss = 
+           recode_factor(dem.severe_memory_loss,
+                        "Severe memory loss (like Alzheimer's)" = "Severe memory loss",
+                        "Not Severe memory loss (like Alzheimer's)" = "Not Severe memory loss"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_severe_memory_loss,
+          values = values_categorical_severe_memory_loss)
+```
+
+Create vector of categorical values for variables: neurological none
+```{r vector of categorical labels}
+values_categorical_neurological_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_neurological_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_neurological_none <- c(
+    "dem.neurological_none"
+  )
+variables_categorical_neurological_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.neurological_none = 
+           recode_factor(dem.neurological_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_neurological_none,
+          values = values_categorical_neurological_none)
+```
+
+Create vector of categorical values for variables: neurological none
+```{r vector of categorical labels}
+values_categorical_neurological_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_neurological_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_neurological_dont_know <- c(
+    "dem.neurological_dont_know"
+  )
+variables_categorical_neurological_dont_know
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_neurological_dont_know,
+          values = values_categorical_neurological_dont_know)
+```
+
+Create vector of categorical values for variables: neurological prefer not to answer
+```{r vector of categorical labels}
+values_categorical_neurological_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_neurological_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_neurological_prefer_not_to_answer <- c(
+    "dem.neurological_prefer_not_to_answer"
+  )
+variables_categorical_neurological_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.neurological_prefer_not_to_answer = 
+           recode_factor(dem.neurological_prefer_not_to_answer,
+                        "Prefer not to say" = "Prefer not to answer",
+                        "Not Prefer not to say" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_neurological_prefer_not_to_answer,
+          values = values_categorical_neurological_prefer_not_to_answer)
+```
+
+## Allergy/arthritis
+Create vector of categorical values for variables: Hay Fever
+```{r vector of categorical labels}
+values_categorical_hay_fever <- c(
+  "Hay fever",
+  "Not Hay fever",
+  NA
+  )
+values_categorical_hay_fever
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_hay_fever <- c(
+    "dem.hay_fever"
+  )
+variables_categorical_hay_fever
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_hay_fever,
+          values = values_categorical_hay_fever)
+```
+
+Create vector of categorical values for variables: Drug allergy
+```{r vector of categorical labels}
+values_categorical_drug_allergy <- c(
+  "Drug allergy",
+  "Not Drug allergy",
+  NA
+  )
+values_categorical_drug_allergy
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_drug_allergy <- c(
+    "dem.drug_allergy"
+  )
+variables_categorical_drug_allergy
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_drug_allergy,
+          values = values_categorical_drug_allergy)
+```
+
+Create vector of categorical values for variables: Food allergy
+```{r vector of categorical labels}
+values_categorical_food_allergy <- c(
+  "Food allergy",
+  "Not Food allergy",
+  NA
+  )
+values_categorical_food_allergy
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_food_allergy <- c(
+    "dem.food_allergy"
+  )
+variables_categorical_food_allergy
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_food_allergy,
+          values = values_categorical_food_allergy)
+```
+
+Create vector of categorical values for variables: Other allergy
+```{r vector of categorical labels}
+values_categorical_other_allergy <- c(
+  "Other allergy",
+  "Not Other allergy",
+  NA
+  )
+values_categorical_other_allergy
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_other_allergy <- c(
+    "dem.other_allergy"
+  )
+variables_categorical_other_allergy
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_other_allergy,
+          values = values_categorical_other_allergy)
+```
+
+Create vector of categorical values for variables: Ankylosing spondylitis
+```{r vector of categorical labels}
+values_categorical_ankylosing_spondylitis <- c(
+  "Ankylosing spondylitis",
+  "Not Ankylosing spondylitis",
+  NA
+  )
+values_categorical_ankylosing_spondylitis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_ankylosing_spondylitis <- c(
+    "dem.ankylosing_spondylitis"
+  )
+variables_categorical_ankylosing_spondylitis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_ankylosing_spondylitis,
+          values = values_categorical_ankylosing_spondylitis)
+```
+
+Create vector of categorical values for variables: Osteoporosis 
+```{r vector of categorical labels}
+values_categorical_osteoporosis <- c(
+  "Osteoporosis",
+  "Not Osteoporosis",
+  NA
+  )
+values_categorical_osteoporosis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_osteoporosis <- c(
+    "dem.osteoporosis"
+  )
+variables_categorical_osteoporosis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_osteoporosis,
+          values = values_categorical_osteoporosis)
+```
+
+Create vector of categorical values for variables: Hyper-mobility
+```{r vector of categorical labels}
+values_categorical_hypermobility <- c(
+  "Hyper-mobility",
+  "Not Hyper-mobility",
+  NA
+  )
+values_categorical_hypermobility
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_hypermobility <- c(
+    "dem.hypermobility"
+  )
+variables_categorical_hypermobility
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_hypermobility,
+          values = values_categorical_hypermobility)
+```
+
+Create vector of categorical values for variables: Osteoarthritis
+```{r vector of categorical labels}
+values_categorical_osteoarthritis <- c(
+  "Osteoarthritis",
+  "Not Osteoarthritis",
+  NA
+  )
+values_categorical_osteoarthritis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_osteoarthritis <- c(
+    "dem.osteoarthritis"
+  )
+variables_categorical_osteoarthritis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_osteoarthritis,
+          values = values_categorical_osteoarthritis)
+```
+
+Create vector of categorical values for variables: Rheumatoid arthritis
+```{r vector of categorical labels}
+values_categorical_rheumatoid_arthritis <- c(
+  "Rheumatoid arthritis",
+  "Not Rheumatoid arthritis",
+  NA
+  )
+values_categorical_rheumatoid_arthritis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_rheumatoid_arthritis <- c(
+    "dem.rheumatoid_arthritis"
+  )
+variables_categorical_rheumatoid_arthritis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_rheumatoid_arthritis,
+          values = values_categorical_rheumatoid_arthritis)
+```
+
+Create vector of categorical values for variables: Other arthritis
+```{r vector of categorical labels}
+values_categorical_other_arthritis <- c(
+  "Other arthritis",
+  "Not Other arthritis",
+  NA
+  )
+values_categorical_other_arthritis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_other_arthritis <- c(
+    "dem.other_arthritis"
+  )
+variables_categorical_other_arthritis
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.other_arthritis = 
+           recode_factor(dem.other_arthritis,
+                        "Other arthritis:" = "Other arthritis",
+                        "Not Other arthritis:" = "Not Other arthritis"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_other_arthritis,
+          values = values_categorical_other_arthritis)
+```
+Create vector of categorical values for variables: Allergy/arthitis none
+```{r vector of categorical labels}
+values_categorical_allergy_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_allergy_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_allergy_none <- c(
+    "dem.allergy_none"
+  )
+variables_categorical_allergy_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.allergy_none = 
+           recode_factor(dem.allergy_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_allergy_none,
+          values = values_categorical_allergy_none)
+```
+
+Create vector of categorical values for variables: Allergy/arthitis prefer not to answer
+```{r vector of categorical labels}
+values_categorical_allergy_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_allergy_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_allergy_prefer_not_to_answer <- c(
+    "dem.allergy_prefer_not_to_answer"
+  )
+variables_categorical_allergy_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.allergy_prefer_not_to_answer = 
+           recode_factor(dem.allergy_prefer_not_to_answer,
+                        "Prefer not answer" = "Prefer not to answer",
+                        "Not Prefer not answer" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_allergy_prefer_not_to_answer,
+          values = values_categorical_allergy_prefer_not_to_answer)
+```
+
+Create vector of categorical values for variables: Allergy/arthitis don't know
+```{r vector of categorical labels}
+values_categorical_allergy_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_allergy_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_allergy_dont_know <- c(
+    "dem.allergy_dont_know"
+  )
+variables_categorical_allergy_dont_know
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_allergy_dont_know,
+          values = values_categorical_allergy_dont_know)
+```
+
+## Respiratory/heart
+Create vector of categorical values for variables: Asthma
+```{r vector of categorical labels}
+values_categorical_asthma <- c(
+  "Asthma",
+  "Not Asthma",
+  NA
+  )
+values_categorical_asthma
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_asthma <- c(
+    "dem.asthma"
+  )
+variables_categorical_asthma
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_asthma,
+          values = values_categorical_asthma)
+```
+
+Create vector of categorical values for variables: Emphysema or chronic bronchitis
+```{r vector of categorical labels}
+values_categorical_emphysema_or_chronic_bronchitis <- c(
+  "Emphysema or chronic bronchitis",
+  "Not Emphysema or chronic bronchitis",
+  NA
+  )
+values_categorical_emphysema_or_chronic_bronchitis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_emphysema_or_chronic_bronchitis <- c(
+    "dem.emphysema_or_chronic_bronchitis"
+  )
+variables_categorical_emphysema_or_chronic_bronchitis
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.emphysema_or_chronic_bronchitis = 
+           recode_factor(dem.emphysema_or_chronic_bronchitis,
+                        "Emphysema/chronic bronchitis" = "Emphysema or chronic bronchitis",
+                        "Not Emphysema/chronic bronchitis" = "Not Emphysema or chronic bronchitis"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_emphysema_or_chronic_bronchitis,
+          values = values_categorical_emphysema_or_chronic_bronchitis)
+```
+
+Create vector of categorical values for variables: Heart attack or angina
+```{r vector of categorical labels}
+values_categorical_heart_attack_or_angina <- c(
+  "Heart attack or angina",
+  "Not Heart attack or angina",
+  NA
+  )
+values_categorical_heart_attack_or_angina
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_heart_attack_or_angina <- c(
+    "dem.heart_attack_or_angina"
+  )
+variables_categorical_heart_attack_or_angina
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.heart_attack_or_angina = 
+           recode_factor(dem.heart_attack_or_angina,
+                        "Heart attack/angina" = "Heart attack or angina",
+                        "Not Heart attack/angina" = "Not Heart attack or angina"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_heart_attack_or_angina,
+          values = values_categorical_heart_attack_or_angina)
+```
+
+Create vector of categorical values for variables: High cholesterol
+```{r vector of categorical labels}
+values_categorical_high_blood_cholesterol <- c(
+  "High blood cholesterol",
+  "Not High blood cholesterol",
+  NA
+  )
+values_categorical_high_blood_cholesterol
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_high_blood_cholesterol <- c(
+    "dem.high_blood_cholesterol"
+  )
+variables_categorical_high_blood_cholesterol
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_high_blood_cholesterol,
+          values = values_categorical_high_blood_cholesterol)
+```
+
+Create vector of categorical values for variables: High pressure
+```{r vector of categorical labels}
+values_categorical_high_blood_pressure <- c(
+  "High blood pressure",
+  "Not High blood pressure",
+  NA
+  )
+values_categorical_high_blood_pressure
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_high_blood_pressure <- c(
+    "dem.high_blood_pressure"
+  )
+variables_categorical_high_blood_pressure
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_high_blood_pressure,
+          values = values_categorical_high_blood_pressure)
+```
+
+Create vector of categorical values for variables: Atrial fibrillation
+```{r vector of categorical labels}
+values_categorical_atrial_fibrillation <- c(
+  "Atrial fibrillation",
+  "Not Atrial fibrillation",
+  NA
+  )
+values_categorical_atrial_fibrillation
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_atrial_fibrillation <- c(
+    "dem.atrial_fibrillation"
+  )
+variables_categorical_atrial_fibrillation
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_atrial_fibrillation,
+          values = values_categorical_atrial_fibrillation)
+```
+
+Create vector of categorical values for variables: Stroke
+```{r vector of categorical labels}
+values_categorical_stroke <- c(
+  "Stroke",
+  "Not Stroke",
+  NA
+  )
+values_categorical_stroke
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_stroke <- c(
+    "dem.stroke"
+  )
+variables_categorical_stroke
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_stroke,
+          values = values_categorical_stroke)
+```
+
+Create vector of categorical values for variables: Paroxysmal tachycardia syndrome (PoTS)
+```{r vector of categorical labels}
+values_categorical_pots <- c(
+  "Paroxysmal tachycardia syndrome (PoTS)",
+  "Not Paroxysmal tachycardia syndrome (PoTS)",
+  NA
+  )
+values_categorical_pots
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_pots <- c(
+    "dem.pots"
+  )
+variables_categorical_pots
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_pots,
+          values = values_categorical_pots)
+```
+
+Create vector of categorical values for variables: Respiratory/heart none
+```{r vector of categorical labels}
+values_categorical_respiratory_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_respiratory_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_respiratory_none <- c(
+    "dem.respiratory_none"
+  )
+variables_categorical_respiratory_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.respiratory_none = 
+           recode_factor(dem.respiratory_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_respiratory_none,
+          values = values_categorical_respiratory_none)
+```
+
+Create vector of categorical values for variables: Respiratory/heart prefer not to answer
+```{r vector of categorical labels}
+values_categorical_respiratory_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_respiratory_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_respiratory_prefer_not_to_answer <- c(
+    "dem.respiratory_prefer_not_to_answer"
+  )
+variables_categorical_respiratory_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.respiratory_prefer_not_to_answer = 
+           recode_factor(dem.respiratory_prefer_not_to_answer,
+                        "Prefer not to say" = "Prefer not to answer",
+                        "Not Prefer not to say" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_respiratory_prefer_not_to_answer,
+          values = values_categorical_respiratory_prefer_not_to_answer)
+```
+
+Create vector of categorical values for variables: Respiratory/heart don't know
+```{r vector of categorical labels}
+values_categorical_respiratory_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_respiratory_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_respiratory_dont_know <- c(
+    "dem.respiratory_dont_know"
+  )
+variables_categorical_respiratory_dont_know
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_respiratory_dont_know,
+          values = values_categorical_respiratory_dont_know)
+```
+
+## Digestive/diabetes
+Create vector of categorical values for variables: Crohn's disease
+```{r vector of categorical labels}
+values_categorical_crohns_disease <- c(
+  "Crohn's disease",
+  "Not Crohn's disease",
+  NA
+  )
+values_categorical_crohns_disease
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_crohns_disease <- c(
+    "dem.crohns_disease"
+  )
+variables_categorical_crohns_disease
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_crohns_disease,
+          values = values_categorical_crohns_disease)
+```
+
+Create vector of categorical values for variables: Ulcerative colitis
+```{r vector of categorical labels}
+values_categorical_ulcerative_colitis <- c(
+  "Ulcerative colitis",
+  "Not Ulcerative colitis",
+  NA
+  )
+values_categorical_ulcerative_colitis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_ulcerative_colitis <- c(
+    "dem.ulcerative_colitis"
+  )
+variables_categorical_ulcerative_colitis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_ulcerative_colitis,
+          values = values_categorical_ulcerative_colitis)
+```
+
+Create vector of categorical values for variables: Coeliac disease
+```{r vector of categorical labels}
+values_categorical_coeliac_disease <- c(
+  "Coeliac disease",
+  "Not Coeliac disease",
+  NA
+  )
+values_categorical_coeliac_disease
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_coeliac_disease <- c(
+    "dem.coeliac_disease"
+  )
+variables_categorical_coeliac_disease
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_coeliac_disease,
+          values = values_categorical_coeliac_disease)
+```
+
+Create vector of categorical values for variables: Diabetes type 1 (early onset)
+```{r vector of categorical labels}
+values_categorical_diabetes_type_1_early_onset <- c(
+  "Diabetes type 1 (early onset)",
+  "Not Diabetes type 1 (early onset)",
+  NA
+  )
+values_categorical_diabetes_type_1_early_onset
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_1_early_onset <- c(
+    "dem.diabetes_type_1_early_onset"
+  )
+variables_categorical_diabetes_type_1_early_onset
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_1_early_onset,
+          values = values_categorical_diabetes_type_1_early_onset)
+```
+
+Create vector of categorical values for variables: Diabetes type 1 (late onset)
+```{r vector of categorical labels}
+values_categorical_diabetes_type_1_late_onset <- c(
+  "Diabetes type 1 (late onset)",
+  "Not Diabetes type 1 (late onset)",
+  NA
+  )
+values_categorical_diabetes_type_1_late_onset
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_1_late_onset <- c(
+    "dem.diabetes_type_1_late_onset"
+  )
+variables_categorical_diabetes_type_1_late_onset
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_1_late_onset,
+          values = values_categorical_diabetes_type_1_late_onset)
+```
+
+Create vector of categorical values for variables: Diabetes type 1
+```{r vector of categorical labels}
+values_categorical_diabetes_type_1 <- c(
+  "Diabetes type 1",
+  "Not Diabetes type 1",
+  NA
+  )
+values_categorical_diabetes_type_1
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_1 <- c(
+    "dem.diabetes_type_1"
+  )
+variables_categorical_diabetes_type_1
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_1,
+          values = values_categorical_diabetes_type_1)
+```
+
+Create vector of categorical values for variables: Diabetes type 1 (combined GLAD and EDGI)
+```{r combine GLAD and EDGI}
+dat <- dat %>%
+  mutate(dem.diabetes_type_1_all = 
+           case_when(
+             dem.diabetes_type_1 == "Diabetes type 1" ~ "Diabetes type 1",
+             dem.diabetes_type_1_early_onset == "Diabetes type 1 (early onset)" ~ "Diabetes type 1",
+             dem.diabetes_type_1_late_onset == "Diabetes type 1 (late onset)" ~ "Diabetes type 1",
+             dem.diabetes_type_1 == "Not Diabetes type 1" ~ "Not Diabetes type 1",
+             dem.diabetes_type_1_early_onset == "Not Diabetes type 1 (early onset)" ~ "Not Diabetes type 1",
+             dem.diabetes_type_1_late_onset == "Not Diabetes type 1 (late onset)" ~ "Not Diabetes type 1"
+           )
+)
+```
+
+```{r vector of categorical labels}
+values_categorical_diabetes_type_1_all <- c(
+  "Diabetes type 1",
+  "Not Diabetes type 1",
+  NA
+  )
+values_categorical_diabetes_type_1_all
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_1_all <- c(
+    "dem.diabetes_type_1_all"
+  )
+variables_categorical_diabetes_type_1_all
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_1_all,
+          values = values_categorical_diabetes_type_1_all)
+```
+
+Create vector of categorical values for variables: Diabetes type 2 (late onset)
+```{r vector of categorical labels}
+values_categorical_diabetes_type_2_late_onset <- c(
+  "Diabetes type 2 (late onset)",
+  "Not Diabetes type 2 (late onset)",
+  NA
+  )
+values_categorical_diabetes_type_2_late_onset
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_2_late_onset <- c(
+    "dem.diabetes_type_2_late_onset"
+  )
+variables_categorical_diabetes_type_2_late_onset
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_2_late_onset,
+          values = values_categorical_diabetes_type_2_late_onset)
+```
+
+Create vector of categorical values for variables: Diabetes type 2
+```{r vector of categorical labels}
+values_categorical_diabetes_type_2 <- c(
+  "Diabetes type 2",
+  "Not Diabetes type 2",
+  NA
+  )
+values_categorical_diabetes_type_2
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_2 <- c(
+    "dem.diabetes_type_2"
+  )
+variables_categorical_diabetes_type_2
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_2,
+          values = values_categorical_diabetes_type_2)
+```
+
+Create vector of categorical values for variables: Diabetes type 2 (combined GLAD and EDGI)
+```{r combine GLAD and EDGI}
+dat <- dat %>%
+  mutate(dem.diabetes_type_2_all = 
+           case_when(
+             dem.diabetes_type_2 == "Diabetes type 2" ~ "Diabetes type 2",
+             dem.diabetes_type_2_late_onset == "Diabetes type 2 (late onset)" ~ "Diabetes type 2",
+             dem.diabetes_type_2 == "Not Diabetes type 2" ~ "Not Diabetes type 2",
+             dem.diabetes_type_2_late_onset == "Not Diabetes type 2 (late onset)" ~ "Not Diabetes type 2"
+           )
+)
+```
+
+```{r vector of categorical labels}
+values_categorical_diabetes_type_2_all <- c(
+  "Diabetes type 2",
+  "Not Diabetes type 2",
+  NA
+  )
+values_categorical_diabetes_type_2_all
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_diabetes_type_2_all <- c(
+    "dem.diabetes_type_2_all"
+  )
+variables_categorical_diabetes_type_2_all
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_diabetes_type_2_all,
+          values = values_categorical_diabetes_type_2_all)
+```
+
+Create vector of categorical values for variables: Pain due to diabetes
+```{r vector of categorical labels}
+values_categorical_pain_due_to_diabetes <- c(
+  "Pain due to diabetes",
+  "Not Pain due to diabetes",
+  NA
+  )
+values_categorical_pain_due_to_diabetes
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_pain_due_to_diabetes <- c(
+    "dem.pain_due_to_diabetes"
+  )
+variables_categorical_pain_due_to_diabetes
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.pain_due_to_diabetes = 
+           recode_factor(dem.pain_due_to_diabetes,
+                        "Diabetic neuropathy" = "Pain due to diabetes",
+                        "Not Diabetic neuropathy" = "Not Pain due to diabetes"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_pain_due_to_diabetes,
+          values = values_categorical_pain_due_to_diabetes)
+```
+
+Create vector of categorical values for variables: PCOS
+```{r vector of categorical labels}
+values_categorical_pcos <- c(
+  "PCOS",
+  "Not PCOS",
+  NA
+  )
+values_categorical_pcos
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_pcos <- c(
+    "dem.pcos"
+  )
+variables_categorical_pcos
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_pcos,
+          values = values_categorical_pcos)
+```
+
+Create vector of categorical values for variables: Digestive/diabetes none
+```{r vector of categorical labels}
+values_categorical_digestive_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_digestive_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_digestive_none <- c(
+    "dem.digestive_none"
+  )
+variables_categorical_digestive_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.digestive_none = 
+           recode_factor(dem.digestive_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_digestive_none,
+          values = values_categorical_digestive_none)
+```
+
+Create vector of categorical values for variables: Digestive/diabetes prefer not to answer
+```{r vector of categorical labels}
+values_categorical_digestive_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_digestive_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_digestive_prefer_not_to_answer <- c(
+    "dem.digestive_prefer_not_to_answer"
+  )
+variables_categorical_digestive_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.digestive_prefer_not_to_answer = 
+           recode_factor(dem.digestive_prefer_not_to_answer,
+                        "Prefer not to say" = "Prefer not to answer",
+                        "Not Prefer not to say" = "Not Prefer not to answer",
+                        "-99" = "Prefer not to answer",
+                        "Not -99" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_digestive_prefer_not_to_answer,
+          values = values_categorical_digestive_prefer_not_to_answer)
+```
+
+Create vector of categorical values for variables: Digestive/diabetes don't know
+```{r vector of categorical labels}
+values_categorical_digestive_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_digestive_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_digestive_dont_know <- c(
+    "dem.digestive_dont_know"
+  )
+variables_categorical_digestive_dont_know
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.digestive_dont_know = 
+           recode_factor(dem.digestive_dont_know,
+                        "-88" = "Don't know",
+                        "Not -88" = "Not Don't know"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_digestive_dont_know,
+          values = values_categorical_digestive_dont_know)
+```
+
+## Cancer
+Create vector of categorical values for variables: Breast cancer
+```{r vector of categorical labels}
+values_categorical_breast_cancer <- c(
+  "Breast cancer",
+  "Not Breast cancer",
+  NA
+  )
+values_categorical_breast_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_breast_cancer <- c(
+    "dem.breast_cancer"
+  )
+variables_categorical_breast_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_breast_cancer,
+          values = values_categorical_breast_cancer)
+```
+
+Create vector of categorical values for variables: Lung cancer
+```{r vector of categorical labels}
+values_categorical_lung_cancer <- c(
+  "Lung cancer",
+  "Not Lung cancer",
+  NA
+  )
+values_categorical_lung_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_lung_cancer <- c(
+    "dem.lung_cancer"
+  )
+variables_categorical_lung_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_lung_cancer,
+          values = values_categorical_lung_cancer)
+```
+
+Create vector of categorical values for variables: Stomach cancer
+```{r vector of categorical labels}
+values_categorical_stomach_cancer <- c(
+  "Stomach cancer",
+  "Not Stomach cancer",
+  NA
+  )
+values_categorical_stomach_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_stomach_cancer <- c(
+    "dem.stomach_cancer"
+  )
+variables_categorical_stomach_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_stomach_cancer,
+          values = values_categorical_stomach_cancer)
+```
+
+Create vector of categorical values for variables: Colon cancer
+```{r vector of categorical labels}
+values_categorical_colon_cancer <- c(
+  "Colon cancer",
+  "Not Colon cancer",
+  NA
+  )
+values_categorical_colon_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_colon_cancer <- c(
+    "dem.colon_cancer"
+  )
+variables_categorical_colon_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_colon_cancer,
+          values = values_categorical_colon_cancer)
+```
+
+Create vector of categorical values for variables: Uterus cancer
+```{r vector of categorical labels}
+values_categorical_uterus_cancer <- c(
+  "Uterus cancer",
+  "Not Uterus cancer",
+  NA
+  )
+values_categorical_uterus_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_uterus_cancer <- c(
+    "dem.uterus_cancer"
+  )
+variables_categorical_uterus_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_uterus_cancer,
+          values = values_categorical_uterus_cancer)
+```
+
+Create vector of categorical values for variables: Prostate cancer
+```{r vector of categorical labels}
+values_categorical_prostate_cancer <- c(
+  "Prostate cancer",
+  "Not Prostate cancer",
+  NA
+  )
+values_categorical_prostate_cancer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_prostate_cancer <- c(
+    "dem.prostate_cancer"
+  )
+variables_categorical_prostate_cancer
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_prostate_cancer,
+          values = values_categorical_prostate_cancer)
+```
+
+Create vector of categorical values for variables: Cancer none
+```{r vector of categorical labels}
+values_categorical_cancer_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_cancer_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_cancer_none <- c(
+    "dem.cancer_none"
+  )
+variables_categorical_cancer_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.cancer_none = 
+           recode_factor(dem.cancer_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_cancer_none,
+          values = values_categorical_cancer_none)
+```
+
+Create vector of categorical values for variables: Cancer prefer not to answer
+```{r vector of categorical labels}
+values_categorical_cancer_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_cancer_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_cancer_prefer_not_to_answer <- c(
+    "dem.cancer_prefer_not_to_answer"
+  )
+variables_categorical_cancer_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.cancer_prefer_not_to_answer = 
+           recode_factor(dem.cancer_prefer_not_to_answer,
+                        "Prefer not to say" = "Prefer not to answer",
+                        "Not Prefer not to say" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_cancer_prefer_not_to_answer,
+          values = values_categorical_cancer_prefer_not_to_answer)
+```
+
+Create vector of categorical values for variables: Cancer don't know
+```{r vector of categorical labels}
+values_categorical_cancer_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_cancer_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_cancer_dont_know <- c(
+    "dem.cancer_dont_know"
+  )
+variables_categorical_cancer_dont_know
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_cancer_dont_know,
+          values = values_categorical_cancer_dont_know)
+```
+
+## Skin
+Create vector of categorical values for variables: Psoriasis
+```{r vector of categorical labels}
+values_categorical_psoriasis <- c(
+  "Psoriasis",
+  "Not Psoriasis",
+  NA
+  )
+values_categorical_psoriasis
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_psoriasis <- c(
+    "dem.psoriasis"
+  )
+variables_categorical_psoriasis
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_psoriasis,
+          values = values_categorical_psoriasis)
+```
+
+Create vector of categorical values for variables: Vitiligo
+```{r vector of categorical labels}
+values_categorical_vitiligo <- c(
+  "Vitiligo",
+  "Not Vitiligo",
+  NA
+  )
+values_categorical_vitiligo
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_vitiligo <- c(
+    "dem.vitiligo"
+  )
+variables_categorical_vitiligo
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_vitiligo,
+          values = values_categorical_vitiligo)
+```
+
+Create vector of categorical values for variables: Eczema
+```{r vector of categorical labels}
+values_categorical_eczema <- c(
+  "Eczema",
+  "Not Eczema",
+  NA
+  )
+values_categorical_eczema
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_eczema <- c(
+    "dem.eczema"
+  )
+variables_categorical_eczema
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_eczema,
+          values = values_categorical_eczema)
+```
+
+Create vector of categorical values for variables: Thyroid disease
+```{r vector of categorical labels}
+values_categorical_thyroid_disease <- c(
+  "Thyroid disease",
+  "Not Thyroid disease",
+  NA
+  )
+values_categorical_thyroid_disease
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_thyroid_disease <- c(
+    "dem.thyroid_disease"
+  )
+variables_categorical_thyroid_disease
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_thyroid_disease,
+          values = values_categorical_thyroid_disease)
+```
+
+Create vector of categorical values for variables: Pain due to virus
+```{r vector of categorical labels}
+values_categorical_pain_due_to_virus <- c(
+  "Pain due to virus",
+  "Not Pain due to virus",
+  NA
+  )
+values_categorical_pain_due_to_virus
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_pain_due_to_virus <- c(
+    "dem.pain_due_to_virus"
+  )
+variables_categorical_pain_due_to_virus
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.pain_due_to_virus = 
+           recode_factor(dem.pain_due_to_virus,
+                        "Post herpectic neuralgia (pain due to virus)" = "Pain due to virus",
+                        "Not Post herpectic neuralgia (pain due to virus)" = "Not Pain due to virus"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_pain_due_to_virus,
+          values = values_categorical_pain_due_to_virus)
+```
+
+Create vector of categorical values for variables: Skin none
+```{r vector of categorical labels}
+values_categorical_skin_none <- c(
+  "None",
+  "Not None",
+  NA
+  )
+values_categorical_skin_none
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_skin_none <- c(
+    "dem.skin_none"
+  )
+variables_categorical_skin_none
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.skin_none = 
+           recode_factor(dem.skin_none,
+                        "No" = "None",
+                        "Not No" = "Not None"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_skin_none,
+          values = values_categorical_skin_none)
+```
+
+Create vector of categorical values for variables: skin prefer not to answer
+```{r vector of categorical labels}
+values_categorical_skin_prefer_not_to_answer <- c(
+  "Prefer not to answer",
+  "Not Prefer not to answer",
+  NA
+  )
+values_categorical_skin_prefer_not_to_answer
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_skin_prefer_not_to_answer <- c(
+    "dem.skin_prefer_not_to_answer"
+  )
+variables_categorical_skin_prefer_not_to_answer
+```
+
+```{r Correct response coding}
+
+dat <- dat %>%
+  mutate(dem.skin_prefer_not_to_answer = 
+           recode_factor(dem.skin_prefer_not_to_answer,
+                        "Prefer not to say" = "Prefer not to answer",
+                        "Not Prefer not to say" = "Not Prefer not to answer"
+         )
+  )
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_skin_prefer_not_to_answer,
+          values = values_categorical_skin_prefer_not_to_answer)
+```
+
+Create vector of categorical values for variables: skin don't know
+```{r vector of categorical labels}
+values_categorical_skin_dont_know <- c(
+  "Don't know",
+  "Not Don't know",
+  NA
+  )
+values_categorical_skin_dont_know
+```
+
+Create vector of variable names
+```{r vector categorical variables}
+variables_categorical_skin_dont_know <- c(
+    "dem.skin_dont_know"
+  )
+variables_categorical_skin_dont_know
+```
+
+Use imp_check function to find if any implausible values and obtain summary table of variables
+```{r imp_check categorical variables}
+imp_check(data = dat,
+           variables = variables_categorical_skin_dont_know,
+          values = values_categorical_skin_dont_know)
+```
+
+## Recoding people who answered "None of the above" to 0
+*Nervous System Problems*
+Epilepsy or convulsions 
+Brain tumour 
+Migraine 
+Multiple sclerosis 
+Parkinson’s disease 
+Severe memory loss (like Alzheimer’s disease) 
+
+### Recode "Don't know", "Prefer not to answer" and "None of the above" answers for MHD items
+In the Qualtrics survey, the participants are presented with a list of disorders and they are asked to tick which ones they have been diagnosed with by a professional. However, there are also boxes for "None of the above", "Don't know" and "Prefer not to answer" (which are there own variables in the extracted data). If they tick any of these boxes, they would appear as NA for all the disorders in the list. Therefore, these variables need to be recoded to either "Don't know", "Prefer not to answer" and "None of the above" (if chosen).
+
+### Vector of Epilepsy or convulsions , Brain tumour , Migraine , Multiple sclerosis , Parkinson’s disease , Severe memory loss (like Alzheimer’s disease) 
+```{r Vector of numeric depression, anxiety, OCD and PTSD related disorders variables for recoding}
+nervous_system_problems <- c(
+  "mhd.mdd_numeric",
+  "mhd.perinatal_depression_numeric",
+  "mhd.pmdd_numeric",
+  "mhd.bipolar_disorder_numeric",
+  "mhd.gad_numeric",
+  "mhd.social_anxiety_numeric",
+  "mhd.specific_phobia_numeric",
+  "mhd.agoraphobia_numeric",
+  "mhd.panic_disorder_numeric",
+  "mhd.panic_attacks_numeric",
+  "mhd.ptsd_numeric",
+  "mhd.ocd_numeric",
+  "mhd.bdd_numeric",
+  "mhd.other_ocd_numeric"
+)
+```
+
+
+```{r Recode numeric depression, anxiety, OCD and PTSD related disorders variables}
+dat <- dat %>%
+  mutate_at(vars(
+      all_of(
+       dep_anx_ocd_ptsd_numeric)),
+            ~case_when(
+         mhd.none_dep_anx_ocd_ptsd_numeric == 1 ~ 0,                           # recode to "No" (0)
+         mhd.dont_know_dep_anx_ocd_ptsd_numeric == 1 ~ -888,                   # recode to "Don't know" (-888)
+         mhd.pnta_dep_anx_ocd_ptsd_numeric == 1 ~ -999,                        # recode to "Prefer not to answer" (-999)
+         TRUE ~ .                                                              # leave everything else as it is
+             )
+    )
+# check - there now should be -888 and -999 as answer options (and should be same number for each of the disorders)
+dat %>%
+  select(all_of(dep_anx_ocd_ptsd_numeric)) %>%
+  freq()
+```
+
+
+
+
+
+
+
+
+
+
+# Save cleaned data
+
+Check colnames before exporting final dataset
+```{r check colnames}
+colnames(dat)
+```
+
+Combined object for excluded participants
+```{r GLAD EDGI save excluded participants}
+glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
+colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
+rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
+glad_edgi_excluded
+```
+
+# GLAD
+```{r Write cleaned GLAD variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD") %>%  # select only GLAD participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad/demographics/disability_illness_glad_clean.rds")
+    )
+```
+
+# EDGI
+```{r Write cleaned EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "EDGI") %>%  # select only EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/EDGI_protocol/data/demographics/disability_illness_edgi_clean.rds")
+    )
+```
+
+# GLAD EDGI
+```{r Write cleaned GLAD & EDGI variables to a .rds file}
+dat %>% 
+  filter(sample == "GLAD"
+         | sample == "EDGI") %>%  # select only GLAD or EDGI participants
+  saveRDS(
+    file = paste0(ilovedata, "/data/2022-09-16/glad_edgi/demographics/disability_illness_glad_edgi_clean.rds")
+    )
+```

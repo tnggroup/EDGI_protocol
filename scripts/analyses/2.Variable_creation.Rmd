@@ -389,7 +389,28 @@ dat %>%
   nrow()
 ```
       
+# Table of frequency of eating disorder by age
+```{r table freq EDs}
+dat_eds_binary_sex_numeric <- dat %>%
+  select(
+    "Anorexia nervosa" = anorexia_nervosa_subtype_numeric,
+    "Bulimia nervosa" = bulimia_nervosa_numeric,
+    "Binge-eating disorder" = binge_eating_disorder_numeric,
+    "Purging disorder" = purging_disorder_numeric,
+    "Atypical anorexia nervosa" = atypical_anorexia_nervosa_numeric,
+    "Atypical binge-eating disorder" = atypical_binge_eating_disorder_numeric,
+    "Atypical bulimia nervosa" = atypical_bulimia_nervosa_numeric,
+    "Night-eating syndrome" = night_eating_syndrome_numeric,
+    "Pica" = pica_numeric,
+    "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
+    "Ruminiation disorder" = rumination_disorder_numeric,
+    dem.sex
+  ) %>%
+  gtsummary::tbl_summary(missing = "no",
+                         by = dem.sex)
 
+dat_eds_binary_sex_numeric
+```
 
 ```{r}
 # All missing =  3,222
