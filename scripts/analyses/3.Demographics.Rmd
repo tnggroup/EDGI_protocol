@@ -37,6 +37,7 @@ Load packages
 
 ```{r Load packages}
 library(tidyverse)
+library(flextable)
 library(gtsummary)
 ```
 
@@ -63,22 +64,52 @@ summary_table <-
   dat_demographics %>%
   gtsummary::tbl_summary(
         
-        by =  mixed_eating_disorders,
+        by =  mixed_eating_disorders_all,
         
         label = list(
-        demographics.what_gender_do_you_identify_with ~
+          dem.sex ~
+            "Sex",
+          demographics.what_gender_do_you_identify_with ~
           "Gender",
         dem.what_is_your_sexual_orientation ~
           "Sexual Orientation",
         dem.do_you_identify_as_transgender ~
-          "Transgender"
+          "Transgender",
+        dem.what_is_your_ethnic_origin ~
+          "Ethnic Origin",
+        dem.highest_education_finegrained ~
+          "Highest Education Level",
+        #there was a gap between these in other script. do i need one here?
+        dem.what_is_your_current_employment_status ~
+          "Current Employment Status",
+        dem.what_is_your_current_maritalrelationship_status ~
+          "Current Marital/Relationship Status",
+        dem.pack_year ~ # is this smoking?
+          "Smoking status",
+        mhd.eating_disorder_received_treatment ~
+            "Received Treatment"
         ),
-                
-          type = list(demographics.what_gender_do_you_identify_with ~ 
+        
+          type = list(
+            dem.sex ~
+            "categorical",
+            demographics.what_gender_do_you_identify_with ~ 
             "categorical",
           dem.what_is_your_sexual_orientation ~
             "categorical",
           dem.do_you_identify_as_transgender ~
+            "categorical",
+          dem.what_is_your_ethnic_origin ~
+            "categorical",
+          dem.highest_education_finegrained ~
+            "categorical",
+          dem.what_is_your_current_employment_status ~
+            "categorical",
+          dem.what_is_your_current_maritalrelationship_status ~
+            "categorical",          
+          dem.pack_year ~ # is this smoking?
+            "categorical",
+          mhd.eating_disorder_received_treatment ~
             "categorical"
           ),
 
@@ -98,27 +129,57 @@ summary_table <-
 
 
 ```{r format table}
-summary_table <-
+summary_table_long <-
   dat_demographics_long %>%
   gtsummary::tbl_summary(
         
         by =  Disorder,
         
-        label = list(
-        demographics.what_gender_do_you_identify_with ~
+ label = list(
+          dem.sex ~
+            "Sex",
+          demographics.what_gender_do_you_identify_with ~
           "Gender",
         dem.what_is_your_sexual_orientation ~
           "Sexual Orientation",
         dem.do_you_identify_as_transgender ~
-          "Transgender"
+          "Transgender",
+        dem.what_is_your_ethnic_origin ~
+          "Ethnic Origin",
+        dem.highest_education_finegrained ~
+          "Highest Education Level",
+        #there was a gap between these in other script. do i need one here?
+        dem.what_is_your_current_employment_status ~
+          "Current Employment Status",
+        dem.what_is_your_current_maritalrelationship_status ~
+          "Current Marital/Relationship Status",
+        mhd.eating_disorder_received_treatment ~
+            "Received Treatment",
+                dem.pack_year ~ # is this smoking?
+          "Smoking status: pack years"
         ),
-                
-          type = list(demographics.what_gender_do_you_identify_with ~ 
+        
+          type = list(
+            dem.sex ~
+            "categorical",
+            demographics.what_gender_do_you_identify_with ~ 
             "categorical",
           dem.what_is_your_sexual_orientation ~
             "categorical",
           dem.do_you_identify_as_transgender ~
-            "categorical"
+            "categorical",
+          dem.what_is_your_ethnic_origin ~
+            "categorical",
+          dem.highest_education_finegrained ~
+            "categorical",
+          dem.what_is_your_current_employment_status ~
+            "categorical",
+          dem.what_is_your_current_maritalrelationship_status ~
+            "categorical",          
+          mhd.eating_disorder_received_treatment ~
+            "categorical",
+          dem.pack_year ~ # is this smoking?
+            "continuous"
           ),
 
           statistic = list(
@@ -139,10 +200,16 @@ summary_table <-
 
 Add bold labels to table
 
-```{r table with bold labels}
+```{r summary_table with bold labels}
 summary_table %>% 
   bold_labels() 
 ```
+
+```{r summary_table_long with bold labels}
+summary_table_long %>% 
+  bold_labels() 
+```
+
 
 Save as a word document
 
@@ -154,3 +221,10 @@ summary_table %>%
   )
 ```
 
+```{r table as word document}
+summary_table_long %>%
+  as_flex_table() %>%
+  flextable::save_as_docx(
+    path = "../results/EDGI_demographics.docx"
+  )
+```
