@@ -62,7 +62,7 @@ names(dat_psych_dx)
 
 ```{r summary_table table}
 summary_table <-
-  dat_demographics %>%
+  dat_psych_dx %>%
   gtsummary::tbl_summary(
         
         by =  mixed_eating_disorders_all,
@@ -87,7 +87,7 @@ summary_table <-
         mhd.bipolar_disorder_numeric ~
         "Bipolar Disorder",
         mhd.autism_spectrum_disorder ~
-        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
+        "ASD" # do we want consistency in whether we are spelling out in full or abbreviating?
          ),
                 
           type = list(mhd.depression_and_anxiety ~
@@ -109,7 +109,7 @@ summary_table <-
         mhd.bipolar_disorder_numeric ~
             "categorical",
         mhd.autism_spectrum_disorder ~
-            "categorical", # do we want consistency in whether we are spelling out in full or abbreviating?
+            "categorical" # do we want consistency in whether we are spelling out in full or abbreviating?
         ),
 
           statistic = list(
@@ -131,7 +131,7 @@ summary_table <-
 
 ```{r summary_table_long table}
 summary_table_long <-
-  dat_demographics_long %>%
+  dat_psych_dx_longer %>%
   gtsummary::tbl_summary(
         
         by =  Disorder,
@@ -156,7 +156,7 @@ summary_table_long <-
         mhd.bipolar_disorder_numeric ~
         "Bipolar Disorder",
         mhd.autism_spectrum_disorder ~
-        "ASD", # do we want consistency in whether we are spelling out in full or abbreviating?
+        "ASD" # do we want consistency in whether we are spelling out in full or abbreviating?
          ),
                 
           type = list(mhd.depression_and_anxiety ~
@@ -178,7 +178,7 @@ summary_table_long <-
         mhd.bipolar_disorder_numeric ~
             "categorical",
         mhd.autism_spectrum_disorder ~
-            "categorical", # do we want consistency in whether we are spelling out in full or abbreviating?
+            "categorical" # do we want consistency in whether we are spelling out in full or abbreviating?
         ),
 
           statistic = list(
