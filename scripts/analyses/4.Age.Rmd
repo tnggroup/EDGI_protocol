@@ -24,17 +24,21 @@ Add the add_numeric function - used to convert character variables into numeric 
 Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
 Add the sumscores function - used to generate sumscores
 Add the package_check function - used to install and load dependencies
-Add the imp_check function - used to check variables for implausible values
 ```{r Read in functions}
-source(file = paste0("functions/add_numeric.R"))
-source(file = paste0("functions/remove_duplicates.R"))
-source(file = paste0("functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/add_numeric.R"))
+source(file = paste0(ilovedata_scripts, "functions/remove_duplicates.R"))
+source(file = paste0(ilovedata_scripts, "functions/sumscores.R"))
+source(file = paste0(ilovedata_scripts, "functions/package_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/imp_check.R"))
+source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
 
 ```{r Load packages}
 library(tidyverse)
+library(officer)
+library(flextable)
 library(gtsummary)
 ```
 
@@ -51,38 +55,139 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 ```
 
 
-```{r}
+```{r age_sex_distribution names}
 names(age_sex_distribution)
 ```
 
 
 
-```{r format table}
-summary_table <-
-  gtsummary::tbl_strata(
-    data = dat_summary_table, 
-    strata = ed.DSM5_AN_binary,
-    .tbl_fun =
-      ~ .x %>%
-      tbl_summary(
+```{r Check all NA participants}
+age_sex_distribution %>%
+  filter(
+    is.na(dem.sex)
+  )
+```
+
+```{r Check sex variable}
+age_sex_distribution %>%
+  summarytools::freq(dem.sex)
+```
+
+Check age variable
+```{r}
+age_sex_distribution %>%
+  summarytools::freq(dem.dob_age)
+```
+
+```{r}
+age_sex_distribution %>%
+  filter(
+    !is.na(dem.sex)
+  ) %>%
+  filter(
+    dem.dob_age != -666
+  ) %>%
+  summarytools::freq(
+    dem.dob_age
+  )
+```
+
+
+
+```{r Age distribution plot by sex}
+age_sex_distribution %>%
+  filter(
+    !is.na(dem.sex)
+  ) %>%
+  filter(
+    dem.dob_age != -666
+  ) %>%
+  ggplot(aes (
+    x = dem.dob_age,
+    fill = dem.sex,
+    alpha = 0.5)) + 
+  geom_density() +
+      labs(
+      x = "Age [years]",
+      y = "Percentage of total sample",
+      fill = "Sex",
+      title = element_blank(),
+      subtitle = paste0(
+        "Dashed line represents mean and blue dotted lines represent ± 1 standard deviation\n",
+        "Red dotted lines represent ± 3.5 standard deviations\n",
+        "n = ", sum(!is.na(age_sex_distribution$dem.dob_age)),
+        "; NA = ", sum(is.na(age_sex_distribution$dem.dob_age)),
+        "; n(total) = ", length(age_sex_distribution$dem.dob_age)
+      ),
+      color = "black"
+    ) +
+    theme(
+      panel.grid.major.y = element_line(
+        size = 0.5,
+        linetype = "dashed",
+        colour = "gray"
+      ),
+      axis.text.x = element_text(colour = "black", size = 12),
+      axis.text.y = element_text(colour = "black", size = 12),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank(),
+      panel.background = element_blank()
+    ) +
+  scale_alpha(guide = 'none')
+```
+
+
+
+```{r}
+# Long format
+exclude_columns_from_pivoting <-
+  c(
+    "dem.dob_age"
+    )
+
+age_sex_distribution_long <- dat %>%
+  select(
+    all_of(exclude_columns_from_pivoting),
+         
+        # Disorder
+        anorexia_nervosa,
+        bulimia_nervosa,
+        binge_eating_disorder,
+        purging_disorder,
+    atypical_anorexia_nervosa
+        ) %>%
+  pivot_longer(
+    -exclude_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+age_sex_distribution_long
+```
+
+
+
+
+
+```{r summary_table_long table}
+summary_table_long <-
+  age_sex_distribution_long %>%
+  gtsummary::tbl_summary(
         
-        by =  ed.DSM5_BED_binary,
+        by =  Disorder,
         
         label = list(
-        dem.which_gender_do_you_identify_with ~
-          "Gender",
-        dem.what_is_your_sexual_orientation ~
-          "Sexual Orientation",
-        dem.do_you_identify_as_transgender ~
-          "Transgender"
+
+        dem.dob_age ~
+          "Age"
         ),
                 
-          type = list(dem.which_gender_do_you_identify_with ~ 
-            "categorical",
-          dem.what_is_your_sexual_orientation ~
-            "categorical",
-          dem.do_you_identify_as_transgender ~
-            "categorical"),
+          type = list(
+            dem.dob_age ~
+          "categorical"),
 
           statistic = list(
                              
@@ -96,87 +201,25 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
-  )
 ```
 
 Add bold labels to table
 
-```{r table with bold labels}
-summary_table %>% 
+```{r summary_table_long with bold labels}
+summary_table_long %>% 
   bold_labels() 
 ```
 
 Save as a word document
 
-```{r table as word document}
-summary_table %>%
-  as_flex_table() %>%
-  flextable::save_as_docx(
-    path = "../results/ARFID_ASD_sex.docx"
-  )
-```
 
-
-
-
-Label variables for table and select type of data
-
-```{r tbl_summary}
-summary_table <- summary %>% 
-  tbl_summary(
-              label = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "Patient's biological sex",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "Age in years",
-                 asd_diagnosis ~ 
-                  "Comorbid autism spectrum disorder diagnosis",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "BMI-for-age z-score",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "A1: Weight loss or difficulty maintaining weight/growth", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "A2: Nutritional deficiency", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "A3: Enteral feeding or oral supplement", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "A4: Psychosocial impairment"),
-              
-              
-              type = list(
-                child.parent.pre.biological_sex_of_your_child_at_birth ~ 
-                  "categorical",
-                 child.parent.pre.age_yrs_dec_coalesced ~ 
-                  "continuous2",
-                 asd_diagnosis ~
-                  "categorical",
-                 pardi.parent.pre.current_bmi_age_sds ~ 
-                  "continuous2",
-                 pardi.parent.pre.diagnostic_predictor_a1 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a2 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a3 ~ 
-                  "categorical", 
-                 pardi.parent.pre.diagnostic_predictor_a4 ~ 
-                  "categorical"), 
-              
-              statistic = list(
-                all_categorical() ~ "{n} ({p}%)",
-                all_continuous2() ~ c("{mean} ({sd})",
-                                      "{median} ({p25}, {p75})",
-                                      "{min}, {max}")
-                ), 
-              
-              missing = "no"
-    ) 
-```
 
 ```{r modify labls and run table}
-summary_table %>% 
+summary_table_long %>% 
   modify_caption("**Table 1. Patient Characteristics**") %>%  
   modify_footnote(all_stat_cols() ~ "n(%) or Mean(SD)") %>% 
   bold_labels() %>% 
   add_n() %>% 
   modify_header(label ~ "**Variable**") 
 ```
+
