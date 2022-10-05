@@ -233,6 +233,23 @@ edgi_miss_map <- edgi_dat_id %>%
 
 edgi_miss_map
 ```
+```{r check factor levels}
+edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
+  levels()
+```
+
+```{r recode EDGI factor levels to match GLAD}
+edgi_dat_id$dem.what_is_your_current_maritalrelationship_status <-
+  recode_factor(edgi_dat_id$dem.what_is_your_current_maritalrelationship_status, 
+                "Steady not living together" = "Relationship (not living together)", 
+                "Steady living together" = "Relationship (living together)", 
+                "Married" = "Married/civil partnership")
+```
+
+```{r check factor levels}
+edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
+  levels()
+```
 
 # Bind rows of EDGI and GLAD data
 Read in data, bind datasets, then clean all together
@@ -283,9 +300,6 @@ values_categorical <- c(
   "Divorced",
   "Widowed",
   "Other",
-  "Steady not living together",
-  "Steady living together",
-  "Married",
   NA_real_
   )
 values_categorical
@@ -347,7 +361,6 @@ table of variables
 imp_check(data = dat,
           variables = variables_numeric,
           values = values_numeric)
-
 ```
 
 # Save cleaned data
@@ -363,6 +376,11 @@ glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
 colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
 rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
 glad_edgi_excluded
+```
+```{r}
+dat %>% 
+  filter(sample == "EDGI") %>%
+  filter(is.na(dem.what_is_your_current_maritalrelationship_status))
 ```
 
 ## GLAD
