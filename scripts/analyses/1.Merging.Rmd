@@ -254,13 +254,15 @@ eating_disorder_algorithm <- eating_disorder_algorithm %>%
 ```{r read in mhd data}
 mhd1 <- readRDS(file = paste0(filepath_cleaned_data,
                                      "clinical/mhd_edgi_clean.rds"))
-  
+mhd1 <- mhd1 %>%
+  select(-mhd.autism_spectrum_disorder)
+
 mhd2 <- readRDS(file = paste0(filepath_edgi_raw,
                               "dem_edgi.rds"))
 
 mhd2 <- mhd2 %>%
   select(ID = externalDataReference,
-         dem.autism_spectrum_disorder_)
+         mhd.autism_spectrum_disorder = dem.autism_spectrum_disorder_)
 
 # Merge 
 mhd <- dplyr::full_join(mhd1,
