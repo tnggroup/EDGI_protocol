@@ -61,6 +61,124 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 names(dat_demographics)
 ```
 
+```{r}
+summary_table <-
+  dat_demographics %>%
+  gtsummary::tbl_summary(
+        
+       # by =  mixed_eating_disorders_all,
+        
+        label = list(
+          dem.sex ~
+            "Sex",
+         demographics.what_gender_do_you_identify_with ~
+         "Gender",
+        dem.what_is_your_sexual_orientation ~
+          "Sexual Orientation",
+        dem.do_you_identify_as_transgender ~
+          "Transgender",
+        dem.what_is_your_ethnic_origin ~
+          "Ethnic Origin",
+        dem.highest_education_finegrained ~
+          "Highest Education Level",
+        #there was a gap between these in other script. do i need one here?
+        dem.what_is_your_current_employment_status ~
+          "Current Employment Status",
+        dem.what_is_your_current_maritalrelationship_status ~
+          "Current Marital/Relationship Status",
+        mhd.eating_disorder_received_treatment ~
+            "Received Treatment",
+        dem.pack_year ~
+          "Smoking status: pack years"
+        ),
+        
+          type = list(
+            dem.sex ~
+            "categorical",
+            demographics.what_gender_do_you_identify_with ~ 
+            "categorical",
+          dem.what_is_your_sexual_orientation ~
+            "categorical",
+          dem.do_you_identify_as_transgender ~
+            "categorical",
+          dem.what_is_your_ethnic_origin ~
+            "categorical",
+          dem.highest_education_finegrained ~
+            "categorical",
+          dem.what_is_your_current_employment_status ~
+            "categorical",
+          dem.what_is_your_current_maritalrelationship_status ~
+            "categorical",          
+          dem.pack_year ~ # is this smoking?
+            "categorical",
+          mhd.eating_disorder_received_treatment ~
+            "categorical"
+          ),
+
+          statistic = list(
+                             
+            all_categorical() ~ "{n} ({p}%)",
+            
+            all_continuous2() ~ c("{mean} ({sd})",
+                                  "{median} ({p25}, {p75})",
+                                  "{min}, {max}"
+                                  )
+                ), 
+              
+              missing = "always")  %>% 
+  add_n()
+
+
+summary_table
+
+
+# Smoking
+dat %>%
+  filter(dem.pack_year != -666) %>%
+  descr(dem.pack_year
+        )
+
+dat %>% 
+  filter(is.na(dem.pack_year)) %>%
+  nrow(
+    
+  )
+# AN
+dat %>%
+  filter(dem.pack_year != -666 &
+  anorexia_nervosa == "Anorexia nervosa") %>%
+  descr(dem.pack_year
+        )
+# AAN
+dat %>%
+  filter(dem.pack_year != -666 &
+  atypical_anorexia_nervosa == "Atypical anorexia nervosa") %>%
+  descr(dem.pack_year
+        )
+
+# BN
+dat %>%
+  filter(dem.pack_year != -666 &
+  bulimia_nervosa == "Bulimia nervosa") %>%
+  descr(dem.pack_year
+        )
+
+# BED
+dat %>%
+  filter(dem.pack_year != -666 &
+  binge_eating_disorder == "Binge-eating disorder") %>%
+  descr(dem.pack_year
+        )
+
+
+# PUR
+dat %>%
+  filter(dem.pack_year != -666 &
+  purging_disorder == "Purging disorder") %>%
+  descr(dem.pack_year
+        )
+```
+
 
 ```{r summary_table table}
 summary_table <-
@@ -128,6 +246,8 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
+
+summary_table
 ```
 
 
@@ -196,6 +316,8 @@ summary_table_long <-
               
               missing = "always")  %>% 
   add_n()
+
+summary_table_long
 ```
 
 

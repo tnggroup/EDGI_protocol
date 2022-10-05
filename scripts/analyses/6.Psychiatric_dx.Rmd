@@ -124,6 +124,8 @@ summary_table <-
               
               missing = "always")  %>% 
   add_n()
+
+summary_table
 ```
 
 
@@ -193,6 +195,8 @@ summary_table_long <-
               
               missing = "always")  %>% 
   add_n()
+
+summary_table_long
 ```
 
 

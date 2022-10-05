@@ -68,7 +68,7 @@ sex_gender_sexuality <- sex_gender_sexuality %>%
   select(ID,
          sample,
          dem.sex,
-         demographics.what_gender_do_you_identify_with = dem.which_gender_do_you_identify_with  ,
+         demographics.what_gender_do_you_identify_with = dem.what_gender_do_you_identify_with,
          dem.what_is_your_sexual_orientation,
          dem.do_you_identify_as_transgender)
 ```
@@ -252,9 +252,21 @@ eating_disorder_algorithm <- eating_disorder_algorithm %>%
 
 # Self-report (MHD)
 ```{r read in mhd data}
-mhd <- readRDS(file = paste0(filepath_cleaned_data,
+mhd1 <- readRDS(file = paste0(filepath_cleaned_data,
                                      "clinical/mhd_edgi_clean.rds"))
   
+mhd2 <- readRDS(file = paste0(filepath_edgi_raw,
+                              "dem_edgi.rds"))
+
+mhd2 <- mhd2 %>%
+  select(ID = externalDataReference,
+         dem.autism_spectrum_disorder_)
+
+# Merge 
+mhd <- dplyr::full_join(mhd1,
+                        mhd2,
+                        by = "ID")
+              
 # Check
 mhd %>%
   colnames()
