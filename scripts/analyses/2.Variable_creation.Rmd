@@ -503,6 +503,7 @@ dat %>%
 exclude_columns_from_pivoting <-
   c(
     "dem.sex",
+    "dem.dob_age",
     "demographics.what_gender_do_you_identify_with",
     "dem.do_you_identify_as_transgender",
     "dem.what_is_your_sexual_orientation",
@@ -520,6 +521,7 @@ dat_demographics <- dat %>%
    # mixed_eating_disorders_primary,
     mixed_eating_disorders_all,
     dem.sex,
+    dem.dob_age,
     demographics.what_gender_do_you_identify_with,
     dem.do_you_identify_as_transgender,
     dem.what_is_your_sexual_orientation,
@@ -693,7 +695,7 @@ exclude_columns_from_pivoting <-
     
     "mhd.obsessive_compulsive_disorders",
     
-    "mhd.personality_disorder_diagnosed_numeric",
+    "mhd.personality_disorder_diagnosed",
     
     "mhd.bipolar_and_schizophrenia",
     "mhd.psychotic_disorders",
@@ -770,8 +772,8 @@ exclude_columns_from_pivoting <-
  ,"dem.crohns_disease"                                                 
  ,"dem.ulcerative_colitis"                                             
  ,"dem.coeliac_disease"                                                
- ,"dem.diabetes_type_1"                                                
- ,"dem.diabetes_type_2"                                                
+ ,"dem.diabetes_type_1_all"                                                
+ ,"dem.diabetes_type_2_all"                                                
  ,"dem.pain_due_to_diabetes"                                           
  ,"dem.pain_due_to_virus"                                              
                                

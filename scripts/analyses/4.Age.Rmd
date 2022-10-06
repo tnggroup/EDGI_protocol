@@ -133,7 +133,7 @@ age_sex_distribution %>%
       axis.ticks.y = element_blank(),
       panel.background = element_blank()
     ) +
-  scale_alpha(guide = 'none')
+  scale_alpha(guide = 'none') + scale_y_continuous(labels = scales::percent)
 ```
 
 

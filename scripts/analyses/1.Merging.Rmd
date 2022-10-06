@@ -138,14 +138,31 @@ employment %>%
 employment %>%
   dim()
 
+# Needs fixing
 # Select variables we need 
 employment <- employment %>%
   select(ID,
-         dem.what_is_your_current_employment_status)
+         dem.what_is_your_current_employment_status_numeric)
+
+employment <- employment %>%
+  mutate(dem.what_is_your_current_employment_status =
+           case_when(dem.what_is_your_current_employment_status_numeric == 1 ~ "In paid employment or self-employed",
+                     dem.what_is_your_current_employment_status_numeric == 2 ~ "Retired",
+                     dem.what_is_your_current_employment_status_numeric == 3 ~ "Looking after home and/or family",
+                     dem.what_is_your_current_employment_status_numeric == 4 ~ "Unable to work because of sickness or disability",
+                     dem.what_is_your_current_employment_status_numeric == 5 ~ "Unemployed",
+                     dem.what_is_your_current_employment_status_numeric == 6 ~ "Doing unpaid or voluntary work",
+                     dem.what_is_your_current_employment_status_numeric == 7 ~ "Full-time or part-time student",
+                     
+                     dem.what_is_your_current_employment_status_numeric == 9 ~ "Other"
+                     
+                     ))
+
 ```
 
 # Relationship status
 ```{r read in relationship status}
+# Needs fixing
 relationship_status <- readRDS(file = paste0(filepath_cleaned_data,
                                      "/demographics/marital_status_edgi_clean.rds"))
   
@@ -252,6 +269,7 @@ eating_disorder_algorithm <- eating_disorder_algorithm %>%
 
 # Self-report (MHD)
 ```{r read in mhd data}
+# Needs fixing
 mhd1 <- readRDS(file = paste0(filepath_cleaned_data,
                                      "clinical/mhd_edgi_clean.rds"))
 mhd1 <- mhd1 %>%
@@ -275,6 +293,26 @@ mhd %>%
 
 mhd %>%
   dim()
+
+# Recode personality disorder - to fix
+mhd <- mhd %>%
+  mutate(mhd.personality_disorder_diagnosed =
+           case_when(
+           mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 1 ~ "Paranoid personality disorder",
+          mhd.personality_disorder_diagnosed_numeric == 2 ~ "Schizoid personality disorder",
+          mhd.personality_disorder_diagnosed_numeric == 3 ~ "Schizotypal personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 4~ "Antisocial personality disorder",
+            mhd.personality_disorder_diagnosed_numeric == 5~ "Borderline/Emotionally unstable, personality disorder",
+             mhd.personality_disorder_diagnosed_numeric == 6~ "Histrionic personality disorder",
+              mhd.personality_disorder_diagnosed_numeric == 7~ "Narcissistic personality disorder",
+               mhd.personality_disorder_diagnosed_numeric == 8~ "Avoidant/anxious personality disorder",
+                mhd.personality_disorder_diagnosed_numeric == 9~ "Dependent personality disorder",
+                 mhd.personality_disorder_diagnosed_numeric == 10~ "Obsessive-compulsive personality disorder",
+         mhd.personality_disorder_diagnosed_numeric == 11 ~ "Mixed personality disorder"
+         
+         )
+  )
 
 # Select columns
 mhd <- mhd %>%

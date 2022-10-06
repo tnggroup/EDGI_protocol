@@ -62,6 +62,10 @@ names(dat_somatic_dx)
 
 
 ```{r summary_table table}
+dat_somatic_dx$dem.diabetes_type_2_all <- as.factor(dat_somatic_dx$dem.diabetes_type_2_all)
+
+dat_somatic_dx$dem.diabetes_type_1_all <- as.factor(dat_somatic_dx$dem.diabetes_type_1_all)
+
 summary_table <-
   dat_somatic_dx %>%
   gtsummary::tbl_summary(
@@ -115,9 +119,9 @@ summary_table <-
           "Ulcerative Colitis",
         dem.coeliac_disease ~
           "Coeliac Disease",
-        dem.diabetes_type_1 ~
+        dem.diabetes_type_1_all ~
           "Diabetes Type 1",
-        dem.diabetes_type_2 ~   
+        dem.diabetes_type_2_all ~   
           "Diabetes Type 2",
         dem.pain_due_to_diabetes ~
           "Diabetic-related Pain",
@@ -192,9 +196,9 @@ summary_table <-
           "categorical",
         dem.coeliac_disease ~
           "categorical",
-        dem.diabetes_type_1 ~
+        dem.diabetes_type_1_all ~
           "categorical",
-        dem.diabetes_type_2 ~   
+        dem.diabetes_type_2_all ~   
           "categorical",
         dem.pain_due_to_diabetes ~
           "categorical",
@@ -240,6 +244,11 @@ summary_table <-
 
 
 ```{r summary_table_long table}
+dat_somatic_dx_longer$dem.diabetes_type_2_all <- as.factor(dat_somatic_dx_longer$dem.diabetes_type_2_all)
+
+dat_somatic_dx_longer$dem.diabetes_type_1_all <- as.factor(dat_somatic_dx_longer$dem.diabetes_type_1_all)
+
+
 summary_table_long <-
   dat_somatic_dx_longer %>%
   gtsummary::tbl_summary(
@@ -293,9 +302,9 @@ summary_table_long <-
           "Ulcerative Colitis",
         dem.coeliac_disease ~
           "Coeliac Disease",
-        dem.diabetes_type_1 ~
+        dem.diabetes_type_1_all ~
           "Diabetes Type 1",
-        dem.diabetes_type_2 ~   
+        dem.diabetes_type_2_all ~   
           "Diabetes Type 2",
         dem.pain_due_to_diabetes ~
           "Diabetic-related Pain",
@@ -370,9 +379,9 @@ summary_table_long <-
           "categorical",
         dem.coeliac_disease ~
           "categorical",
-        dem.diabetes_type_1 ~
+        dem.diabetes_type_1_all ~
           "categorical",
-        dem.diabetes_type_2 ~   
+        dem.diabetes_type_2_all ~   
           "categorical",
         dem.pain_due_to_diabetes ~
           "categorical",
@@ -416,6 +425,8 @@ summary_table_long <-
               
               missing = "always")  %>% 
   add_n()
+
+summary_table_long
 ```
 
 

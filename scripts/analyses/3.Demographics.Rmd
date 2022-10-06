@@ -60,15 +60,17 @@ load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 ```{r}
 names(dat_demographics)
 ```
-
-```{r}
-summary_table <-
+# Demographics whole sample
+```{r HLD addition}
+summary_table_whole_sample <-
   dat_demographics %>%
+  filter(dem.pack_year != -666 |
+           is.na(dem.pack_year)) %>%
   gtsummary::tbl_summary(
         
-       # by =  mixed_eating_disorders_all,
-        
         label = list(
+          dem.dob_age ~ 
+            "Age",
           dem.sex ~
             "Sex",
          demographics.what_gender_do_you_identify_with ~
@@ -93,6 +95,8 @@ summary_table <-
         ),
         
           type = list(
+            dem.dob_age ~ 
+              "continuous",
             dem.sex ~
             "categorical",
             demographics.what_gender_do_you_identify_with ~ 
@@ -110,7 +114,7 @@ summary_table <-
           dem.what_is_your_current_maritalrelationship_status ~
             "categorical",          
           dem.pack_year ~ # is this smoking?
-            "categorical",
+            "continuous",
           mhd.eating_disorder_received_treatment ~
             "categorical"
           ),
@@ -129,54 +133,46 @@ summary_table <-
   add_n()
 
 
-summary_table
+summary_table_whole_sample
 
-
-# Smoking
-dat %>%
-  filter(dem.pack_year != -666) %>%
-  descr(dem.pack_year
-        )
+# Age
+dat %>% 
+  filter(dem.dob_age != -666 |
+           is.na(dem.dob_age)
+          ) %>%
+  descr(dem.dob_age)
 
 dat %>% 
-  filter(is.na(dem.pack_year)) %>%
-  nrow(
-    
-  )
-# AN
-dat %>%
-  filter(dem.pack_year != -666 &
-  anorexia_nervosa == "Anorexia nervosa") %>%
-  descr(dem.pack_year
-        )
-# AAN
-dat %>%
-  filter(dem.pack_year != -666 &
-  atypical_anorexia_nervosa == "Atypical anorexia nervosa") %>%
-  descr(dem.pack_year
-        )
-
-# BN
-dat %>%
-  filter(dem.pack_year != -666 &
-  bulimia_nervosa == "Bulimia nervosa") %>%
-  descr(dem.pack_year
-        )
-
-# BED
-dat %>%
-  filter(dem.pack_year != -666 &
-  binge_eating_disorder == "Binge-eating disorder") %>%
-  descr(dem.pack_year
-        )
+  filter((dem.dob_age != -666 |
+           is.na(dem.dob_age)) &
+           anorexia_nervosa == "Anorexia nervosa") %>%
+  descr(dem.dob_age)
 
 
-# PUR
-dat %>%
-  filter(dem.pack_year != -666 &
-  purging_disorder == "Purging disorder") %>%
-  descr(dem.pack_year
-        )
+dat %>% 
+  filter((dem.dob_age != -666 |
+           is.na(dem.dob_age)) &
+           bulimia_nervosa == "Bulimia nervosa") %>%
+  descr(dem.dob_age)
+
+dat %>% 
+  filter((dem.dob_age != -666 |
+           is.na(dem.dob_age)) &
+           atypical_anorexia_nervosa == "Atypical anorexia nervosa") %>%
+  descr(dem.dob_age)
+
+
+dat %>% 
+  filter((dem.dob_age != -666 |
+           is.na(dem.dob_age)) &
+           binge_eating_disorder == "Binge-eating disorder") %>%
+  descr(dem.dob_age)
+
+dat %>% 
+  filter((dem.dob_age != -666 |
+           is.na(dem.dob_age)) &
+           purging_disorder == "Purging disorder") %>%
+  descr(dem.dob_age)
 ```
 
 
@@ -259,6 +255,8 @@ summary_table_long <-
         by =  Disorder,
         
  label = list(
+   dem.dob_age ~ 
+     "Age",
           dem.sex ~
             "Sex",
           demographics.what_gender_do_you_identify_with ~
@@ -282,6 +280,8 @@ summary_table_long <-
         ),
         
           type = list(
+            dem.dob_age ~ 
+     "continuous",
             dem.sex ~
             "categorical",
             demographics.what_gender_do_you_identify_with ~ 

@@ -61,6 +61,8 @@ names(dat_psych_dx)
 
 
 ```{r summary_table table}
+dat_psych_dx$mhd.personality_disorder_diagnosed <- as.factor(dat_psych_dx$mhd.personality_disorder_diagnosed)
+
 summary_table <-
   dat_psych_dx %>%
   gtsummary::tbl_summary(
@@ -78,7 +80,7 @@ summary_table <-
         "PTSD",
         mhd.obsessive_compulsive_disorders ~
         "Obessive Compulsive Disorders",
-        mhd.personality_disorder_diagnosed_numeric ~
+        mhd.personality_disorder_diagnosed ~
         "Personality Disorder",
         mhd.bipolar_and_schizophrenia ~
         "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
@@ -100,7 +102,7 @@ summary_table <-
             "categorical",
           mhd.obsessive_compulsive_disorders ~
             "categorical",
-        mhd.personality_disorder_diagnosed_numeric ~
+        mhd.personality_disorder_diagnosed ~
             "categorical",
         mhd.bipolar_and_schizophrenia ~
             "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
@@ -132,6 +134,9 @@ summary_table
 
 
 ```{r summary_table_long table}
+dat_psych_dx_longer$mhd.personality_disorder_diagnosed <- as.factor(dat_psych_dx_longer$mhd.personality_disorder_diagnosed)
+
+
 summary_table_long <-
   dat_psych_dx_longer %>%
   gtsummary::tbl_summary(
@@ -149,7 +154,7 @@ summary_table_long <-
         "PTSD",
         mhd.obsessive_compulsive_disorders ~
         "Obessive Compulsive Disorders",
-        mhd.personality_disorder_diagnosed_numeric ~
+        mhd.personality_disorder_diagnosed ~
         "Personality Disorder",
         mhd.bipolar_and_schizophrenia ~
         "Bipolar Disorder and Schizophrenia", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
@@ -171,7 +176,7 @@ summary_table_long <-
             "categorical",
           mhd.obsessive_compulsive_disorders ~
             "categorical",
-        mhd.personality_disorder_diagnosed_numeric ~
+        mhd.personality_disorder_diagnosed ~
             "categorical",
         mhd.bipolar_and_schizophrenia ~
             "categorical", # why is Bipolar and SZ grouped here, but bipolar also appears below alone?
