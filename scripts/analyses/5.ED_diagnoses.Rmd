@@ -10,7 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Clear Global Environment
-
 ```{r clear global environment}
 rm(list = ls(all.names = TRUE)) 
 ```
@@ -35,7 +34,6 @@ source(file = paste0(ilovedata_scripts, "functions/recode_check.R"))
 ```
 
 Load packages
-
 ```{r Load packages}
 library(tidyverse)
 library(flextable)
@@ -44,23 +42,18 @@ library(gtsummary)
 ```
 
 Set current date
-
 ```{r current date}
 date <- Sys.Date()
 ```
 
 Load data
-
 ```{r Load data}
 load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
 ```
 
-
 ```{r}
 names(selfreport_algo_sex)
 ```
-
-
 
 # Table of frequency of eating disorder
 ```{r table freq EDs}
@@ -76,7 +69,7 @@ dat_eds_binary_numeric <- dat %>%
     "Night-eating syndrome" = night_eating_syndrome_numeric,
     "Pica" = pica_numeric,
     "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
-    "Ruminiation disorder" = rumination_disorder_numeric
+    "Rumination disorder" = rumination_disorder_numeric
   ) %>%
   gtsummary::tbl_summary(missing = "no")
 
@@ -97,11 +90,12 @@ dat_eds_binary_sex_numeric <- dat %>%
     "Night-eating syndrome" = night_eating_syndrome_numeric,
     "Pica" = pica_numeric,
     "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
-    "Ruminiation disorder" = rumination_disorder_numeric,
-    dem.sex
+    "Rumination disorder" = rumination_disorder_numeric,
+    sex
   ) %>%
   gtsummary::tbl_summary(missing = "no",
-                         by = dem.sex)
+                         by = sex)
+
 
 dat_eds_binary_sex_numeric
 ```
@@ -111,14 +105,14 @@ dat_eds_binary_sex_numeric
 dat <- dat %>% 
   mutate(ed.DSM5_AN_binge_purge_binary_numeric = 
     case_when(ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging" ~ 1,
-         ed.DSM5_AN_binge_purge_binary == "No DSM5 AN binge eating/purging" ~ 0
+         TRUE ~ 0
     )
   )
 
 dat <- dat %>% 
   mutate(ed.DSM5_AN_restricting_binary_numeric = 
     case_when(ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ 1,
-         ed.DSM5_AN_restricting_binary == "No DSM5 AN restricting" ~ 0
+        TRUE ~ 0
     )
   )
 
@@ -127,16 +121,15 @@ dat <- dat %>%
   mutate(anorexia_nervosa_subtype_unknown_numeric = 
     case_when(anorexia_nervosa_subtype_numeric == "Unknown subtype" ~ 1,
          
-              anorexia_nervosa_subtype_numeric == "Binge-eating/purging" |
-                anorexia_nervosa_subtype_numeric == "Restricting" ~ 0
+              TRUE~ 0
     )
   )
 
 
 dat_upset <- dat %>% 
    select(
-     "Anorexia nervosa restricting" = ed.DSM5_AN_binge_purge_binary_numeric,
-     "Anorexia nervosa binge-eating/purging" = ed.DSM5_AN_restricting_binary_numeric,
+     "Anorexia nervosa restricting" = ed.DSM5_AN_restricting_binary_numeric,
+     "Anorexia nervosa binge-eating/purging" = ed.DSM5_AN_binge_purge_binary_numeric,
      "Anorexia nervosa (subtype unknown)" = anorexia_nervosa_subtype_unknown_numeric,
     "Bulimia nervosa" = bulimia_nervosa_numeric,
     "Binge-eating disorder" = binge_eating_disorder_numeric,
@@ -147,9 +140,13 @@ dat_upset <- dat %>%
     "Night-eating syndrome" = night_eating_syndrome_numeric,
     "Pica" = pica_numeric,
     "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
-    "Ruminiation disorder" = rumination_disorder_numeric,
+    "Rumination disorder" = rumination_disorder_numeric,
    ) %>%
   as.data.frame()
+
+png(file = "../../results/main_manuscript/EDGI_upsetR_plot_for_manuscript.png",
+    width = 1000,
+    height = 500)
 
 UpSetR::upset(dat_upset,
               sets = c("Anorexia nervosa (subtype unknown)",
@@ -164,23 +161,23 @@ UpSetR::upset(dat_upset,
     "Night-eating syndrome",
     "Pica",
     "Avoidant/restrictive food intake disorder",
-    "Ruminiation disorder"),
-    order.by = "freq") 
-    
+    "Rumination disorder"),
+        nintersects = 60, # Limit to intersections with 5 or more participants
+    order.by = "freq"
+    ) 
+
+
+dev.off()
+
+?upset
 ```
 
 ```{r modify labls and run table}
 dat_eds_binary_sex_numeric_mod <- dat_eds_binary_sex_numeric %>% 
-  modify_caption("**Table 1. Patient Characteristics**") %>%  
-  modify_footnote(all_stat_cols() ~ "n(%) or Mean(SD)") %>% 
-  bold_labels() %>% 
-  add_n() %>% 
-  modify_header(label ~ "**Variable**") 
+  bold_labels() 
 ```
 
-
 Save as a word document
-
 ```{r word properties}
 sect_properties <- officer::prop_section(
   page_size = page_size(
@@ -192,12 +189,11 @@ sect_properties <- officer::prop_section(
 )
 ```
 
-
 ```{r summary_table_long as word document}
 dat_eds_binary_sex_numeric_mod %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/EDGI_dx.docx",
+    path = "../../results/main_manuscript/EDGI_diagnosis_by_sex_for_manuscript.docx",
     pr_section = sect_properties
   )
 ```
