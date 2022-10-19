@@ -85,7 +85,7 @@ dat <- dat %>%
   mutate(
     anorexia_nervosa =
       case_when(
-        ed.DSM5_AN_binary == "DSM5 AN" |
+        ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ "Anorexia nervosa"),
     
     bulimia_nervosa =
@@ -144,18 +144,18 @@ dat %>%
 dat <- dat %>%
   mutate(
     anorexia_nervosa_numeric =
-      case_when(ed.DSM5_AN_binary == "DSM5 AN" |
+      case_when(ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ 1,
           
           TRUE ~ 0),
     
     anorexia_nervosa_subtype_numeric =
       case_when(
-        ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging"  ~ "Binge-eating/purging",
+        ed.DSM5_AN_binge_purge_binary == "DSM-5 AN binge eating/purging"  ~ "Binge-eating/purging",
         
-        ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ "Restricting",
+        ed.DSM5_AN_restricting_binary == "DSM-5 AN restricting" ~ "Restricting",
         
-        ed.DSM5_AN_binary == "DSM5 AN" |
+        ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ "Unknown subtype",
         
         TRUE ~ NA_character_),

@@ -222,7 +222,8 @@ EDGI BE Select columns
 # Need to recode those 'Seen but not answered' for use in BED algorithm . Don't want these people to be recoded an NA. Want to keep TRUE NA_real_ to those who were NOT shown the question. Those who did but not answer (-77) should NOT be counted as NA_real_ but kept as another number. **TEMPORARY SOLUTION**
 BE_EDGI <- BE_EDGI %>%
   mutate(be.experience_regular_episodes_lowest_seen_but_not_answered =
-           case_when(be.experience_regular_episodes_lowest == -77 ~ 1
+           case_when(be.experience_regular_episodes_lowest == -77 ~ 1,
+                     is.na(be.experience_regular_episodes_lowest) ~ 0 # Geniune NA, i.e., did not get shown the question because they did not get shown it.
                      )
   )
 
@@ -475,7 +476,11 @@ dat_ed_EDGI$ed.BE_freq_per_week <-
     case_when(
       be.binge_eating_experience_episodes.txt.1 > 0 ~ round(be.binge_eating_experience_episodes.txt.1/52.1429, digits = 2),
       be.binge_eating_experience_episodes.txt > 0 ~ round(be.binge_eating_experience_episodes.txt/4.34524, digits = 2),
-      be.binge_eating_episodes_experience.txt > 0 ~  be.binge_eating_episodes_experience.txt
+      be.binge_eating_episodes_experience.txt > 0 ~  be.binge_eating_episodes_experience.txt,
+      
+      be.binge_eating_experience_episodes.txt.1 == 0 |
+      be.binge_eating_experience_episodes.txt == 0 |
+      be.binge_eating_episodes_experience.txt == 0 ~ 0 
       )
   )
   
@@ -490,24 +495,37 @@ One year = 365.25 days; One month = 30.4167 day
 
 ### EDGI
 ```{r Binge eating duration conversion EDGI}
-dat_ed_EDGI$ed.BE_duration_months <- NA
+# Exclude -777 & change to numeric
+dat_ed_EDGI <- dat_ed_EDGI %>% 
+  mutate(be.duration_months_numeric =
+           case_when(
+             be.monthstext.txt_numeric == -777 ~ NA_real_,
+             TRUE ~ as.numeric(be.monthstext.txt_numeric)
+           ))
 
-HAL HERE!
-# Change to numeric
-dat_ed_EDGI$be.duration_years_numeric <- as.numeric(dat_ed_EDGI$be.long_experience_regularly_occurring)
+dat_ed_EDGI <- dat_ed_EDGI %>% 
+  mutate(be.duration_years_numeric =
+           case_when(
+             be.yearstext.txt_numeric == -777 ~ NA_real_,
+             TRUE ~ as.numeric(be.yearstext.txt_numeric)
+           ))
 
-dat_ed_EDGI$be.duration_months_numeric <- as.numeric(dat_ed_EDGI$be.long_experience_regularly_occurring.1)
-
-# Sum years and months into months
-dat_ed_EDGI$ed.BE_duration_months <- 
-  if_else(condition = is.na(dat_ed_EDGI$ed.BE_duration_months),
-         true = ((dat_ed_EDGI$be.duration_years_numeric*365.25) + (dat_ed_EDGI$be.duration_months_numeric*30.4167)) / 30.4167, 
-        false = NA_real_,
-        missing = NA_real_)
-
-# Summary
-dat_ed_EDGI$ed.BE_duration_months %>%
-  freq()
+dat_ed_EDGI <- dat_ed_EDGI %>%
+  mutate(ed.BE_duration_months =
+           case_when(
+             !is.na(be.duration_years_numeric) &
+               !is.na(be.duration_months_numeric) ~ ((be.duration_years_numeric*365.25) + 
+             (be.duration_months_numeric*30.4167) / 30.4167),
+             
+             !is.na(be.duration_years_numeric) &
+               is.na(be.duration_months_numeric) ~ (be.duration_years_numeric*365.25) / 30.4167,
+             
+              is.na(be.duration_years_numeric) &
+               !is.na(be.duration_months_numeric) ~ be.duration_months_numeric,
+             
+             TRUE ~ NA_real_
+            
+           ))
 
 ##Change below 0 to NA
 ##Just temporary - all negative values should be cleaned when you select columns...
@@ -541,11 +559,18 @@ dat_ed_EDGI$ed.DSM5_AN_binary_numeric <-
          # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   # During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
-  (
-      an.gain_weight_afraid_fat == "Somewhat afraid" |
+  
+    (
+      (an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      )  |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) 
+& 
 # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
   # During the time when you were at this low weight, did you still feel fat? 
@@ -588,8 +613,8 @@ dat_ed_EDGI$ed.DSM5_AN_binary_numeric <-
 # Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_binary_numeric,
-                "0" = "No DSM5 AN",
-                "1" = "DSM5 AN"
+                "0" = "No DSM-5 AN",
+                "1" = "DSM-5 AN"
                 )
 
 # Summary
@@ -627,16 +652,22 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
   dplyr::if_else(
 # A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
     (
-      an.bmi_lowest <= 18.55 & #Lowest BMI as reported in ED100K optional questionnaire
+      an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire
 
 # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
   (
+  (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      )  |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) &
 
   # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
@@ -703,8 +734,8 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
 #Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_restricting_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric,
-                "0" = "No DSM5 AN restricting",
-                "1" = "DSM5 AN restricting"
+                "0" = "No DSM-5 AN restricting",
+                "1" = "DSM-5 AN restricting"
                 )
 
 #Summary
@@ -746,10 +777,16 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric <-
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
   (
+  (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      )  |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) &
 
   # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
@@ -816,8 +853,8 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric <-
 #Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric,
-                "0" = "No DSM5 AN restricting",
-                "1" = "DSM5 AN restricting"
+                "0" = "No DSM-5 AN restricting",
+                "1" = "DSM-5 AN restricting"
                 )
 
 #Summary
@@ -847,10 +884,16 @@ dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric <-
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
   (
+  (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      )  |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) &
   
 #C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
@@ -915,8 +958,8 @@ dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric <-
 #Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric,
-                "0" = "No DSM5 AN binge eating/purging",
-                "1" = "DSM5 AN binge eating/purging")
+                "0" = "No DSM-5 AN binge eating/purging",
+                "1" = "DSM-5 AN binge eating/purging")
 
 
 #Summary
@@ -955,11 +998,17 @@ dat_ed_EDGI$ed.DSM5_AN_binge_only_binary_numeric <-
 # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
-  (
+ (
+   (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      ) |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) & 
   
 #C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
@@ -1012,8 +1061,8 @@ dat_ed_EDGI$ed.DSM5_AN_binge_only_binary_numeric <-
 # Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_binge_only_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_binge_only_binary_numeric,
-                "0" = "No DSM5 AN binge eating only",
-                "1" = "DSM5 AN binge eating only")
+                "0" = "No DSM-5 AN binge eating only",
+                "1" = "DSM-5 AN binge eating only")
 
 
 # Summary
@@ -1033,10 +1082,16 @@ dat_ed_EDGI$ed.DSM5_AN_purge_only_binary_numeric <-
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
   (
+  (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
-      ) &
+      )  |
+# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+ 
+(icb.excessive_exercise == "Excessive exercise" | 
+    icb.fasting == "Fasting")
+) &
   
 #C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
@@ -1087,8 +1142,8 @@ dat_ed_EDGI$ed.DSM5_AN_purge_only_binary_numeric <-
 #Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_purge_only_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_purge_only_binary_numeric,
-                "0" = "No DSM5 AN purging only",
-                "1" = "DSM5 AN purging only")
+                "0" = "No DSM-5 AN purging only",
+                "1" = "DSM-5 AN purging only")
 
 
 #Summary
@@ -1173,7 +1228,7 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
     be.experience_regular_episodes_lowest == "At times of low weight and at times outside of low weight" |
      be.experience_regular_episodes_lowest == "No" |
     (is.na(be.experience_regular_episodes_lowest) &
-       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it.
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
     )
   ),
     true = 1,
@@ -1309,7 +1364,7 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
           be.experience_regular_episodes_lowest == "At times of low weight and at times outside of low weight" | 
          be.experience_regular_episodes_lowest == "No" |
     (is.na(be.experience_regular_episodes_lowest) &
-       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it.
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
          ),
     true = 1,
     false = 0,

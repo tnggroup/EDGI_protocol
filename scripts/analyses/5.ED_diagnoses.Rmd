@@ -104,14 +104,14 @@ dat_eds_binary_sex_numeric
 # Create numeric binary variables needed
 dat <- dat %>% 
   mutate(ed.DSM5_AN_binge_purge_binary_numeric = 
-    case_when(ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging" ~ 1,
+    case_when(ed.DSM5_AN_binge_purge_binary == "DSM-5 AN binge eating/purging" ~ 1,
          TRUE ~ 0
     )
   )
 
 dat <- dat %>% 
   mutate(ed.DSM5_AN_restricting_binary_numeric = 
-    case_when(ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ 1,
+    case_when(ed.DSM5_AN_restricting_binary == "DSM-5 AN restricting" ~ 1,
         TRUE ~ 0
     )
   )
