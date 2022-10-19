@@ -64,13 +64,13 @@ names(age_sex_distribution)
 ```{r Check all NA participants}
 age_sex_distribution %>%
   filter(
-    is.na(dem.sex)
+    is.na(sex)
   )
 ```
 
 ```{r Check sex variable}
 age_sex_distribution %>%
-  summarytools::freq(dem.sex)
+  summarytools::freq(sex)
 ```
 
 Check age variable
@@ -82,7 +82,7 @@ age_sex_distribution %>%
 ```{r}
 age_sex_distribution %>%
   filter(
-    !is.na(dem.sex)
+    !is.na(sex)
   ) %>%
   filter(
     age != -666
@@ -94,19 +94,19 @@ age_sex_distribution %>%
 
 ```{r Age distribution plot by sex}
 png(file = "../../results/main_manuscript/EDGI_age_distribution_by_sex_for_manuscript.png",
-    width = 500,
+    width = 800,
     height = 500)
 
 age_sex_distribution %>%
   filter(
-    !is.na(dem.sex) &
+    !is.na(sex) &
       !is.na(age)) %>%
   filter(
     age != -666
   ) %>%
   ggplot(aes (
     x = age,
-    fill = dem.sex,
+    fill = sex,
     alpha = 0.5)) + 
   geom_density() +
       labs(

@@ -87,6 +87,8 @@ sex_gender_sexuality <- sex_gender_sexuality %>%
                      
                      demographics.what_gender_do_you_identify_with == "Prefer to self-define (please tell us more):" ~ "Prefer to self-define",
                      
+                     demographics.what_gender_do_you_identify_with == "Male" ~ "Man",
+                     demographics.what_gender_do_you_identify_with == "Female" ~ "Woman",
                      TRUE ~ demographics.what_gender_do_you_identify_with
                      )
          ) %>%

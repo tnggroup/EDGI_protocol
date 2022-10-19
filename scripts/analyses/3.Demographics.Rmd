@@ -195,8 +195,7 @@ summary_table <-
             all_categorical() ~ "{n} ({p}%)",
             
             all_continuous() ~ "{mean} ({sd}); Median = {median}, IQR = ({p25}, {p75}); Min = {min}, Max = {max}"
-                ))  %>% 
-  add_n() 
+                )) 
 
 summary_table
 ```
@@ -268,9 +267,7 @@ summary_table_long <-
             
             all_continuous() ~ "{mean} ({sd}); Median = {median}, IQR = ({p25}, {p75}); Min = {min}, Max = {max}"
                                   
-                ))  %>% 
-  add_n()
-
+                )) 
 summary_table_long
 ```
 
