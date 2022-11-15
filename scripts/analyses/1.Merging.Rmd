@@ -275,7 +275,9 @@ treatment %>%
 # Select variables we need 
 treatment <- treatment %>%
   select(ID = externalDataReference,
-         mhd.eating_disorder_received_treatment)
+         mhd.eating_disorder_received_treatment
+         
+         )
 ```
 
 # Age
@@ -504,7 +506,7 @@ somatic <- somatic %>%
                      )) %>%
   mutate(diabetes_numeric =
            case_when(
-             dem.diabetes_type_1 == "Diabetes type 1 (early onset" |
+             dem.diabetes_type_1_early_onset == "Diabetes type 1 (early onset)" |
              dem.diabetes_type_1_late_onset ==  "Diabetes type 1 (late onset)" |
              dem.diabetes_type_2_late_onset  == "Diabetes type 2 (late onset)" |
                dem.pain_due_to_diabetes == "Pain due to diabetes (diabetic neuropathy)" ~ 1,

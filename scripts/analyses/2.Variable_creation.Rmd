@@ -79,6 +79,15 @@ dat %>%
        )
 ```
           
+# First, filter out ineligible participants
+Participants must have an ED, age and sex data.
+```{r filter out ineligible participants}
+# Filter out age and sex missing
+dat <- dat %>% 
+  filter(!is.na(age) &
+           !is.na(sex))
+```
+
 # Self-report and algorithm-derived ED diagnosis
 ```{r deriving self-report and algorithm-derived ED diagnosis}
 dat <- dat %>%
@@ -138,6 +147,23 @@ dat %>%
 
 dat %>%
   freq(binge_eating_disorder)
+```
+
+# Filter out participants with no eating disorder
+```{r filter out participants with no eating disorder}
+dat <- dat %>%
+  filter(!is.na(anorexia_nervosa) |
+  !is.na(bulimia_nervosa) |
+  !is.na(binge_eating_disorder) |
+  !is.na(purging_disorder) |
+  !is.na(atypical_anorexia_nervosa) |
+  !is.na(atypical_binge_eating_disorder) |
+  !is.na(atypical_bulimia_nervosa) |
+  !is.na(night_eating_syndrome) |
+  !is.na(pica) |
+  !is.na(avoidant_restrictive_food_intake_disorder) |
+  !is.na(rumination_disorder) |
+  mhd.suspected_eating_disorder_diagnosed_numeric == 1)
 ```
 
 ```{r numeric deriving self-report and algorithm-derived ED diagnosis}
@@ -772,7 +798,7 @@ exclude_columns_from_pivoting <-
  ,"dem.crohns_disease"                                                 
  ,"dem.ulcerative_colitis"                                             
  ,"dem.coeliac_disease" 
-  ,"dem.diabetes_type_1"
+  ,"dem.diabetes_type_1_early_onset"
 ,"dem.diabetes_type_1_late_onset"
 ,"dem.diabetes_type_2_late_onset"
 ,"dem.pain_due_to_diabetes"

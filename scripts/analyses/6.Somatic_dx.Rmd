@@ -115,7 +115,7 @@ summary_table <-
           "Ulcerative Colitis",
         dem.coeliac_disease ~
           "Coeliac Disease",
-        dem.diabetes_type_1 ~ 
+        dem.diabetes_type_1_early_onset ~ 
           "Diabetes type 1 (early onset)",
         dem.diabetes_type_1_late_onset ~ 
           "Diabetes type 1 (late onset)",
@@ -124,7 +124,7 @@ summary_table <-
         dem.pain_due_to_diabetes ~
           "Diabetic-related pain",
          dem.pain_due_to_virus ~
-            "Viral-related Pain",
+            "Virus-related pain (post herpetic neuralgia)",
         dem.breast_cancer ~
           "Breast Cancer",
         dem.lung_cancer ~
@@ -194,7 +194,7 @@ summary_table <-
           "dichotomous",
         dem.coeliac_disease ~
           "dichotomous",
-       dem.diabetes_type_1 ~ 
+       dem.diabetes_type_1_early_onset ~ 
           "dichotomous",
         dem.diabetes_type_1_late_onset ~ 
           "dichotomous",
@@ -260,10 +260,10 @@ summary_table <-
         dem.crohns_disease = "Crohn's disease",
         dem.ulcerative_colitis = "Ulcerative colitis",
         dem.coeliac_disease = "Coeliac disease",
-        dem.diabetes_type_1 = "Diabetes type 1 (early onset)",
+        dem.diabetes_type_1_early_onset = "Diabetes type 1 (early onset)",
         dem.diabetes_type_1_late_onset =  "Diabetes type 1 (late onset)",
         dem.diabetes_type_2_late_onset  = "Diabetes type 2 (late onset)",
-        dem.pain_due_to_diabetes = "Diabetic-related pain",
+        dem.pain_due_to_diabetes = "Pain due to diabetes (diabetic neuropathy)",
         dem.pcos = "Polycystic ovary syndrome (PCOS)",
         dem.psoriasis = "Psoriasis",
         dem.eczema = "Eczema",
@@ -336,7 +336,7 @@ summary_table_long <-
           "Ulcerative Colitis",
         dem.coeliac_disease ~
           "Coeliac Disease",
-         dem.diabetes_type_1 ~
+         dem.diabetes_type_1_early_onset ~
           "Diabetes type 1 (early onset)",
         dem.diabetes_type_1_late_onset ~
           "Diabetes type 1 (late onset)",
@@ -345,7 +345,7 @@ summary_table_long <-
        dem.pain_due_to_diabetes ~
           "Diabetic-related Pain",
         dem.pain_due_to_virus ~
-            "Viral-related Pain",
+            "Virus-related pain (Post herpetic neuralgia)",
         dem.breast_cancer ~
           "Breast Cancer",
         dem.lung_cancer ~
@@ -415,7 +415,7 @@ summary_table_long <-
           "dichotomous",
         dem.coeliac_disease ~
           "dichotomous",
-        dem.diabetes_type_1 ~
+        dem.diabetes_type_1_early_onset ~
           "dichotomous",
         dem.diabetes_type_1_late_onset ~
           "dichotomous",
@@ -482,10 +482,10 @@ summary_table_long <-
         dem.crohns_disease = "Crohn's disease",
         dem.ulcerative_colitis = "Ulcerative colitis",
         dem.coeliac_disease = "Coeliac disease",
-        dem.diabetes_type_1 = "Diabetes type 1 (early onset)",
+        dem.diabetes_type_1_early_onset = "Diabetes type 1 (early onset)",
         dem.diabetes_type_1_late_onset =  "Diabetes type 1 (late onset)",
         dem.diabetes_type_2_late_onset  = "Diabetes type 2 (late onset)",
-        dem.pain_due_to_diabetes = "Diabetic-related pain",
+        dem.pain_due_to_diabetes = "Pain due to diabetes (diabetic neuropathy)",
         dem.pcos = "Polycystic ovary syndrome (PCOS)",
         dem.psoriasis = "Psoriasis",
         dem.eczema = "Eczema",
