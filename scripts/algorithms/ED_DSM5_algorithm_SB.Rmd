@@ -554,28 +554,32 @@ dat_ed_EDGI$ed.DSM5_AN_binary_numeric <-
        dplyr::if_else(
 #A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
     (
-       an.bmi_lowest <= 18.55 & #Lowest BMI as reported in ED100K optional questionnaire
+       an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire
 
          # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   # During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
-  
     (
       (an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
       )  |
-# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+# ...or engagement with ICBs at low weight (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
-) 
-& 
+    icb.fasting == "Fasting" |
+    icb.making_yourself_vomit == "Making yourself vomit" | 
+    icb.laxatives == "Laxatives" |
+    icb.diuretics == "Diuretics" |
+    icb.weight_loss_pills == "Weight loss pills" |
+    icb.other_methods == "Other methods"
+ )
+ ) & 
 # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
   # During the time when you were at this low weight, did you still feel fat? 
   (
-  (
+  ( an.feel_fat_time_low == "Slightly" | # Added 18/11/22 from conversation with LT
      an.feel_fat_time_low == "Somewhat" | 
      an.feel_fat_time_low == "Very" |
      an.feel_fat_time_low == "Extremely"
@@ -600,7 +604,8 @@ dat_ed_EDGI$ed.DSM5_AN_binary_numeric <-
 #...or persistent lack of recognition of the seriousness of the current low body weight.
   
   # Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
+      (an.health_low_weightbmi_negative == "Not at all" |
+     an.health_low_weightbmi_negative == "Somewhat") # Added 18/11/22 from conversation with LT
 )
 ),
 
@@ -656,30 +661,32 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
 
 # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
-  #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
+  # During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
   (
   (
       an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
       )  |
-# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
+# ...or engagement with ICBs at low weight [not purging] (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
+    icb.fasting == "Fasting" |
+    icb.weight_loss_pills == "Weight loss pills" |
+    icb.other_methods == "Other methods")
 ) &
 
   # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
   # During the time when you were at this low weight, did you still feel fat? 
   (
-  (
+  ( an.feel_fat_time_low == "Slightly" | # Added 18/11/22 from conversation with LT
     an.feel_fat_time_low == "Somewhat" | 
      an.feel_fat_time_low == "Very" |
      an.feel_fat_time_low == "Extremely"
     ) |
     
-  #During the time when you were at this low weight did you ever experience your body or parts of your body to be larger than they actually were or than other people thought they were?
+  # During the time when you were at this low weight did you ever experience your body or parts of your body to be larger than they actually were or than other people thought they were?
   (
     an.people_thought_larger_body == "Somewhat" | 
      an.people_thought_larger_body == "Very much"
@@ -689,7 +696,7 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
  
    # During the time when you were at this low weight, how dependent was your self-worth on your body shape or weight?
     (
-     an.not_at_all_dependentcompletely_dependent == "3" |
+      an.not_at_all_dependentcompletely_dependent == "3" |
       an.not_at_all_dependentcompletely_dependent == "4" |
       an.not_at_all_dependentcompletely_dependent == "5" |
       an.not_at_all_dependentcompletely_dependent == "Completely Dependent"
@@ -698,7 +705,8 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
 #...or persistent lack of recognition of the seriousness of the current low body weight.
   
   # Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
+      (an.health_low_weightbmi_negative == "Not at all" |
+     an.health_low_weightbmi_negative == "Somewhat")
 ) &
 
    # Restricting type: During the last 3 months... 
@@ -731,14 +739,14 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
 )
 
   
-#Recode numeric to factor
+# Recode numeric to factor
 dat_ed_EDGI$ed.DSM5_AN_restricting_binary <-
   recode_factor(dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric,
                 "0" = "No DSM-5 AN restricting",
                 "1" = "DSM-5 AN restricting"
                 )
 
-#Summary
+# Summary
 freq(dat_ed_EDGI$ed.DSM5_AN_restricting_binary)
 
 ## Check NAs
@@ -785,14 +793,16 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric <-
 # ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
+    icb.fasting == "Fasting" |
+    icb.weight_loss_pills == "Weight loss pills" |
+    icb.other_methods == "Other methods")
 ) &
 
   # C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
   # During the time when you were at this low weight, did you still feel fat? 
   (
-  (
+  (an.feel_fat_time_low == "Slightly" |
     an.feel_fat_time_low == "Somewhat" | 
      an.feel_fat_time_low == "Very" |
      an.feel_fat_time_low == "Extremely"
@@ -817,7 +827,8 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric <-
 #...or persistent lack of recognition of the seriousness of the current low body weight.
   
   # Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
+      (an.health_low_weightbmi_negative == "Not at all" |
+     an.health_low_weightbmi_negative == "Somewhat")
 ) &
 
    # Restricting type: During the last 3 months... 
@@ -892,14 +903,19 @@ dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric <-
 # ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
+    icb.fasting == "Fasting" |
+    icb.making_yourself_vomit == "Making yourself vomit" | 
+    icb.laxatives == "Laxatives" |
+    icb.diuretics == "Diuretics" |
+    icb.weight_loss_pills == "Weight loss pills" |
+    icb.other_methods == "Other methods")
 ) &
   
 #C. Disturbance in the way in which one’s body weight or shape is experienced... 
 
   #During the time when you were at this low weight, did you still feel fat? 
   (
-  (
+  ( an.feel_fat_time_low == "Slightly" | # 18/11/22 addition from LT
      an.feel_fat_time_low == "Somewhat" | 
      an.feel_fat_time_low == "Very" |
      an.feel_fat_time_low == "Extremely"
@@ -923,8 +939,9 @@ dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric <-
 
 #...or persistent lack of recognition of the seriousness of the current low body weight.
   
-  #Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
+  # Did you ever think your low weight had negative consequences for your health?
+      (an.health_low_weightbmi_negative == "Not at all" |
+     an.health_low_weightbmi_negative == "Somewhat") # 18/11/22 addition from LT
 ) &
   
 # Binge eating/purging subtype: During the last 3 months... 
@@ -986,170 +1003,6 @@ dat_ed_EDGI %>%
 ```
 Data extraction 16/09/22: 3082 are missing. Only 942 have BMI data, but are missing / do not meet criteria elsewhere.
 
-## DSM 5 AN binge eating only (additional phenotype)
-### EDGI
-```{r DSM-5 anorexia nervosa binge eating only algorithm EDGI}
-dat_ed_EDGI$ed.DSM5_AN_binge_only_binary_numeric <- 
-  with(dat_ed_EDGI,
-  dplyr::if_else(
-#A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
-    (
-      an.bmi_lowest <= 18.55 & #Lowest BMI as reported in ED100K optional questionnaire
-# B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
-   
-  #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
- (
-   (
-      an.gain_weight_afraid_fat == "Somewhat afraid" |
-      an.gain_weight_afraid_fat == "Very afraid" |
-      an.gain_weight_afraid_fat == "Extremely afraid"
-      ) |
-# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
- 
-(icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
-) & 
-  
-#C. Disturbance in the way in which one’s body weight or shape is experienced... 
-
-  #During the time when you were at this low weight, did you still feel fat? 
-  (
-  (
-     an.feel_fat_time_low == "Somewhat" | 
-     an.feel_fat_time_low == "Very" |
-     an.feel_fat_time_low == "Extremely"
-    ) |
-    
-  #During the time when you were at this low weight did you ever experience your body or parts of your body to be larger than they actually were or than other people thought they were?
-  (
-     an.people_thought_larger_body == "Somewhat" | 
-     an.people_thought_larger_body == "Very much"
-    ) |
-  
-#...undue influence of body weight or shape on self-evaluation
- 
-   #During the time when you were at this low weight, how dependent was your self-worth on your body shape or weight?
-    (
-      an.not_at_all_dependentcompletely_dependent == "3" |
-      an.not_at_all_dependentcompletely_dependent == "4" |
-      an.not_at_all_dependentcompletely_dependent == "5" |
-      an.not_at_all_dependentcompletely_dependent == "Completely Dependent"
-  ) |
-
-#...or persistent lack of recognition of the seriousness of the current low body weight.
-  
-  #Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
-) &
-  
-# Binge eating/purging subtype: During the last 3 months... 
-  
-  #...the individual has engaged in recurrent episodes of binge-eating... 
-  
-# Did you experience regular episodes of binge eating while at your lowest weight?
-    (be.experience_regular_episodes_lowest == "only during times of low weight" |
-     be.experience_regular_episodes_lowest == "At times of low weight and at times outside of low weight" 
-     ) 
-),
-
-# Not included absence of fasting and/or exercise because ANBP captures people who are restricting but ALSO binge and/or purge (on top of restricting behaviour)
-    true = 1,
-    false = 0,
-    missing = NA_real_)
-  )
-  
-# Recode numeric to factor
-dat_ed_EDGI$ed.DSM5_AN_binge_only_binary <-
-  recode_factor(dat_ed_EDGI$ed.DSM5_AN_binge_only_binary_numeric,
-                "0" = "No DSM-5 AN binge eating only",
-                "1" = "DSM-5 AN binge eating only")
-
-
-# Summary
-freq(dat_ed_EDGI$ed.DSM5_AN_binge_only_binary)
-```
-
-## DSM 5 AN purging only (additional phenotype)
-### EDGI
-```{r DSM-5 anorexia nervosa purging only algorithm EDGI}
-dat_ed_EDGI$ed.DSM5_AN_purge_only_binary_numeric <- 
-  with(dat_ed_EDGI,
-  dplyr::if_else(
-#A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
-    (
-      an.bmi_lowest <= 18.55 & #Lowest BMI as reported in ED100K optional questionnaire
-# B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
-   
-  #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
-  (
-  (
-      an.gain_weight_afraid_fat == "Somewhat afraid" |
-      an.gain_weight_afraid_fat == "Very afraid" |
-      an.gain_weight_afraid_fat == "Extremely afraid"
-      )  |
-# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
- 
-(icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting")
-) &
-  
-#C. Disturbance in the way in which one’s body weight or shape is experienced... 
-
-  #During the time when you were at this low weight, did you still feel fat? 
-  (
-  (
-     an.feel_fat_time_low == "Somewhat" | 
-     an.feel_fat_time_low == "Very" |
-     an.feel_fat_time_low == "Extremely"
-    ) |
-    
-  #During the time when you were at this low weight did you ever experience your body or parts of your body to be larger than they actually were or than other people thought they were?
-  (
-     an.people_thought_larger_body == "Somewhat" | 
-     an.people_thought_larger_body == "Very much"
-    ) |
-  
-#...undue influence of body weight or shape on self-evaluation
- 
-   #During the time when you were at this low weight, how dependent was your self-worth on your body shape or weight?
-    (
-      an.not_at_all_dependentcompletely_dependent == "3" |
-      an.not_at_all_dependentcompletely_dependent == "4" |
-      an.not_at_all_dependentcompletely_dependent == "5" |
-      an.not_at_all_dependentcompletely_dependent == "Completely Dependent"
-  ) |
-
-#...or persistent lack of recognition of the seriousness of the current low body weight.
-  
-  #Did you ever think your low weight had negative consequences for your health?
-      an.health_low_weightbmi_negative == "Not at all"
-) &
-  
-# During the period of time when you were at your lowest weight, did you use any of the following as a way to control your weight or shape?
-  (
-     icb.making_yourself_vomit == "Making yourself vomit" |
-     icb.laxatives == "Laxatives" |
-     icb.diuretics == "Diuretics"
-    )
-),
-
-#Not included absence of fasting and/or exercise because ANBP captures people who are restricting but ALSO binge and/or purge (on top of restricting behaviour)
-    true = 1,
-    false = 0,
-    missing = NA_real_)
-  )
-  
-#Recode numeric to factor
-dat_ed_EDGI$ed.DSM5_AN_purge_only_binary <-
-  recode_factor(dat_ed_EDGI$ed.DSM5_AN_purge_only_binary_numeric,
-                "0" = "No DSM-5 AN purging only",
-                "1" = "DSM-5 AN purging only")
-
-
-#Summary
-freq(dat_ed_EDGI$ed.DSM5_AN_purge_only_binary)
-```
-
 
 ## DSM5 BED 
 ### EDGI
@@ -1197,7 +1050,7 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
   ed.BE_behaviour_sum_numeric >= 3 & 
 
   # C. Marked distress regarding binge eating is present.       
-  (
+  ( be.binge_eating_distressed_make == "Slightly" | # 18/11/11 Addition from LT
     be.binge_eating_distressed_make == "Somewhat" |
          be.binge_eating_distressed_make == "Very" |
          be.binge_eating_distressed_make == "Extremely"
@@ -1317,30 +1170,34 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
       
       #B. Recurrent inappropriate compensatory behaviors in order to prevent weight gain, such as self-induced vomiting; misuse of laxatives, diuretics, or other medications; fasting; or excessive exercise. 
           (
-            (#icb.a_made_yourself_vomit == "A few times" |  # Self-induced vomiting to control weight or shape
-          #icb.a_made_yourself_vomit == "Often" | 
+            (icb.a_made_yourself_vomit == "A few times" |  # Self-induced vomiting to control weight or shape
+             icb.a_made_yourself_vomit == "Often" | 
             icb.making_yourself_vomit.1 == "Making yourself vomit") | # Self-induced vomiting to compensate for binge eating
             
-          (#icb.b_used_laxatives == "A few times" | # Laxatives to control weight or shape
-          #icb.b_used_laxatives == "Often" |
+          (icb.b_used_laxatives == "A few times" | # Laxatives to control weight or shape
+          icb.b_used_laxatives == "Often" |
             icb.laxatives.1 == "Laxatives") | # Laxatives to compensate for binge eating
             
-          (#icb.c_used_diuretics  == "A few times" | # Diuretics to control weight or shape
-          #icb.c_used_diuretics  =="Often" |
+          (icb.c_used_diuretics  == "A few times" | # Diuretics to control weight or shape
+          icb.c_used_diuretics  =="Often" |
             icb.diuretics_ == "Diuretics") |  # Diuretics to compensate for binge eating
             
-          (#icb.d_used_diet_pills == "A few times" | # Diet pills to control weight or shape
-         # icb.d_used_diet_pills == "Often" |
+          (icb.d_used_diet_pills == "A few times" | # Diet pills to control weight or shape
+          icb.d_used_diet_pills == "Often" |
             icb.weight_loss_pills.1 == "Weight loss pills") | # Diet pills to compensate for binge eating
             
-          (#icb.e_exercised_excessively == "A few times" | # Excessive exercise to control weight or shape
-         # icb.e_exercised_excessively == "Often" |
+          (icb.e_exercised_excessively == "A few times" | # Excessive exercise to control weight or shape
+          icb.e_exercised_excessively == "Often" |
             icb.excessive_exercise.1 == "Excessive exercise") | # Excessive exercise to compensate for binge eating
             
-          (#icb.f_fasted_or_did_not_eat == "A few times" | # Fasting to control weight or shape
-          #icb.f_fasted_or_did_not_eat == "Often" |
-            icb.fasting.1 == "Fasting") # Fasting to compensate for binge eating
-          ) & 
+          (icb.f_fasted_or_did_not_eat == "A few times" | # Fasting to control weight or shape
+          icb.f_fasted_or_did_not_eat == "Often" |
+            icb.fasting.1 == "Fasting")  | # Fasting to compensate for binge eating
+           
+             (icb.any_other_methods_not_previously_listed == "A few times" | # Other methods to control weight or shape
+          icb.any_other_methods_not_previously_listed == "Often" |
+            icb.other_methods.1 == "Other methods") # Other methods to compensate for binge eating
+            ) & 
 
       # C. The binge eating and inappropriate compensatory behaviors both occur, on average, at least once a week for 3 months.
       
