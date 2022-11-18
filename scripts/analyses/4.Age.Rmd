@@ -64,47 +64,43 @@ names(age_sex_distribution)
 ```{r Check all NA participants}
 age_sex_distribution %>%
   filter(
-    is.na(dem.sex)
+    is.na(sex)
   )
 ```
 
 ```{r Check sex variable}
 age_sex_distribution %>%
-  summarytools::freq(dem.sex)
+  summarytools::freq(sex)
 ```
 
 Check age variable
 ```{r}
 age_sex_distribution %>%
-  summarytools::freq(dem.dob_age)
+  summarytools::freq(age)
 ```
 
 ```{r}
 age_sex_distribution %>%
   filter(
-    !is.na(dem.sex)
+    !is.na(sex)
   ) %>%
   filter(
-    dem.dob_age != -666
+    age != -666
   ) %>%
   summarytools::freq(
-    dem.dob_age
+    age
   )
 ```
 
-
-
 ```{r Age distribution plot by sex}
+png(file = "../../results/main_manuscript/EDGI_age_distribution_by_sex_for_manuscript.png",
+    width = 800,
+    height = 500)
+
 age_sex_distribution %>%
-  filter(
-    !is.na(dem.sex)
-  ) %>%
-  filter(
-    dem.dob_age != -666
-  ) %>%
   ggplot(aes (
-    x = dem.dob_age,
-    fill = dem.sex,
+    x = age,
+    fill = sex,
     alpha = 0.5)) + 
   geom_density() +
       labs(
@@ -112,13 +108,6 @@ age_sex_distribution %>%
       y = "Percentage of total sample",
       fill = "Sex",
       title = element_blank(),
-      subtitle = paste0(
-        "Dashed line represents mean and blue dotted lines represent ± 1 standard deviation\n",
-        "Red dotted lines represent ± 3.5 standard deviations\n",
-        "n = ", sum(!is.na(age_sex_distribution$dem.dob_age)),
-        "; NA = ", sum(is.na(age_sex_distribution$dem.dob_age)),
-        "; n(total) = ", length(age_sex_distribution$dem.dob_age)
-      ),
       color = "black"
     ) +
     theme(
@@ -127,13 +116,22 @@ age_sex_distribution %>%
         linetype = "dashed",
         colour = "gray"
       ),
-      axis.text.x = element_text(colour = "black", size = 12),
-      axis.text.y = element_text(colour = "black", size = 12),
+       axis.title.x = element_text(colour = "black", size = 20),
+      axis.title.y = element_text(colour = "black", size = 20),
+      axis.text.x = element_text(colour = "black", size = 15),
+      axis.text.y = element_text(colour = "black", size = 15),
       axis.ticks.x = element_blank(),
       axis.ticks.y = element_blank(),
-      panel.background = element_blank()
-    ) +
-  scale_alpha(guide = 'none')
+      panel.background = element_blank(),
+      legend.key.size = unit(1, 'cm'), # change legend key size
+        legend.key.height = unit(1, 'cm'), #change legend key height
+        legend.key.width = unit(1, 'cm'), #change legend key width
+        legend.title = element_text(size=14), #change legend title font size
+        legend.text = element_text(size=14)) + # change legend text font size 
+scale_alpha(guide = 'none') + scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values=c("#F68E3E", "#8b3582"))
+
+dev.off()
 ```
 
 
@@ -142,7 +140,7 @@ age_sex_distribution %>%
 # Long format
 exclude_columns_from_pivoting <-
   c(
-    "dem.dob_age"
+    "age"
     )
 
 age_sex_distribution_long <- dat %>%
@@ -181,12 +179,12 @@ summary_table_long <-
         
         label = list(
 
-        dem.dob_age ~
+        age ~
           "Age"
         ),
                 
           type = list(
-            dem.dob_age ~
+            age ~
           "categorical"),
 
           statistic = list(
@@ -199,21 +197,16 @@ summary_table_long <-
                                   )
                 ), 
               
-              missing = "always")  %>% 
-  add_n()
+              missing = "always") 
 ```
 
 Add bold labels to table
-
 ```{r summary_table_long with bold labels}
 summary_table_long %>% 
   bold_labels() 
 ```
 
 Save as a word document
-
-
-
 ```{r modify labls and run table}
 summary_table_long %>% 
   modify_caption("**Table 1. Patient Characteristics**") %>%  

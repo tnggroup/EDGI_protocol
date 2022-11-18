@@ -68,9 +68,42 @@ sex_gender_sexuality <- sex_gender_sexuality %>%
   select(ID,
          sample,
          dem.sex,
-         demographics.what_gender_do_you_identify_with = dem.which_gender_do_you_identify_with  ,
+         demographics.what_gender_do_you_identify_with = dem.what_gender_do_you_identify_with,
          dem.what_is_your_sexual_orientation,
          dem.do_you_identify_as_transgender)
+
+# Change to character
+sex_gender_sexuality$demographics.what_gender_do_you_identify_with <- as.character(sex_gender_sexuality$demographics.what_gender_do_you_identify_with)
+
+sex_gender_sexuality$dem.what_is_your_sexual_orientation <- as.character(sex_gender_sexuality$dem.what_is_your_sexual_orientation)
+
+sex_gender_sexuality$dem.sex <- as.character(sex_gender_sexuality$dem.sex)
+
+sex_gender_sexuality <- sex_gender_sexuality %>%
+  mutate(gender =
+           case_when(demographics.what_gender_do_you_identify_with == "Seen but not answered" |
+                      demographics.what_gender_do_you_identify_with == "Prefer not to answer" |
+                     demographics.what_gender_do_you_identify_with == "Don't know" ~ NA_character_,
+                     
+                     demographics.what_gender_do_you_identify_with == "Prefer to self-define (please tell us more):" ~ "Prefer to self-define",
+                     
+                     demographics.what_gender_do_you_identify_with == "Male" ~ "Man",
+                     demographics.what_gender_do_you_identify_with == "Female" ~ "Woman",
+                     TRUE ~ demographics.what_gender_do_you_identify_with
+                     )
+         ) %>%
+  mutate(sexuality = 
+           case_when(
+           dem.what_is_your_sexual_orientation == "Seen but not answered" |
+           dem.what_is_your_sexual_orientation == "Prefer not to answer" ~ NA_character_,
+         
+         TRUE ~ dem.what_is_your_sexual_orientation
+           )
+         ) %>%
+  mutate(sex =
+           case_when(dem.sex == "Seen but not answered" ~ NA_character_,
+                     
+                     TRUE ~ dem.sex))
 ```
 
 # Read in 'Ethnicity'
@@ -89,6 +122,17 @@ ethnicity %>%
 ethnicity <- ethnicity %>%
   select(ID,
          dem.what_is_your_ethnic_origin)
+
+# Change to character
+ethnicity$dem.what_is_your_ethnic_origin <- as.character(ethnicity$dem.what_is_your_ethnic_origin)
+
+ethnicity <- ethnicity %>%
+  mutate(ethnicity =
+           case_when(dem.what_is_your_ethnic_origin == "Seen but not answered" |
+                     dem.what_is_your_ethnic_origin == "Prefer not to say" | 
+                      dem.what_is_your_ethnic_origin == "Don't know" ~ NA_character_,
+                     
+                     TRUE ~ dem.what_is_your_ethnic_origin))
 ```
 
 # Education
@@ -138,14 +182,31 @@ employment %>%
 employment %>%
   dim()
 
+# Needs fixing
 # Select variables we need 
 employment <- employment %>%
   select(ID,
-         dem.what_is_your_current_employment_status)
+         dem.what_is_your_current_employment_status_numeric)
+
+employment <- employment %>%
+  mutate(dem.what_is_your_current_employment_status =
+           case_when(dem.what_is_your_current_employment_status_numeric == 1 ~ "In paid employment or self-employed",
+                     dem.what_is_your_current_employment_status_numeric == 2 ~ "Retired",
+                     dem.what_is_your_current_employment_status_numeric == 3 ~ "Looking after home and/or family",
+                     dem.what_is_your_current_employment_status_numeric == 4 ~ "Unable to work because of sickness or disability",
+                     dem.what_is_your_current_employment_status_numeric == 5 ~ "Unemployed",
+                     dem.what_is_your_current_employment_status_numeric == 6 ~ "Doing unpaid or voluntary work",
+                     dem.what_is_your_current_employment_status_numeric == 7 ~ "Full-time or part-time student",
+                     
+                     dem.what_is_your_current_employment_status_numeric == 9 ~ "Other"
+                     
+                     ))
+
 ```
 
 # Relationship status
 ```{r read in relationship status}
+# Needs fixing
 relationship_status <- readRDS(file = paste0(filepath_cleaned_data,
                                      "/demographics/marital_status_edgi_clean.rds"))
   
@@ -160,6 +221,16 @@ relationship_status %>%
 relationship_status <- relationship_status %>%
   select(ID,
          dem.what_is_your_current_maritalrelationship_status)
+
+# Convert to character
+relationship_status$dem.what_is_your_current_maritalrelationship_status <- as.character(relationship_status$dem.what_is_your_current_maritalrelationship_status)
+
+relationship_status <- relationship_status %>%
+  mutate(relationship_status =
+           case_when(dem.what_is_your_current_maritalrelationship_status == "Seen but not answered" |
+                      dem.what_is_your_current_maritalrelationship_status == "Prefer not to answer" ~ NA_character_,
+                     
+                     TRUE ~ dem.what_is_your_current_maritalrelationship_status))
 ```
 
 # Smoking status 
@@ -179,6 +250,13 @@ smoking_status %>%
 smoking_status <- smoking_status %>%
   select(ID,
          dem.pack_year)
+
+
+smoking_status <- smoking_status %>%
+  mutate(dem.pack_year =
+           case_when(dem.pack_year == -666 ~ NA_real_,
+                     TRUE ~ dem.pack_year))
+
 ```
 
 # Treatment
@@ -197,7 +275,9 @@ treatment %>%
 # Select variables we need 
 treatment <- treatment %>%
   select(ID = externalDataReference,
-         mhd.eating_disorder_received_treatment)
+         mhd.eating_disorder_received_treatment
+         
+         )
 ```
 
 # Age
@@ -226,6 +306,16 @@ age %>%
 age %>%
   freq(dem.dob_age)
 
+age <- age %>%
+  mutate(age =
+    case_when(
+    dem.dob_age == -666 ~ NA_real_,
+    dem.how_old_are_you_now.txt ==  -666 ~ NA_real_,
+    !is.na(dem.dob_age) ~ dem.dob_age,
+    !is.na(dem.how_old_are_you_now.txt) ~ dem.how_old_are_you_now.txt,
+    TRUE ~ NA_real_
+    )
+  )
 ```
 
 # Eating disorder diagnosis: algorithm-derived
@@ -252,9 +342,24 @@ eating_disorder_algorithm <- eating_disorder_algorithm %>%
 
 # Self-report (MHD)
 ```{r read in mhd data}
-mhd <- readRDS(file = paste0(filepath_cleaned_data,
+# Needs fixing
+mhd1 <- readRDS(file = paste0(filepath_cleaned_data,
                                      "clinical/mhd_edgi_clean.rds"))
-  
+mhd1 <- mhd1 %>%
+  select(-mhd.autism_spectrum_disorder)
+
+mhd2 <- readRDS(file = paste0(filepath_edgi_raw,
+                              "dem_edgi.rds"))
+
+mhd2 <- mhd2 %>%
+  select(ID = externalDataReference,
+         mhd.autism_spectrum_disorder = dem.autism_spectrum_disorder_)
+
+# Merge 
+mhd <- dplyr::full_join(mhd1,
+                        mhd2,
+                        by = "ID")
+              
 # Check
 mhd %>%
   colnames()
@@ -262,11 +367,57 @@ mhd %>%
 mhd %>%
   dim()
 
+# Recode personality disorder
+mhd <- mhd %>%
+  mutate(mhd.personality_disorder_type_diagnosed =
+           case_when(
+           mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 1 ~ "Paranoid personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 2 ~ "Schizoid personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 3 ~ "Schizotypal personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 4~ "Antisocial personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 5~ "Borderline/Emotionally unstable, personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 6~ "Histrionic personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 7~ "Narcissistic personality disorder",
+               mhd.personality_disorder_diagnosed_numeric == 8~ "Avoidant/anxious personality disorder",
+                mhd.personality_disorder_diagnosed_numeric == 9~ "Dependent personality disorder",
+                 mhd.personality_disorder_diagnosed_numeric == 10~ "Obsessive-compulsive personality disorder",
+         mhd.personality_disorder_diagnosed_numeric == 11 ~ "Mixed personality disorder"
+         
+         )
+  )
+
+mhd <- mhd %>%
+  mutate(mhd.any_personality_disorder =
+           case_when(
+           mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
+           mhd.personality_disorder_diagnosed_numeric == 1 |
+           mhd.personality_disorder_diagnosed_numeric == 2 |
+           mhd.personality_disorder_diagnosed_numeric == 3 |
+           mhd.personality_disorder_diagnosed_numeric == 4 |
+           mhd.personality_disorder_diagnosed_numeric == 5 |
+           mhd.personality_disorder_diagnosed_numeric == 6 |
+           mhd.personality_disorder_diagnosed_numeric == 7 |
+               mhd.personality_disorder_diagnosed_numeric == 8 |
+                mhd.personality_disorder_diagnosed_numeric == 9 |
+                 mhd.personality_disorder_diagnosed_numeric == 10 |
+         mhd.personality_disorder_diagnosed_numeric == 11 ~ "Personality disorder",
+         
+         TRUE ~ NA_character_
+         
+         )
+  )
+
 # Select columns
 mhd <- mhd %>%
   select(#-endDate,
          #  -startDate,
            -sample)
+
+
+# Recode 'seen but not answered'
+mhd <- mhd %>%
+   mutate()
 ```
 
 # Somatic comorbidity
@@ -286,6 +437,102 @@ somatic <- somatic %>%
   select(-endDate,
            -startDate,
            -sample)
+
+# Create overarching variables
+somatic <- somatic %>%
+  mutate(any_cancer_numeric =
+           case_when(dem.breast_cancer == "Breast cancer" | 
+             dem.lung_cancer == "Lung cancer" |
+             dem.stomach_cancer == "Stomach cancer" |
+             dem.colon_cancer == "Colon cancer" |
+             dem.uterus_cancer ==  "Uterus cancer" |
+             dem.prostate_cancer ==  "Prostate cancer" ~ 1,
+             
+             TRUE ~ 0
+             
+           )) %>%
+  mutate(any_neurological_numeric =
+           case_when(dem.epilepsy_or_convulsions == "Epilepsy or convulsions" |
+                     dem.migraines == "Migraines" |
+                      dem.multiple_sclerosis == "Multiple sclerosis" |
+                      dem.parkinsons_disease == "Parkinson's disease" |
+                      dem.brain_tumour == "Brain tumour" |
+                      dem.severe_memory_loss == "Severe memory loss" ~ 1,
+                     
+                     TRUE ~ 0
+                     )) %>%
+  mutate(any_allergy_numeric =
+           case_when(
+             dem.hay_fever == "Hay fever" |
+               dem.drug_allergy == "Drug allergy" |
+             dem.food_allergy == "Food allergy" |
+             dem.other_allergy == "Other allergy" ~ 1,
+             
+             TRUE ~ 0
+            
+           )) %>%
+   mutate(bone_joint_problem_numeric =
+           case_when(
+             dem.ankylosing_spondylitis == "Ankylosing spondylitis" |
+              dem.osteoporosis == "Osteoporosis" |
+              dem.osteoarthritis == "Osteoarthritis" |
+             dem.hypermobility == "Hyper-mobility" |
+             dem.rheumatoid_arthritis == "Rheumatoid arthritis" |
+             dem.other_arthritis == "Other arthritis"~ 1,
+           
+               TRUE ~ 0
+             )) %>%
+  mutate(lung_breathing_problems_numeric =
+           case_when(dem.asthma == "Asthma" |
+                     dem.emphysema_or_chronic_bronchitis == "Emphysema or chronic bronchitis" ~ 1,
+                     TRUE ~ 0
+                     )) %>%
+  mutate(heart_circulation_problem_numeric =
+           case_when(dem.heart_attack_or_angina =="Heart attack or angina" |
+                     dem.high_blood_cholesterol == "High blood cholesterol" |
+                     dem.high_blood_pressure == "High blood pressure" |
+                     dem.atrial_fibrillation == "Atrial fibrillation" |
+                     dem.stroke == "Stroke" |
+                     dem.pots == "Paroxysmal tachycardia syndrome (PoTS)" ~ 1,
+             
+                     TRUE ~ 0
+                     )) %>%
+  mutate(digestive_problem_numeric =
+           case_when(dem.crohns_disease == "Crohn's disease" |
+                     dem.ulcerative_colitis == "Ulcerative colitis" |
+                     dem.coeliac_disease == "Coeliac disease" ~ 1,
+                     
+                      TRUE ~ 0
+                     )) %>%
+  mutate(diabetes_numeric =
+           case_when(
+             dem.diabetes_type_1_early_onset == "Diabetes type 1 (early onset)" |
+             dem.diabetes_type_1_late_onset ==  "Diabetes type 1 (late onset)" |
+             dem.diabetes_type_2_late_onset  == "Diabetes type 2 (late onset)" |
+               dem.pain_due_to_diabetes == "Pain due to diabetes (diabetic neuropathy)" ~ 1,
+             
+             TRUE ~ 0
+                     )) %>%
+  mutate(polycystic_ovary_numeric =
+           case_when(dem.pcos == "Polycystic ovary syndrome (PCOS)" ~ 1,
+                     
+                     TRUE ~ 0
+                     )) %>%
+  mutate(skin_problems_numeric =
+           case_when(dem.psoriasis == "Psoriasis" |
+                     dem.eczema == "Eczema" |
+                     dem.vitiligo == "Vitiligo" |
+                     dem.pain_due_to_virus == "Pain due to virus" ~ 1, 
+                     
+                     TRUE ~ 0
+             
+           )) %>%
+  mutate(thyroid_disease_numeric =
+           case_when(
+             dem.thyroid_disease == "Thyroid disease" ~ 1,
+             
+             TRUE ~ 0
+           ))
 ```
 
 # Age at diagnosis

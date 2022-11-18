@@ -79,13 +79,22 @@ dat %>%
        )
 ```
           
+# First, filter out ineligible participants
+Participants must have an ED, age and sex data.
+```{r filter out ineligible participants}
+# Filter out age and sex missing
+dat <- dat %>% 
+  filter(!is.na(age) &
+           !is.na(sex))
+```
+
 # Self-report and algorithm-derived ED diagnosis
 ```{r deriving self-report and algorithm-derived ED diagnosis}
 dat <- dat %>%
   mutate(
     anorexia_nervosa =
       case_when(
-        ed.DSM5_AN_binary == "DSM5 AN" |
+        ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ "Anorexia nervosa"),
     
     bulimia_nervosa =
@@ -140,22 +149,39 @@ dat %>%
   freq(binge_eating_disorder)
 ```
 
+# Filter out participants with no eating disorder
+```{r filter out participants with no eating disorder}
+dat <- dat %>%
+  filter(!is.na(anorexia_nervosa) |
+  !is.na(bulimia_nervosa) |
+  !is.na(binge_eating_disorder) |
+  !is.na(purging_disorder) |
+  !is.na(atypical_anorexia_nervosa) |
+  !is.na(atypical_binge_eating_disorder) |
+  !is.na(atypical_bulimia_nervosa) |
+  !is.na(night_eating_syndrome) |
+  !is.na(pica) |
+  !is.na(avoidant_restrictive_food_intake_disorder) |
+  !is.na(rumination_disorder) |
+  mhd.suspected_eating_disorder_diagnosed_numeric == 1)
+```
+
 ```{r numeric deriving self-report and algorithm-derived ED diagnosis}
 dat <- dat %>%
   mutate(
     anorexia_nervosa_numeric =
-      case_when(ed.DSM5_AN_binary == "DSM5 AN" |
+      case_when(ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ 1,
           
           TRUE ~ 0),
     
     anorexia_nervosa_subtype_numeric =
       case_when(
-        ed.DSM5_AN_binge_purge_binary == "DSM5 AN binge eating/purging"  ~ "Binge-eating/purging",
+        ed.DSM5_AN_binge_purge_binary == "DSM-5 AN binge eating/purging"  ~ "Binge-eating/purging",
         
-        ed.DSM5_AN_restricting_binary == "DSM5 AN restricting" ~ "Restricting",
+        ed.DSM5_AN_restricting_binary == "DSM-5 AN restricting" ~ "Restricting",
         
-        ed.DSM5_AN_binary == "DSM5 AN" |
+        ed.DSM5_AN_binary == "DSM-5 AN" |
           mhd.an_numeric == 1 ~ "Unknown subtype",
         
         TRUE ~ NA_character_),
@@ -493,7 +519,7 @@ dat %>%
            is.na(mhd.other_eating_disordertext.txt) &
            is.na(mhd.feeding_eating_disorder_numeric) &
            is.na(dem.age_category) &
-           is.na(dem.dob_age)
+           is.na(age)
          ) %>%
   nrow()
 ```
@@ -502,14 +528,15 @@ dat %>%
 ```{r demographics}
 exclude_columns_from_pivoting <-
   c(
-    "dem.sex",
-    "demographics.what_gender_do_you_identify_with",
+    "sex",
+    "age",
+    "gender",
     "dem.do_you_identify_as_transgender",
-    "dem.what_is_your_sexual_orientation",
-    "dem.what_is_your_ethnic_origin",
+    "sexuality",
+    "ethnicity",
     "dem.highest_education_finegrained",
     "dem.what_is_your_current_employment_status",
-    "dem.what_is_your_current_maritalrelationship_status",
+    "relationship_status",
     "dem.pack_year",
     "mhd.eating_disorder_received_treatment"
   )
@@ -519,14 +546,15 @@ dat_demographics <- dat %>%
   select(
    # mixed_eating_disorders_primary,
     mixed_eating_disorders_all,
-    dem.sex,
-    demographics.what_gender_do_you_identify_with,
+    sex,
+    age,
+    gender,
     dem.do_you_identify_as_transgender,
-    dem.what_is_your_sexual_orientation,
-    dem.what_is_your_ethnic_origin,
+    sexuality,
+    ethnicity,
     dem.highest_education_finegrained,
     dem.what_is_your_current_employment_status,
-    dem.what_is_your_current_maritalrelationship_status,
+    relationship_status,
     dem.pack_year,
     mhd.eating_disorder_received_treatment
   )
@@ -563,14 +591,14 @@ age_sex_distribution <- dat %>%
   select(
    # mixed_eating_disorders_primary,
     mixed_eating_disorders_all,
-         dem.dob_age, 
-         dem.sex)
+         age, 
+         sex)
 
 # Long format
 exclude_columns_from_pivoting <-
   c(
-    "dem.dob_age",
-    "dem.sex"
+    "age",
+    "sex"
     )
 
 age_sex_distribution_long <- dat %>%
@@ -602,7 +630,7 @@ age_sex_distribution_long
 # Exclusive
 selfreport_algo_sex <- dat %>%
   select(
-         dem.sex,
+         sex,
          # Algorithm-derived
          ed.DSM5_AN_binary,
          ed.DSM5_AN_restricting_binary,
@@ -633,7 +661,7 @@ selfreport_algo_sex <- dat %>%
 # Long format
 exclude_columns_from_pivoting <-
   c(
-    "dem.sex",
+    "sex",
      "ed.DSM5_AN_binary",
      "ed.DSM5_AN_restricting_binary",
      "ed.DSM5_AN_restricting_binary",
@@ -693,7 +721,7 @@ exclude_columns_from_pivoting <-
     
     "mhd.obsessive_compulsive_disorders",
     
-    "mhd.personality_disorder_diagnosed_numeric",
+    "mhd.any_personality_disorder",
     
     "mhd.bipolar_and_schizophrenia",
     "mhd.psychotic_disorders",
@@ -769,10 +797,11 @@ exclude_columns_from_pivoting <-
                                          
  ,"dem.crohns_disease"                                                 
  ,"dem.ulcerative_colitis"                                             
- ,"dem.coeliac_disease"                                                
- ,"dem.diabetes_type_1"                                                
- ,"dem.diabetes_type_2"                                                
- ,"dem.pain_due_to_diabetes"                                           
+ ,"dem.coeliac_disease" 
+  ,"dem.diabetes_type_1_early_onset"
+,"dem.diabetes_type_1_late_onset"
+,"dem.diabetes_type_2_late_onset"
+,"dem.pain_due_to_diabetes"
  ,"dem.pain_due_to_virus"                                              
                                
  ,"dem.breast_cancer"                                                  
@@ -791,7 +820,6 @@ exclude_columns_from_pivoting <-
   )
 ```
 
-
 ```{r Somatic comorbidities}
 # mixed 
 dat_somatic_dx <- dat %>%
@@ -801,6 +829,7 @@ dat_somatic_dx <- dat %>%
     all_of(exclude_columns_from_pivoting)
   )
 
+# Longer 
 dat_somatic_dx_longer <- dat %>%
   select(
     
@@ -826,6 +855,59 @@ dat_somatic_dx_longer <- dat %>%
 dat_somatic_dx_longer %>%
   head()
 ```
+
+```{r broad somatic dx exlcude from pivoting}
+exclude_broad_columns_from_pivoting <-
+  c(
+    "any_cancer_numeric",
+    "any_neurological_numeric",
+    "any_allergy_numeric",
+    "bone_joint_problem_numeric",
+    "lung_breathing_problems_numeric",
+    "heart_circulation_problem_numeric",
+    "digestive_problem_numeric",
+    "diabetes_numeric",
+    "polycystic_ovary_numeric",
+    "skin_problems_numeric",
+    "thyroid_disease_numeric"
+
+  )
+```
+
+```{r broad categories somatic}
+# Broad categories
+dat_somatic_dx_broad_longer <- dat %>%
+  select(
+    
+    all_of(exclude_broad_columns_from_pivoting),
+    
+    # Diagnosis
+    anorexia_nervosa,
+    bulimia_nervosa,
+    binge_eating_disorder,
+    purging_disorder,
+    atypical_anorexia_nervosa
+  ) %>%
+  pivot_longer(
+    -exclude_broad_columns_from_pivoting,
+#    names_to = "Old_variable",
+    values_to = "Disorder"
+    ) %>%
+  select(
+    -name
+  )
+
+dat_somatic_dx_broad_longer %>%
+  head()
+```
+
+
+
+
+
+
+
+
 
 ```{r}
 save.image(file = paste0(filepath_cleaned_data, "tables.Rdata"))
