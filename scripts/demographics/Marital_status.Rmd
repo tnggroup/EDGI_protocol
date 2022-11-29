@@ -203,6 +203,28 @@ edgi_dat_id %>%
   colnames()
 ```
 
+```{r check factor levels of dem.what_is_your_current_maritalrelationship_status}
+edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
+  levels()
+```
+
+```{r recode dem.what_is_your_current_maritalrelationship_status EDGI factor levels to match GLAD}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(
+    dem.what_is_your_current_maritalrelationship_status = recode_factor(
+    dem.what_is_your_current_maritalrelationship_status, 
+    "Steady not living together" = "Relationship (not living together)", 
+    "Steady living together" = "Relationship (living together)", 
+    "Married" = "Married/civil partnership"
+    )
+  )
+```
+
+```{r check dem.what_is_your_current_maritalrelationship_status EDGI factor levels}
+edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
+  levels()
+```
+
 Look at number of people excluded
 Create object at the end of the script showing excluded participants per data set
 ```{r EDGI number excluded}
@@ -232,23 +254,6 @@ edgi_miss_map <- edgi_dat_id %>%
   missmap()
 
 edgi_miss_map
-```
-```{r check factor levels}
-edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
-  levels()
-```
-
-```{r recode EDGI factor levels to match GLAD}
-edgi_dat_id$dem.what_is_your_current_maritalrelationship_status <-
-  recode_factor(edgi_dat_id$dem.what_is_your_current_maritalrelationship_status, 
-                "Steady not living together" = "Relationship (not living together)", 
-                "Steady living together" = "Relationship (living together)", 
-                "Married" = "Married/civil partnership")
-```
-
-```{r check factor levels}
-edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
-  levels()
 ```
 
 # Bind rows of EDGI and GLAD data
