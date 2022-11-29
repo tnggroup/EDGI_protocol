@@ -203,6 +203,30 @@ edgi_dat_id %>%
   colnames()
 ```
 
+```{r check factor levels of dem.what_is_your_current_maritalrelationship_status}
+edgi_dat_id %>% 
+select(dem.what_is_your_current_maritalrelationship_status) %>% 
+  freq
+```
+
+```{r recode dem.what_is_your_current_maritalrelationship_status EDGI factor levels to match GLAD}
+edgi_dat_id <- edgi_dat_id %>% 
+  mutate(
+    dem.what_is_your_current_maritalrelationship_status = recode_factor(
+    dem.what_is_your_current_maritalrelationship_status, 
+    "Steady not living together" = "Relationship (not living together)", 
+    "Steady living together" = "Relationship (living together)", 
+    "Married" = "Married/civil partnership"
+    )
+  )
+```
+
+```{r check dem.what_is_your_current_maritalrelationship_status EDGI factor levels}
+edgi_dat_id %>% 
+select(dem.what_is_your_current_maritalrelationship_status) %>% 
+  freq
+```
+
 Look at number of people excluded
 Create object at the end of the script showing excluded participants per data set
 ```{r EDGI number excluded}
@@ -283,9 +307,6 @@ values_categorical <- c(
   "Divorced",
   "Widowed",
   "Other",
-  "Steady not living together",
-  "Steady living together",
-  "Married",
   NA_real_
   )
 values_categorical
@@ -347,7 +368,6 @@ table of variables
 imp_check(data = dat,
           variables = variables_numeric,
           values = values_numeric)
-
 ```
 
 # Save cleaned data
@@ -363,6 +383,11 @@ glad_edgi_excluded <- as.data.frame(rbind(glad_excluded, edgi_excluded))
 colnames(glad_edgi_excluded) <- c("Number of Participants Excluded")
 rownames(glad_edgi_excluded) <- c("GLAD", "EDGI")
 glad_edgi_excluded
+```
+```{r}
+dat %>% 
+  filter(sample == "EDGI") %>%
+  filter(is.na(dem.what_is_your_current_maritalrelationship_status))
 ```
 
 ## GLAD
