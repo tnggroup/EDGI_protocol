@@ -895,7 +895,7 @@ edgi_dat_id$ed.DSM5_BED_atypical_binary_numeric <-
 
   # E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nervosa... "Did you ever have periods of time that lasted three months or more when you had binge-eating episodes without regularly engaging in any of the following: making yourself vomit, laxative use, diuretic use, taking weight loss pills, excessively exercising ?"
   (
-    # NB: Have not included 3 month question here because that would make someone typical BED.
+    # NB: Have not included 3 month question here because that would make someone typical BED. # Topher/Saakshi - do you agree with this?
      icb.none_of_the_above.1 == 0 | # Never engaged in compensatory behaviours after bingeing
 
     #...Or never engaged in ANY behaviour to control weight or shape, so never got asked about comp behaviours for binge eating OR whether they've had periods of time of bingeing without engaging in weight loss behaviours (this is the logic in EDGI)
@@ -1051,7 +1051,7 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <-
       
   # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 3 months?
       (
-        icb.3months_average_time_week == 0 # No - can be less frequent for people with atypical BN 
+        icb.3months_average_time_week == 0 # No - can be less frequent for people with atypical BN # Topher/Saakshi - do you agree with this?
         ) & 
 
     # D. Self-evaluation is unduly influenced by body shape and weight.
@@ -1087,7 +1087,7 @@ edgi_dat_id %>%
   freq(ed.DSM5_BN_atypical_binary)
 ```
 
-## NES
+## NES # Topher/Saakshi - please review
 ```{r Coerce variables needed for algorithm to numeric}
 #Duration in months of eating after evening meal
 edgi_dat_id <- edgi_dat_id %>% 
@@ -1190,7 +1190,7 @@ edgi_dat_id %>%
   freq(ed.DSM5_NES_binary)
 ```
 
-## Purging disorder
+## Purging disorder # Topher/Saakshi - please review
 Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications) in the absence of binge eating.
 ```{r DSM-5 purging disorder EDGI}
 edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <- 
@@ -1339,13 +1339,6 @@ label_list
 ```
 
 # Save cleaned data
-
-Combined object for excluded participants
-```{r GLAD EDGI NBR save excluded participants}
-#glad_edgi_nbr_excluded <- as.data.frame(cbind(glad_excluded, edgi_excluded, nbr_excluded))
-#glad_edgi_nbr_excluded
-```
-
 # EDGI
 ```{r Write cleaned EDGI variables to a .rds file}
 dat %>% 
