@@ -204,8 +204,9 @@ edgi_dat_id %>%
 ```
 
 ```{r check factor levels of dem.what_is_your_current_maritalrelationship_status}
-edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
-  levels()
+edgi_dat_id %>% 
+select(dem.what_is_your_current_maritalrelationship_status) %>% 
+  freq
 ```
 
 ```{r recode dem.what_is_your_current_maritalrelationship_status EDGI factor levels to match GLAD}
@@ -221,8 +222,9 @@ edgi_dat_id <- edgi_dat_id %>%
 ```
 
 ```{r check dem.what_is_your_current_maritalrelationship_status EDGI factor levels}
-edgi_dat_id$dem.what_is_your_current_maritalrelationship_status %>% 
-  levels()
+edgi_dat_id %>% 
+select(dem.what_is_your_current_maritalrelationship_status) %>% 
+  freq
 ```
 
 Look at number of people excluded
