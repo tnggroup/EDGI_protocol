@@ -171,16 +171,17 @@ dat %>%
 ###  EDGI Recode age outliers to -666
 ```{r  EDGI age Recode outliers to -666}
 dat <- dat %>%
-    mutate(
-      dem.how_old_are_you_now.txt = # remove "_unc" from the end to show that it is now cleaned
-        if_else(
-          dem.how_old_are_you_now.txt_unc > age_upper_limit |
-            dem.how_old_are_you_now.txt_unc < age_lower_limit,
-          true = -666,
-          false = dem.how_old_are_you_now.txt_unc,
-          missing = NA_real_
-        )
-    )
+  mutate(dem.how_old_are_you_now.txt =
+      case_when(
+        dem.how_old_are_you_now.txt_unc == -777 ~ -777,
+        dem.how_old_are_you_now.txt_unc == -999 ~ -999,
+        dem.how_old_are_you_now.txt_unc == -888 ~ -888,
+        (dem.how_old_are_you_now.txt_unc > age_upper_limit |
+          dem.how_old_are_you_now.txt_unc < age_lower_limit ) ~ -666,
+        TRUE ~ dem.how_old_are_you_now.txt_unc
+      )
+  )
+
 ```
 
 ###  EDGI Inspect clean age variable
@@ -521,16 +522,17 @@ dat_clean %>%
 ###  EDGI Recode DOB age at sign up at sign up outliers to -666
 ```{r  EDGI DOB age at sign up Recode outliers to -666}
 dat_clean <- dat_clean %>%
-    mutate(
-      dem.dob_age = 
-        if_else(
-          dem.dob_age > age_upper_limit |
-            dem.dob_age < age_lower_limit,
-          true = -666,
-          false = dem.dob_age,
-          missing = NA_real_
-        )
-    )
+  mutate(dem.dob_age =
+      case_when(
+        dem.dob_age == -777 ~ -777,
+        dem.dob_age == -999 ~ -999,
+        dem.dob_age == -888 ~ -888,
+        (dem.dob_age > age_upper_limit |
+          dem.dob_age < age_lower_limit ) ~ -666,
+        TRUE ~ dem.dob_age
+      )
+  )
+
 ```
 
 ###  EDGI Inspect clean DOB age at sign up at sign up variable

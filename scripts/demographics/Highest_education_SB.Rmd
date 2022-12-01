@@ -597,7 +597,9 @@ dat <- dat %>%
         dem.nvq_or_hnd_or_hnc_or_equivalent_numeric == "1" ~ 2,
         dem.o_levelsgcses_or_equivalent_numeric == "1" ~ 1,
         dem.cses_or_equivalent_numeric == "1" ~ 1,
-        dem.none_of_the_above_numeric == "1" ~ 0 )
+        dem.none_of_the_above_numeric == "1" ~ 0,
+        dem.none_of_the_above_numeric == "-777" ~ -777
+        )
     )
 
 # recode the numeric version into a factor
@@ -606,6 +608,7 @@ dat <- dat %>%
     dem.highest_education_collapsed =
       recode_factor(
         dem.highest_education_collapsed_numeric,
+        `-777` = "Seen but not answered",
         `0` = "None of the above" ,
         `1` = "GCSEs/CSEs/O-levels or equivalent",
         `2` = "NVQ/HND/HNC or equivalent",
@@ -631,7 +634,8 @@ dat <- dat %>%
         dem.nvq_or_hnd_or_hnc_or_equivalent_numeric == "1" ~ 3,
         dem.o_levelsgcses_or_equivalent_numeric == "1" ~ 2,
         dem.cses_or_equivalent_numeric == "1" ~ 1,
-        dem.none_of_the_above_numeric == "1" ~ 0 )
+        dem.none_of_the_above_numeric == "1" ~ 0,
+        dem.none_of_the_above_numeric == "-777" ~ -777)
     )
 
 # recode the numeric version into a factor
@@ -640,6 +644,7 @@ dat <- dat %>%
     dem.highest_education_finegrained =
       recode_factor(
         dem.highest_education_finegrained_numeric,
+        `-777` = "Seen but not answered",
         `0` = "None of the above" ,
         `1` = "CSEs or equivalent",
         `2` = "O-levels/GCSEs or equivalent",
