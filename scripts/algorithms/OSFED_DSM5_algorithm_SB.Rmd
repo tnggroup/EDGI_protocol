@@ -696,7 +696,7 @@ edgi_dat_id %>%
 
 ```{r calculating the number of participants with AAN who engage in bingeing and purging behaviours}
 edgi_dat_id %>% 
-  select(ed.DSM5_AN_atypical_binary_AN_module, be.short_period_ate_regard, ed.BE_duration_months, icb.made_yourself_vomit, icb.making_yourself_vomit.1, icb.used_laxatives, icb.laxatives.1,icb.used_diuretics, icb.diuretics, icb.diuretics, icb.used_diet_pills, icb.weight_loss_pills.1) %>% 
+  select(ed.DSM5_AN_atypical_binary_AN_module, be.short_period_ate_regard, ed.BE_duration_months, icb.made_yourself_vomit, icb.making_yourself_vomit.1, icb.used_laxatives, icb.laxatives.1,icb.used_diuretics, icb.diuretics) %>% 
   filter(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55",
          (be.short_period_ate_regard == 1 &
             ed.BE_duration_months > 2.95 &  # but not equal to 0
@@ -718,14 +718,7 @@ edgi_dat_id %>%
           icb.used_diuretics == 2 | #Often
             
             # Diuretics to compensate for binge eating
-            icb.diuretics == 1 | #Diuretics
-            
-            # Diet pills to control weight or shape
-          icb.used_diet_pills == 1 | #A few times
-          icb.used_diet_pills == 2 | #Often
-            
-            # Diet pills to compensate for binge eating
-           icb.weight_loss_pills.1 == 1  #Weight loss pills 
+            icb.diuretics == 1
          )))
 ```
 
