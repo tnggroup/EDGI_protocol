@@ -294,7 +294,7 @@ edgi_dat_id %>%
 #Algorithms
 
 There will be algorithms for:
--Atypical anorexia ervosa
+-Atypical anorexia nervosa
 -Atypical bulimia nervosa
 -Atypical binge eating disorder
 -Purging disorder
@@ -463,8 +463,8 @@ edgi_dat_id <- edgi_dat_id %>%
            case_when(
              !is.na(aan.stone_pounds_lose_kg) &
                !is.na(aan.weigh_prior_kg) ~ (aan.stone_pounds_lose_kg /  aan.weigh_prior_kg)*100
-             
-           ))
+           )
+         )
 
 # Check
 edgi_dat_id %>%
@@ -496,7 +496,7 @@ aan.weight_loss_occur_time
 edgi_dat_id <- edgi_dat_id %>% 
   mutate(case_when(aan.weight_loss_occur_time < 0 ~ NA_real_, # i.e., filter out those who are -77
          TRUE ~ aan.weight_loss_occur_time
-  )
+         )
   )
 
 edgi_dat_id <- edgi_dat_id %>%
@@ -1044,7 +1044,7 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <-
             # Other methods
             icb.any_other_methods_not_previously_listed == 1 | # a few times
             icb.any_other_methods_not_previously_listed == 2 | # often
-            icb.other_methods.1 == 1) # compensate for binge eating
+            icb.other_methods.1 == 1) & # compensate for binge eating
             
 
       # C. The binge eating and inappropriate compensatory behaviors both occur, on average, at least once a week for 3 months (Atypical is less often than this)
