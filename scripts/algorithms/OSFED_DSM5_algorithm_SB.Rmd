@@ -1180,7 +1180,8 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <-
       
   # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 1 month?
       (
-        icb.binge_eating_average_month == 1 
+        icb.binge_eating_average_month == 1 & 
+          icb.binge_eating_average_months == 0 # did NOT occur at same time for 3 months (otherwise would be typical BN)
         ) & 
 
     # D. Self-evaluation is unduly influenced by body shape and weight.
