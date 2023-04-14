@@ -693,7 +693,7 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module <-
 edgi_dat_id %>% 
   freq(ed.DSM5_AN_atypical_binary_AN_module)
 ```
-# Checking freq of BE and purging in those with AAN
+### Checking freq of BE and purging in those with AAN
 ```{r calculating the number of participants with AAN who engage in bingeing and purging behaviours}
 # Number of AAN with weight suppression with lifetime binge eating AND purging
 edgi_dat_id %>% 
@@ -726,7 +726,7 @@ edgi_dat_id %>%
         ) %>%
   nrow() # 661 of 871 have lifetime binge eating AND purging 
 
-# Number of AAN with weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for BN
+# Number of AAN with weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for ATYPICAL BN or TYPICAL BN
 edgi_dat_id %>% 
  filter(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN with weight suppression (i.e., from AAN module)
          
@@ -753,12 +753,12 @@ edgi_dat_id %>%
             
             # Diuretics to compensate for binge eating
             icb.diuretics == 1
-         )
-         &
-             icb.binge_eating_average_month == 1 # Freq and duration of purging/binge eating at SAME TIME (From typical BN criteria)
-         )
+         ) &
+          (icb.binge_eating_average_month == 1  | # Freq and duration of purging/binge eating at SAME TIME for 1 month (From atypical BN criteria) OR...
+        icb.binge_eating_average_months == 1)  # ...at SAME TIME for 3 month (From typical BN criteria)
+            )
         ) %>%
-  nrow() # 355 of 871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for 3 months
+  nrow() # 413 of 871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for at least one month
 
 
 # Number of AAN *without* weight suppression with lifetime binge eating AND purging
@@ -792,7 +792,7 @@ edgi_dat_id %>%
         ) %>%
   nrow() # 1223 of 1871 have lifetime binge eating AND purging 
 
-# Number of AAN *without* weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for BN
+# Number of AAN *without* weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for ATYPICAL BN or TYPICAL BN
 edgi_dat_id %>% 
  filter(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN without weight suppression (i.e., from AN module)
          
@@ -820,18 +820,12 @@ edgi_dat_id %>%
             # Diuretics to compensate for binge eating
             icb.diuretics == 1
          )
-         &
-             icb.binge_eating_average_month == 1 # Freq and duration of purging/binge eating at SAME TIME (From typical BN criteria)
-         )
-        ) %>%
-  nrow() # 741 of 1871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for 3 months
-
-
-
-
-
-
-icb.binge_eating_average_months
+        &
+          (icb.binge_eating_average_month == 1  | # Freq and duration of purging/binge eating at SAME TIME for 1 month (From atypical BN criteria) OR...
+        icb.binge_eating_average_months == 1)  # ...at SAME TIME for 3 month (From typical BN criteria)
+            )
+         ) %>%
+  nrow() # 826 of 1871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for 1 month
 ```
 
 ## Atypical BED
