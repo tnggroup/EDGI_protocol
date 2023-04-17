@@ -558,7 +558,6 @@ edgi_dat_id %>%
   freq(severe_malnutrition)
 ```
 
-
 # Atypical AN algorithm
 
 Atypical anorexia nervosa criteria:
@@ -693,6 +692,7 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module <-
 edgi_dat_id %>% 
   freq(ed.DSM5_AN_atypical_binary_AN_module)
 ```
+
 ### Checking freq of BE and purging in those with AAN
 ```{r calculating the number of participants with AAN who engage in bingeing and purging behaviours}
 # Number of AAN with weight suppression with lifetime binge eating AND purging
@@ -877,7 +877,6 @@ edgi_dat_id$ed.BE_freq_per_week <-
       be.binge_eating_enter_month.txt == 0 |
       be.binge_eating_episodes_enter.txt == 0 ~ 0 
       
-      
       )
   )
   
@@ -919,7 +918,6 @@ edgi_dat_id <- edgi_dat_id %>%
                !is.na(be.duration_months_numeric) ~ be.duration_months_numeric,
              
              TRUE ~ NA_real_
-            
            ))
 
 ##Change below 0 to NA
@@ -929,7 +927,6 @@ edgi_dat_id$ed.BE_duration_months[edgi_dat_id$ed.BE_duration_months < 0] <- NA_r
 # Check
 freq(edgi_dat_id$ed.BE_duration_months)
 ```
-
 
 # Atypical BED algorithm 
 Definition of atypical BED:
@@ -960,7 +957,7 @@ D. The binge eating occurs, on average, at least once a week for 3 months
 
 *Note: less frequent for atypical BED*
 
-E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nen/osa and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.
+E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nervosa and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.
 
 ```{r Rename variables for the BED algorithm}
 edgi_dat_id <- edgi_dat_id %>% 
@@ -1045,7 +1042,7 @@ edgi_dat_id$ed.DSM5_BED_atypical_binary_numeric <-
     be.experience_regular_episodes_lowest == 2 | # At times of low weight and at times outside of low weight
      be.experience_regular_episodes_lowest == 0 | # No
     (is.na(be.experience_regular_episodes_lowest) &
-       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it because they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
     )
   ),
     true = 1,
