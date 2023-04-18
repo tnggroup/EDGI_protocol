@@ -1065,10 +1065,7 @@ edgi_dat_id %>%
 ```{r Checking Atypical BED}
 edgi_dat_id %>%
   filter(
-    is.na(ed.DSM5_BED_atypical_binary) 
-    & be.short_period_ate_regard == 1 
-   &  icb.none_of_the_above.1 == "None of the above"
-   & !is.na(be.binge_eating_distressed_make)
+    ed.DSM5_BED_atypical_binary_numeric == 0  
     ) %>%
   select(
     be.short_period_ate_regard,
@@ -1235,21 +1232,11 @@ edgi_dat_id %>%
 ```{r Atypical BN check}
 edgi_dat_id %>%
   filter(
-    is.na(ed.DSM5_BN_atypical_binary) &
-      be.short_period_ate_regard == 1 & # People with binge eating
-         be.binge_eating_stop_eating %in% # with loss of control
-            c( "Slightly", "Somewhat", "Very", "Extremely") &
-        ( be.not_at_all_dependentcompletely_dependent == 3 |
-      be.not_at_all_dependentcompletely_dependent == 4 |
-      be.not_at_all_dependentcompletely_dependent == 5 |
-      be.not_at_all_dependentcompletely_dependent == 6) &
-       ( be.experience_regular_episodes_lowest == 2 | #"At times of low weight and at times outside of low weight"
-         be.experience_regular_episodes_lowest == 0 | #No
-    (is.na(be.experience_regular_episodes_lowest) &
-       be.experience_regular_episodes_lowest_seen_but_not_answered != 1)  # OR have not answered the question BECAUSE they were not shown it because they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. People who DID see this question but did not answer, will be 'Seen but not answered' rather than NA.
-         )
+    ed.DSM5_BN_atypical_binary_numeric == 1
     ) %>%
-  select(icb.made_yourself_vomit,
+  select(be.short_period_ate_regard,
+         be.binge_eating_stop_eating,
+         icb.made_yourself_vomit,
          icb.making_yourself_vomit.1,
          icb.used_laxatives,
          icb.laxatives.1 ,
@@ -1268,7 +1255,6 @@ edgi_dat_id %>%
          ed.DSM5_BN_atypical_binary
          )
 ```
-18/04/23 SK: 0 are missing.
 
 ## NES # Topher/Saakshi - please review
 ```{r Coerce variables needed for algorithm to numeric}
@@ -1302,7 +1288,7 @@ explained  by  binge-eating  disorder or another mental disorder,  including
 substance use, and is not attributable to another medical disorder or to an 
 effect of medication.
 
-Key criterions summarised:
+Key criteria summarised:
 
 -Criterion A: Recurrent episodes of night eating or excessive eating after evening meal
 -Criterion B: Awareness and recall of night time eating
@@ -1373,6 +1359,28 @@ edgi_dat_id %>%
   freq(ed.DSM5_NES_binary)
 ```
 
+##Checking
+```{r NES check}
+edgi_dat_id %>%
+  filter(
+    is.na(ed.DSM5_NES_binary)
+    ) %>%
+  select(nes.awake_sleep_eat_food,
+        nes.awake_sleep_eat_food.txt,
+        nes.frequency_long_eat.1,
+        nes.generally_eat_percentage_daily.1,
+        nes.consuming_long_evening_meal.1,
+        nes.aware_night_eating,
+        nes.recall_night_eating_day,
+        nes.do_you_have_sleep_apnea,
+        nes.night_shift_evening_regularly,
+        nes.night_impaired_eating_daily,
+        nes.general_feeling_depressed_isyour,
+        ed.DSM5_NES_binary
+         )
+```
+18/04/23 SK: 0 are missing.
+
 ## Purging disorder # Topher/Saakshi - please review
 Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications) in the absence of binge eating.
 ```{r DSM-5 purging disorder EDGI}
@@ -1425,6 +1433,22 @@ edgi_dat_id$ed.DSM5_purging_disorder_binary <-
 
 #Summary
 freq(edgi_dat_id$ed.DSM5_purging_disorder_binary)
+```
+
+##Checking
+```{r purging disorder check}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_purging_disorder_binary_numeric == 1 
+    ) %>%
+  select(icb.made_yourself_vomit,
+         icb.used_laxatives,
+         icb.used_diuretics,
+         icb.used_diet_pills,
+         icb.wasthere_binge_eating_made,
+        icb.average_made_low_weight,
+        ed.DSM5_purging_disorder_binary
+         )
 ```
 
 # Combining Data
