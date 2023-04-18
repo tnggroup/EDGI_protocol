@@ -1061,6 +1061,29 @@ edgi_dat_id %>%
   freq(ed.DSM5_BED_atypical_binary)
 ```
 
+## Checking
+```{r Checking Atypical BED}
+edgi_dat_id %>%
+  filter(
+    is.na(ed.DSM5_BED_atypical_binary) 
+    & be.short_period_ate_regard == 1 
+   &  icb.none_of_the_above.1 == "None of the above"
+   & !is.na(be.binge_eating_distressed_make)
+    ) %>%
+  select(
+    be.short_period_ate_regard,
+    be.binge_eating_stop_eating,
+    be.binge_eating_distressed_make,
+    ed.BE_freq_per_week,
+    ed.BE_duration_months,
+    icb.none_of_the_above.1,
+    be.experience_regular_episodes_lowest,
+    ed.DSM5_BED_atypical_binary
+    )
+```
+
+18/04/23 SK: 0 are missing.
+
 ## Atypical BN
 
 Definition of atypical BN:
@@ -1207,6 +1230,45 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary <-
 edgi_dat_id %>%
   freq(ed.DSM5_BN_atypical_binary)
 ```
+
+##Checking
+```{r Atypical BN check}
+edgi_dat_id %>%
+  filter(
+    is.na(ed.DSM5_BN_atypical_binary) &
+      be.short_period_ate_regard == 1 & # People with binge eating
+         be.binge_eating_stop_eating %in% # with loss of control
+            c( "Slightly", "Somewhat", "Very", "Extremely") &
+        ( be.not_at_all_dependentcompletely_dependent == 3 |
+      be.not_at_all_dependentcompletely_dependent == 4 |
+      be.not_at_all_dependentcompletely_dependent == 5 |
+      be.not_at_all_dependentcompletely_dependent == 6) &
+       ( be.experience_regular_episodes_lowest == 2 | #"At times of low weight and at times outside of low weight"
+         be.experience_regular_episodes_lowest == 0 | #No
+    (is.na(be.experience_regular_episodes_lowest) &
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1)  # OR have not answered the question BECAUSE they were not shown it because they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. People who DID see this question but did not answer, will be 'Seen but not answered' rather than NA.
+         )
+    ) %>%
+  select(icb.made_yourself_vomit,
+         icb.making_yourself_vomit.1,
+         icb.used_laxatives,
+         icb.laxatives.1 ,
+         icb.used_diuretics,
+         icb.diuretics ,
+         icb.used_diet_pills,
+         icb.weight_loss_pills.1 ,
+         icb.exercised_excessively,
+         icb.excessive_exercise.1 ,
+         icb.fasted_or_did_not_eat,
+         icb.fasting.1,
+         icb.any_other_methods_not_previously_listed,
+         icb.other_methods.1,
+         be.not_at_all_dependentcompletely_dependent,
+         be.experience_regular_episodes_lowest,
+         ed.DSM5_BN_atypical_binary
+         )
+```
+18/04/23 SK: 0 are missing.
 
 ## NES # Topher/Saakshi - please review
 ```{r Coerce variables needed for algorithm to numeric}
