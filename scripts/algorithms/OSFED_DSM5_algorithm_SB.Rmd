@@ -692,6 +692,22 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module <-
 edgi_dat_id %>% 
   freq(ed.DSM5_AN_atypical_binary_AN_module)
 ```
+##Checking
+```{r Checking Atypical AN}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_AN_atypical_binary_AN_module_numeric == 1
+    ) %>%
+  select(
+    an.bmi_lowest,
+    an.gain_weight_afraid_fat,
+    an.feel_fat_time_low,
+    an.people_thought_larger_body,
+    an.not_at_all_dependentcompletely_dependent,
+    an.health_low_weightbmi_negative,
+    ed.DSM5_AN_atypical_binary_AN_module_numeric
+    )
+```
 
 ### Checking freq of BE and purging in those with AAN
 ```{r calculating the number of participants with AAN who engage in bingeing and purging behaviours}
