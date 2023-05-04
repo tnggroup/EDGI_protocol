@@ -167,6 +167,7 @@ edgi_dat_id <- edgi_dat_id %>%
   mutate(
     dem.what_is_your_current_employment_status_numeric = 
       case_when(
+        dem.what_is_your_current_employment_status_numeric == -99 ~ -999,
         dem.what_is_your_current_employment_status_numeric == 1 ~ 1,
         dem.what_is_your_current_employment_status_numeric == 2 ~ 2,
         dem.what_is_your_current_employment_status_numeric == 3 ~ 3,
@@ -180,6 +181,7 @@ edgi_dat_id <- edgi_dat_id %>%
       )
   )
 
+# +++ is this correct?!
 edgi_dat_id <- edgi_dat_id %>%
   mutate(
     dem.what_is_your_current_employment_status =

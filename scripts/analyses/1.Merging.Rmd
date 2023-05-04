@@ -67,43 +67,32 @@ sex_gender_sexuality %>%
 sex_gender_sexuality <- sex_gender_sexuality %>%
   select(ID,
          sample,
-         dem.sex,
+         sex = dem.sex,
          demographics.what_gender_do_you_identify_with = dem.what_gender_do_you_identify_with,
-         dem.what_is_your_sexual_orientation,
+         sexuality = dem.what_is_your_sexual_orientation,
          dem.do_you_identify_as_transgender)
 
 # Change to character
 sex_gender_sexuality$demographics.what_gender_do_you_identify_with <- as.character(sex_gender_sexuality$demographics.what_gender_do_you_identify_with)
 
-sex_gender_sexuality$dem.what_is_your_sexual_orientation <- as.character(sex_gender_sexuality$dem.what_is_your_sexual_orientation)
+sex_gender_sexuality$sexuality <- as.character(sex_gender_sexuality$sexuality)
 
-sex_gender_sexuality$dem.sex <- as.character(sex_gender_sexuality$dem.sex)
+sex_gender_sexuality$sex <- as.character(sex_gender_sexuality$sex)
 
 sex_gender_sexuality <- sex_gender_sexuality %>%
   mutate(gender =
-           case_when(demographics.what_gender_do_you_identify_with == "Seen but not answered" |
-                      demographics.what_gender_do_you_identify_with == "Prefer not to answer" |
-                     demographics.what_gender_do_you_identify_with == "Don't know" ~ NA_character_,
-                     
+           case_when(
                      demographics.what_gender_do_you_identify_with == "Prefer to self-define (please tell us more):" ~ "Prefer to self-define",
                      
                      demographics.what_gender_do_you_identify_with == "Male" ~ "Man",
                      demographics.what_gender_do_you_identify_with == "Female" ~ "Woman",
                      TRUE ~ demographics.what_gender_do_you_identify_with
                      )
-         ) %>%
-  mutate(sexuality = 
-           case_when(
-           dem.what_is_your_sexual_orientation == "Seen but not answered" |
-           dem.what_is_your_sexual_orientation == "Prefer not to answer" ~ NA_character_,
-         
-         TRUE ~ dem.what_is_your_sexual_orientation
-           )
-         ) %>%
-  mutate(sex =
-           case_when(dem.sex == "Seen but not answered" ~ NA_character_,
-                     
-                     TRUE ~ dem.sex))
+         )
+
+# Freq
+sex_gender_sexuality %>%
+  freq(gender)
 ```
 
 # Read in 'Ethnicity'
@@ -121,18 +110,14 @@ ethnicity %>%
 # Select variables we need 
 ethnicity <- ethnicity %>%
   select(ID,
-         dem.what_is_your_ethnic_origin)
+         ethnicity = dem.what_is_your_ethnic_origin)
 
 # Change to character
-ethnicity$dem.what_is_your_ethnic_origin <- as.character(ethnicity$dem.what_is_your_ethnic_origin)
+ethnicity$ethnicity <- as.character(ethnicity$ethnicity)
 
-ethnicity <- ethnicity %>%
-  mutate(ethnicity =
-           case_when(dem.what_is_your_ethnic_origin == "Seen but not answered" |
-                     dem.what_is_your_ethnic_origin == "Prefer not to say" | 
-                      dem.what_is_your_ethnic_origin == "Don't know" ~ NA_character_,
-                     
-                     TRUE ~ dem.what_is_your_ethnic_origin))
+# Freq
+ethnicity %>%
+  freq(ethnicity)
 ```
 
 # Education
@@ -151,6 +136,10 @@ education %>%
 education <- education %>%
   select(ID,
          dem.highest_education_finegrained)
+
+# Freq
+education %>%
+  freq(dem.highest_education_finegrained)
 ```
 
 ```{r read in years of education}
@@ -168,6 +157,10 @@ years_of_education %>%
 years_of_education <- years_of_education %>%
   select(ID,
          dem.university_education_attend_school.txt)
+
+# freq
+years_of_education %>%
+  freq(dem.university_education_attend_school.txt)
 ```
 
 # Employment
@@ -190,7 +183,8 @@ employment <- employment %>%
 
 employment <- employment %>%
   mutate(dem.what_is_your_current_employment_status =
-           case_when(dem.what_is_your_current_employment_status_numeric == 1 ~ "In paid employment or self-employed",
+           case_when(dem.what_is_your_current_employment_status_numeric == -999 ~ "Prefer not to answer",
+                     dem.what_is_your_current_employment_status_numeric == 1 ~ "In paid employment or self-employed",
                      dem.what_is_your_current_employment_status_numeric == 2 ~ "Retired",
                      dem.what_is_your_current_employment_status_numeric == 3 ~ "Looking after home and/or family",
                      dem.what_is_your_current_employment_status_numeric == 4 ~ "Unable to work because of sickness or disability",
@@ -202,6 +196,8 @@ employment <- employment %>%
                      
                      ))
 
+employment %>% 
+  freq(dem.what_is_your_current_employment_status_numeric)
 ```
 
 # Relationship status
@@ -220,17 +216,14 @@ relationship_status %>%
 # Select variables we need 
 relationship_status <- relationship_status %>%
   select(ID,
-         dem.what_is_your_current_maritalrelationship_status)
+         relationship_status = dem.what_is_your_current_maritalrelationship_status)
 
 # Convert to character
-relationship_status$dem.what_is_your_current_maritalrelationship_status <- as.character(relationship_status$dem.what_is_your_current_maritalrelationship_status)
+relationship_status$relationship_status <- as.character(relationship_status$relationship_status)
 
-relationship_status <- relationship_status %>%
-  mutate(relationship_status =
-           case_when(dem.what_is_your_current_maritalrelationship_status == "Seen but not answered" |
-                      dem.what_is_your_current_maritalrelationship_status == "Prefer not to answer" ~ NA_character_,
-                     
-                     TRUE ~ dem.what_is_your_current_maritalrelationship_status))
+# Freq
+relationship_status %>%
+  freq(relationship_status)
 ```
 
 # Smoking status 
@@ -251,12 +244,35 @@ smoking_status <- smoking_status %>%
   select(ID,
          dem.pack_year)
 
+smoking_status %>% 
+  freq(dem.pack_year)
+
+# Missing information version
+smoking_status <- smoking_status %>%
+  mutate(dem.pack_year_missing_info =
+    case_when(
+    dem.pack_year == -666 ~ "Implausible",
+    dem.pack_year == -999 ~ "Prefer not to answer",
+    dem.pack_year == -888 ~ "Don't know",
+    dem.pack_year == -777 ~ "Seen but not answered",
+    !is.na(dem.pack_year) ~ "Answered",
+    TRUE ~ NA_character_
+    )
+  )
 
 smoking_status <- smoking_status %>%
   mutate(dem.pack_year =
-           case_when(dem.pack_year == -666 ~ NA_real_,
-                     TRUE ~ dem.pack_year))
+    case_when(
+      dem.pack_year < 0 ~ NA_real_, # For the continuous version, we need to assign all implausible/PNTA/DK values as NA_real_
+    !is.na(dem.pack_year) ~ dem.pack_year,
+    TRUE ~ NA_real_
+    )
+  )
 
+
+# Check
+smoking_status %>%
+  freq(dem.pack_year_missing_info)
 ```
 
 # Treatment
@@ -309,19 +325,46 @@ age %>%
 age <- age %>%
   mutate(age =
     case_when(
-    dem.dob_age == -666 ~ NA_real_,
-    dem.how_old_are_you_now.txt ==  -666 ~ NA_real_,
-    !is.na(dem.dob_age) ~ dem.dob_age,
+      dem.dob_age < 0 ~ NA_real_, # For the continuous version, we need to assign all implausible/PNTA/DK values as NA_real_
+     dem.how_old_are_you_now.txt < 0 ~ NA_real_,
+      !is.na(dem.dob_age) ~ dem.dob_age,
     !is.na(dem.how_old_are_you_now.txt) ~ dem.how_old_are_you_now.txt,
     TRUE ~ NA_real_
     )
   )
+
+# Check
+age %>%
+  freq(age)
+
+# Missing information version
+age <- age %>%
+  mutate(age_missing_info =
+    case_when(
+      !is.na(age) ~ "Answered",
+    dem.dob_age == -666 ~ "Implausible",
+    dem.dob_age == -999 ~ "Prefer not to answer",
+    dem.dob_age == -888 ~ "Don't know",
+    dem.dob_age == -777 ~ "Seen but not answered",
+    
+    dem.how_old_are_you_now.txt == -666 ~ "Implausible",
+    dem.how_old_are_you_now.txt == -999 ~ "Prefer not to answer",
+    dem.how_old_are_you_now.txt == -888 ~ "Don't know",
+    dem.how_old_are_you_now.txt == -777 ~ "Seen but not answered",
+    
+    TRUE ~ NA_character_
+    )
+  )
+
+# Check
+age %>%
+  freq(age_missing_info)
 ```
 
 # Eating disorder diagnosis: algorithm-derived
 ```{r read in eating disorder algorithm data}
 eating_disorder_algorithm <- readRDS(file = paste0(filepath_cleaned_data,
-                                     "algorithms/ed_algorithms_diagnostics_edgi_clean.rds"))
+                                     "algorithms/ed_algorithms_diagnostics_edgi_clean_040523.rds"))
   
 # Check
 eating_disorder_algorithm %>%
@@ -365,13 +408,16 @@ mhd %>%
   colnames()
 
 mhd %>%
-  dim()
+  freq(mhd.gad_numeric)
 
 # Recode personality disorder
 mhd <- mhd %>%
   mutate(mhd.personality_disorder_type_diagnosed =
            case_when(
-           mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
+           mhd.personality_disorder_numeric == -777 ~ "Seen but not answered",
+           mhd.personality_disorder_numeric == -888 ~ "Don't know",
+           mhd.personality_disorder_numeric == -999 ~ "Prefer not to answer",
+             mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
            mhd.personality_disorder_diagnosed_numeric == 1 ~ "Paranoid personality disorder",
            mhd.personality_disorder_diagnosed_numeric == 2 ~ "Schizoid personality disorder",
            mhd.personality_disorder_diagnosed_numeric == 3 ~ "Schizotypal personality disorder",
@@ -390,6 +436,9 @@ mhd <- mhd %>%
 mhd <- mhd %>%
   mutate(mhd.any_personality_disorder =
            case_when(
+             mhd.personality_disorder_numeric == -777 ~ "Seen but not answered",
+               mhd.personality_disorder_numeric == -888 ~ "Don't know",
+           mhd.personality_disorder_numeric == -999 ~ "Prefer not to answer",
            mhd.personality_disorder_numeric == 0 ~ "No personality disorder",
            mhd.personality_disorder_diagnosed_numeric == 1 |
            mhd.personality_disorder_diagnosed_numeric == 2 |
@@ -413,11 +462,6 @@ mhd <- mhd %>%
   select(#-endDate,
          #  -startDate,
            -sample)
-
-
-# Recode 'seen but not answered'
-mhd <- mhd %>%
-   mutate()
 ```
 
 # Somatic comorbidity
@@ -551,7 +595,7 @@ age_at_diagnosis %>%
 # OSFED / other diagnoses
 ```{r read in OSFED diagnoses}
 OSFED_other_eating_disorders <- readRDS(file = paste0(filepath_cleaned_data,
-                                     "/algorithms/osfed_dsm5_algorithms_edgi_clean.rds"))
+                                     "/algorithms/osfed_dsm5_algorithms_edgi_clean_040523.rds"))
   
 # Check
 OSFED_other_eating_disorders %>%
@@ -597,7 +641,7 @@ dat %>%
 ```{r save the merged data}
 dat %>% 
   saveRDS(
-    file = paste0(filepath_cleaned_data, "merged_dat.rds")
+    file = paste0(filepath_cleaned_data, "merged_dat_040523.rds")
     )
 
 ```

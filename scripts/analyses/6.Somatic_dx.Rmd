@@ -273,11 +273,12 @@ summary_table <-
        dem.asthma = "Asthma"
   ),
           
-      statistic = list(
+      digits = list(all_categorical() ~ c(0, 1),
+                          all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
-            all_dichotomous() ~ "{n} ({p}%)"), 
-              
-              missing = "no")
+            all_categorical() ~ "{n} ({p}%)"))
+
 
 ```
 
@@ -494,11 +495,10 @@ summary_table_long <-
         dem.thyroid_disease = "Thyroid disease",
         dem.asthma = "Asthma"),
        
-       statistic = list(
+      digits = list(all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
-            all_dichotomous() ~ "{n} ({p}%)"),
-              
-              missing = "no") 
+            all_categorical() ~ "{n} ({p}%)"))
 
 summary_table_long
 ```
@@ -552,11 +552,8 @@ summary_table_broad_long <-
     skin_problems_numeric ~ 1,
     thyroid_disease_numeric ~ 1),
        
-       statistic = list(
-                             
-            all_dichotomous() ~ "{n} ({p}%)"),
-              
-              missing = "no")
+      digits = list(all_dichotomous() ~ c(0, 1)))
+
 
 summary_table_broad_long
 ```

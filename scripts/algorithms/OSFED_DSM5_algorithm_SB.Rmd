@@ -294,7 +294,7 @@ edgi_dat_id %>%
 #Algorithms
 
 There will be algorithms for:
--Atypical anorexia ervosa
+-Atypical anorexia nervosa
 -Atypical bulimia nervosa
 -Atypical binge eating disorder
 -Purging disorder
@@ -463,8 +463,8 @@ edgi_dat_id <- edgi_dat_id %>%
            case_when(
              !is.na(aan.stone_pounds_lose_kg) &
                !is.na(aan.weigh_prior_kg) ~ (aan.stone_pounds_lose_kg /  aan.weigh_prior_kg)*100
-             
-           ))
+           )
+         )
 
 # Check
 edgi_dat_id %>%
@@ -496,7 +496,7 @@ aan.weight_loss_occur_time
 edgi_dat_id <- edgi_dat_id %>% 
   mutate(case_when(aan.weight_loss_occur_time < 0 ~ NA_real_, # i.e., filter out those who are -77
          TRUE ~ aan.weight_loss_occur_time
-  )
+         )
   )
 
 edgi_dat_id <- edgi_dat_id %>%
@@ -558,8 +558,7 @@ edgi_dat_id %>%
   freq(severe_malnutrition)
 ```
 
-
-### Atypical AN algorithm
+# Atypical AN algorithm
 
 Atypical anorexia nervosa criteria:
 
@@ -693,8 +692,157 @@ edgi_dat_id$ed.DSM5_AN_atypical_binary_AN_module <-
 edgi_dat_id %>% 
   freq(ed.DSM5_AN_atypical_binary_AN_module)
 ```
+##Checking
+```{r Checking Atypical AN}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_AN_atypical_binary_AN_module_numeric == 1
+    ) %>%
+  select(
+    an.bmi_lowest,
+    an.gain_weight_afraid_fat,
+    an.feel_fat_time_low,
+    an.people_thought_larger_body,
+    an.not_at_all_dependentcompletely_dependent,
+    an.health_low_weightbmi_negative,
+    ed.DSM5_AN_atypical_binary_AN_module_numeric
+    )
+```
+
+### Checking freq of BE and purging in those with AAN
+```{r calculating the number of participants with AAN who engage in bingeing and purging behaviours}
+# Number of AAN with weight suppression with lifetime binge eating AND purging
+edgi_dat_id %>% 
+ filter(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN with weight suppression (i.e., from AAN module)
+         
+          (be.short_period_ate_regard == 1 & # Has lifetime binge eating AND...
+         
+           # ...purging behaviour
+           (icb.made_yourself_vomit == 1 | #A few times
+            icb.made_yourself_vomit == 2 | #Often
+            
+            # Self-induced vomiting to compensate for binge eating
+            icb.making_yourself_vomit.1 == 1 | #Making yourself vomit
+            
+            # Laxatives to control weight or shape
+          icb.used_laxatives == 1 | #A few times
+          icb.used_laxatives == 2 | #Often
+            
+            # Laxatives to compensate for binge eating
+            icb.laxatives.1 == 1 | #Laxatives
+            
+            # Diuretics to control weight or shape
+          icb.used_diuretics == 1 | #A few times
+          icb.used_diuretics == 2 | #Often
+            
+            # Diuretics to compensate for binge eating
+            icb.diuretics == 1
+         )
+         )
+        ) %>%
+  nrow() # 661 of 871 have lifetime binge eating AND purging 
+
+# Number of AAN with weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for ATYPICAL BN or TYPICAL BN
+edgi_dat_id %>% 
+ filter(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN with weight suppression (i.e., from AAN module)
+         
+          (
+            be.short_period_ate_regard == 1 & # Has lifetime binge eating AND...
+        
+           # ...purging behaviour
+           (icb.made_yourself_vomit == 1 | #A few times
+            icb.made_yourself_vomit == 2 | #Often
+            
+            # Self-induced vomiting to compensate for binge eating
+            icb.making_yourself_vomit.1 == 1 | #Making yourself vomit
+            
+            # Laxatives to control weight or shape
+          icb.used_laxatives == 1 | #A few times
+          icb.used_laxatives == 2 | #Often
+            
+            # Laxatives to compensate for binge eating
+            icb.laxatives.1 == 1 | #Laxatives
+            
+            # Diuretics to control weight or shape
+          icb.used_diuretics == 1 | #A few times
+          icb.used_diuretics == 2 | #Often
+            
+            # Diuretics to compensate for binge eating
+            icb.diuretics == 1
+         ) &
+          (icb.binge_eating_average_month == 1  | # Freq and duration of purging/binge eating at SAME TIME for 1 month (From atypical BN criteria) OR...
+        icb.binge_eating_average_months == 1)  # ...at SAME TIME for 3 month (From typical BN criteria)
+            )
+        ) %>%
+  nrow() # 413 of 871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for at least one month
 
 
+# Number of AAN *without* weight suppression with lifetime binge eating AND purging
+edgi_dat_id %>% 
+ filter(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN without weight suppression (i.e., from AN module)
+         
+          (be.short_period_ate_regard == 1 & # Has lifetime binge eating AND...
+         
+           # ...purging behaviour
+           (icb.made_yourself_vomit == 1 | #A few times
+            icb.made_yourself_vomit == 2 | #Often
+            
+            # Self-induced vomiting to compensate for binge eating
+            icb.making_yourself_vomit.1 == 1 | #Making yourself vomit
+            
+            # Laxatives to control weight or shape
+          icb.used_laxatives == 1 | #A few times
+          icb.used_laxatives == 2 | #Often
+            
+            # Laxatives to compensate for binge eating
+            icb.laxatives.1 == 1 | #Laxatives
+            
+            # Diuretics to control weight or shape
+          icb.used_diuretics == 1 | #A few times
+          icb.used_diuretics == 2 | #Often
+            
+            # Diuretics to compensate for binge eating
+            icb.diuretics == 1
+         )
+         )
+        ) %>%
+  nrow() # 1223 of 1871 have lifetime binge eating AND purging 
+
+# Number of AAN *without* weight suppression with lifetime binge eating AND purging AND duration of BE and purging required for ATYPICAL BN or TYPICAL BN
+edgi_dat_id %>% 
+ filter(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" & # Has atypical AN without weight suppression (i.e., from AN module)
+         
+          (
+            be.short_period_ate_regard == 1 & # Has lifetime binge eating AND...
+        
+           # ...purging behaviour
+           (icb.made_yourself_vomit == 1 | #A few times
+            icb.made_yourself_vomit == 2 | #Often
+            
+            # Self-induced vomiting to compensate for binge eating
+            icb.making_yourself_vomit.1 == 1 | #Making yourself vomit
+            
+            # Laxatives to control weight or shape
+          icb.used_laxatives == 1 | #A few times
+          icb.used_laxatives == 2 | #Often
+            
+            # Laxatives to compensate for binge eating
+            icb.laxatives.1 == 1 | #Laxatives
+            
+            # Diuretics to control weight or shape
+          icb.used_diuretics == 1 | #A few times
+          icb.used_diuretics == 2 | #Often
+            
+            # Diuretics to compensate for binge eating
+            icb.diuretics == 1
+         )
+        &
+          (icb.binge_eating_average_month == 1  | # Freq and duration of purging/binge eating at SAME TIME for 1 month (From atypical BN criteria) OR...
+        icb.binge_eating_average_months == 1)  # ...at SAME TIME for 3 month (From typical BN criteria)
+            )
+         ) %>%
+  nrow() # 826 of 1871 have lifetime binge eating AND purging AND these behaviours occured at the SAME TIME for 1 month
+```
 
 ## Atypical BED
 Sum number of binge eating behaviours 
@@ -745,7 +893,6 @@ edgi_dat_id$ed.BE_freq_per_week <-
       be.binge_eating_enter_month.txt == 0 |
       be.binge_eating_episodes_enter.txt == 0 ~ 0 
       
-      
       )
   )
   
@@ -778,7 +925,7 @@ edgi_dat_id <- edgi_dat_id %>%
            case_when(
              !is.na(be.duration_years_numeric) &
                !is.na(be.duration_months_numeric) ~ ((be.duration_years_numeric*365.25) + 
-             (be.duration_months_numeric*30.4167) / 30.4167),
+             (be.duration_months_numeric*30.4167)) / 30.4167,
              
              !is.na(be.duration_years_numeric) &
                is.na(be.duration_months_numeric) ~ (be.duration_years_numeric*365.25) / 30.4167,
@@ -787,7 +934,6 @@ edgi_dat_id <- edgi_dat_id %>%
                !is.na(be.duration_months_numeric) ~ be.duration_months_numeric,
              
              TRUE ~ NA_real_
-            
            ))
 
 ##Change below 0 to NA
@@ -797,7 +943,6 @@ edgi_dat_id$ed.BE_duration_months[edgi_dat_id$ed.BE_duration_months < 0] <- NA_r
 # Check
 freq(edgi_dat_id$ed.BE_duration_months)
 ```
-
 
 # Atypical BED algorithm 
 Definition of atypical BED:
@@ -828,7 +973,7 @@ D. The binge eating occurs, on average, at least once a week for 3 months
 
 *Note: less frequent for atypical BED*
 
-E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nen/osa and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.
+E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nervosa and does not occur exclusively during the course of bulimia nervosa or anorexia nervosa.
 
 ```{r Rename variables for the BED algorithm}
 edgi_dat_id <- edgi_dat_id %>% 
@@ -913,7 +1058,7 @@ edgi_dat_id$ed.DSM5_BED_atypical_binary_numeric <-
     be.experience_regular_episodes_lowest == 2 | # At times of low weight and at times outside of low weight
      be.experience_regular_episodes_lowest == 0 | # No
     (is.na(be.experience_regular_episodes_lowest) &
-       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
+       be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it because they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
     )
   ),
     true = 1,
@@ -930,6 +1075,24 @@ edgi_dat_id$ed.DSM5_BED_atypical_binary <-
 # Summary
 edgi_dat_id %>%
   freq(ed.DSM5_BED_atypical_binary)
+```
+
+## Checking
+```{r Checking Atypical BED}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_BED_atypical_binary_numeric == 0  
+    ) %>%
+  select(
+    be.short_period_ate_regard,
+    be.binge_eating_stop_eating,
+    be.binge_eating_distressed_make,
+    ed.BE_freq_per_week,
+    ed.BE_duration_months,
+    icb.none_of_the_above.1,
+    be.experience_regular_episodes_lowest,
+    ed.DSM5_BED_atypical_binary
+    )
 ```
 
 ## Atypical BN
@@ -963,15 +1126,6 @@ E. The disturbance does not occur exclusively during episodes of anorexia nervos
 NB: Response from Laura T 12/11/21 about whether to include the calculated BE and ICB freq/dur, "We just use the “Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 3 months?” This is because people are required to use compensatory behaviors  for BN but they can use any combination.
  
 Someone might exercise and also use laxatives and vomiting, but each only a few times a month, to compensate for the binge episodes."
-
-```{r Rename edgi variables to match BN algorithm}
-edgi_dat_id <- edgi_dat_id %>% 
-  rename("icb.3months_average_time_week" = "icb.binge_eating_average_months")
-
-#Check variables
-edgi_dat_id %>% 
-  freq(icb.3months_average_time_week)
-```
 
 ```{r DSM-5 bulimia nervosa algorithm EDGI}
 # Bulimia nervosa numeric variable
@@ -1044,14 +1198,15 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <-
             # Other methods
             icb.any_other_methods_not_previously_listed == 1 | # a few times
             icb.any_other_methods_not_previously_listed == 2 | # often
-            icb.other_methods.1 == 1) # compensate for binge eating
+            icb.other_methods.1 == 1) & # compensate for binge eating
             
 
       # C. The binge eating and inappropriate compensatory behaviors both occur, on average, at least once a week for 3 months (Atypical is less often than this)
       
-  # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 3 months?
+  # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 1 month?
       (
-        icb.3months_average_time_week == 0 # No - can be less frequent for people with atypical BN # Topher/Saakshi - do you agree with this?
+        icb.binge_eating_average_month == 1 & # occured at same time once a week for 1 month...
+          icb.binge_eating_average_months == 0 # ...and did NOT occur at same time for 3 months (otherwise would be typical BN)
         ) & 
 
     # D. Self-evaluation is unduly influenced by body shape and weight.
@@ -1087,7 +1242,35 @@ edgi_dat_id %>%
   freq(ed.DSM5_BN_atypical_binary)
 ```
 
-## NES # Topher/Saakshi - please review
+##Checking
+```{r Atypical BN check}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_BN_atypical_binary_numeric == 1
+    ) %>%
+  select(be.short_period_ate_regard,
+         be.binge_eating_stop_eating,
+         icb.made_yourself_vomit,
+         icb.making_yourself_vomit.1,
+         icb.used_laxatives,
+         icb.laxatives.1 ,
+         icb.used_diuretics,
+         icb.diuretics ,
+         icb.used_diet_pills,
+         icb.weight_loss_pills.1 ,
+         icb.exercised_excessively,
+         icb.excessive_exercise.1 ,
+         icb.fasted_or_did_not_eat,
+         icb.fasting.1,
+         icb.any_other_methods_not_previously_listed,
+         icb.other_methods.1,
+         be.not_at_all_dependentcompletely_dependent,
+         be.experience_regular_episodes_lowest,
+         ed.DSM5_BN_atypical_binary
+         )
+```
+
+## NES 
 ```{r Coerce variables needed for algorithm to numeric}
 #Duration in months of eating after evening meal
 edgi_dat_id <- edgi_dat_id %>% 
@@ -1119,7 +1302,7 @@ explained  by  binge-eating  disorder or another mental disorder,  including
 substance use, and is not attributable to another medical disorder or to an 
 effect of medication.
 
-Key criterions summarised:
+Key criteria summarised:
 
 -Criterion A: Recurrent episodes of night eating or excessive eating after evening meal
 -Criterion B: Awareness and recall of night time eating
@@ -1190,7 +1373,28 @@ edgi_dat_id %>%
   freq(ed.DSM5_NES_binary)
 ```
 
-## Purging disorder # Topher/Saakshi - please review
+##Checking
+```{r NES check}
+edgi_dat_id %>%
+  filter(
+    is.na(ed.DSM5_NES_binary)
+    ) %>%
+  select(nes.awake_sleep_eat_food,
+        nes.awake_sleep_eat_food.txt,
+        nes.frequency_long_eat.1,
+        nes.generally_eat_percentage_daily.1,
+        nes.consuming_long_evening_meal.1,
+        nes.aware_night_eating,
+        nes.recall_night_eating_day,
+        nes.do_you_have_sleep_apnea,
+        nes.night_shift_evening_regularly,
+        nes.night_impaired_eating_daily,
+        nes.general_feeling_depressed_isyour,
+        ed.DSM5_NES_binary
+         )
+```
+
+## Purging disorder 
 Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications) in the absence of binge eating.
 ```{r DSM-5 purging disorder EDGI}
 edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <- 
@@ -1244,8 +1448,117 @@ edgi_dat_id$ed.DSM5_purging_disorder_binary <-
 freq(edgi_dat_id$ed.DSM5_purging_disorder_binary)
 ```
 
-# Combining Data
+## Checking
+```{r purging disorder check}
+edgi_dat_id %>%
+  filter(
+    ed.DSM5_purging_disorder_binary_numeric == 1 
+    ) %>%
+  select(icb.made_yourself_vomit,
+         icb.used_laxatives,
+         icb.used_diuretics,
+         icb.used_diet_pills,
+         icb.wasthere_binge_eating_made,
+        icb.average_made_low_weight,
+        ed.DSM5_purging_disorder_binary
+         )
+```
+# 4/05/23 Filtering AAN cases for ABN, ABED, and purging disorder
+```{r filtering out AAN cases with other atypical diagnoses}
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" |
+             ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "DSM-5 atypical AN combined")
+  )
 
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined) # 2450
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_categorical =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+             ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "Both strict and lenient",
+            
+            ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "Strict only",
+             
+            ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "Lenient only"
+            )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_categorical)
+
+# AAN from AAN module (i.e., with weight suppression)
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_AAN_module_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+              
+              
+              ed.DSM5_purging_disorder_binary ==  "No DSM-5 purging disorder" &
+              ed.DSM5_BN_atypical_binary == "No DSM-5 atypical BN" &
+              ed.DSM5_BED_atypical_binary == "No DSM-5 atypical BED" ~ "DSM-5 atypical AN BMI greater than 18.55 filtered",
+             
+             ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "No DSM-5 atypical AN BMI greater than 18.55 filtered"
+              )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_AAN_module_filtered)
+
+# AAN from AN module (i.e., without weight suppression)
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_AN_module_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+              
+              
+              ed.DSM5_purging_disorder_binary ==  "No DSM-5 purging disorder" &
+              ed.DSM5_BN_atypical_binary == "No DSM-5 atypical BN" &
+              ed.DSM5_BED_atypical_binary == "No DSM-5 atypical BED" ~ "DSM-5 atypical AN BMI greater than 18.55 filtered",
+             
+             ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "No DSM-5 atypical AN BMI greater than 18.55 filtered"
+              )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_AN_module_filtered)
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" |
+             ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "DSM-5 atypical AN combined and filtered")
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_filtered)
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_filtered_categorical =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" &
+             ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Both strict and lenient",
+            
+            ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Strict only",
+             
+            ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Lenient only"
+            )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_filtered_categorical)
+
+```
+
+
+
+
+
+# Combining Data
 ```{r Put algorithm variables into a vector}
 #Retrieve algorithm variable names
 algorithm_vars <- edgi_dat_id %>% 
@@ -1344,6 +1657,6 @@ label_list
 dat %>% 
   #filter(sample == "EDGI") %>%  # select only EDGI participants
   saveRDS(
-    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean.rds")
+    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean_040523.rds")
     )
 ```

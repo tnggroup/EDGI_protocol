@@ -71,7 +71,7 @@ dat_eds_binary_numeric <- dat %>%
     "Avoidant/restrictive food intake disorder" = avoidant_restrictive_food_intake_disorder_numeric,
     "Rumination disorder" = rumination_disorder_numeric
   ) %>%
-  gtsummary::tbl_summary(missing = "no")
+  gtsummary::tbl_summary(missing = "ifany")
 
 dat_eds_binary_numeric
 ```
