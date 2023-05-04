@@ -52,7 +52,7 @@ date <- Sys.Date()
 Load data
 
 ```{r Load data}
-load(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+load(file = paste0(filepath_cleaned_data, "tables_040523.Rdata"))
 ```
 
 ```{r}
@@ -314,7 +314,7 @@ sect_properties <- officer::prop_section(
 summary_table %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/supplement/EDGI_demographics.docx",
+    path = "../../results/supplement/EDGI_demographics_040523.docx",
     pr_section = sect_properties
   )
 ```
@@ -323,7 +323,7 @@ summary_table %>%
 summary_table_long %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/main_manuscript/EDGI_demographics_long_for_manuscript.docx",
+    path = "../../results/main_manuscript/EDGI_demographics_long_for_manuscript_040523.docx",
     pr_section = sect_properties
   )
 ```
@@ -332,7 +332,7 @@ summary_table_long %>%
 summary_table_whole_sample %>%
   as_flex_table() %>%
   flextable::save_as_docx(
-    path = "../../results/main_manuscript/EDGI_demographics_long_wholesample_for_manuscript.docx",
+    path = "../../results/main_manuscript/EDGI_demographics_long_wholesample_for_manuscript_040523.docx",
     pr_section = sect_properties
   )
 ```

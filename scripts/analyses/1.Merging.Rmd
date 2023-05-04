@@ -364,7 +364,7 @@ age %>%
 # Eating disorder diagnosis: algorithm-derived
 ```{r read in eating disorder algorithm data}
 eating_disorder_algorithm <- readRDS(file = paste0(filepath_cleaned_data,
-                                     "algorithms/ed_algorithms_diagnostics_edgi_clean.rds"))
+                                     "algorithms/ed_algorithms_diagnostics_edgi_clean_040523.rds"))
   
 # Check
 eating_disorder_algorithm %>%
@@ -595,7 +595,7 @@ age_at_diagnosis %>%
 # OSFED / other diagnoses
 ```{r read in OSFED diagnoses}
 OSFED_other_eating_disorders <- readRDS(file = paste0(filepath_cleaned_data,
-                                     "/algorithms/osfed_dsm5_algorithms_edgi_clean.rds"))
+                                     "/algorithms/osfed_dsm5_algorithms_edgi_clean_040523.rds"))
   
 # Check
 OSFED_other_eating_disorders %>%
@@ -641,7 +641,7 @@ dat %>%
 ```{r save the merged data}
 dat %>% 
   saveRDS(
-    file = paste0(filepath_cleaned_data, "merged_dat.rds")
+    file = paste0(filepath_cleaned_data, "merged_dat_040523.rds")
     )
 
 ```
