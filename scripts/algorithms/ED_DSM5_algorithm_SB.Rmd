@@ -125,18 +125,7 @@ AN_EDGI_id <- AN_EDGI %>%
        #  an.suffered_eating_disorder_long = an.long_anorexia_nervosa_andor,
        #  an.suffered_eating_disorder_long.1 = an.long_anorexia_nervosa_andor.1 
          ) %>%
-  add_numeric( .,exclude = exclude_cols) %>%
-  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
-  mutate_if(is.numeric, ~na_if(., -99)) %>%
-  mutate_if(is.numeric, ~na_if(., -77)) %>%
-  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
-  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+  add_numeric( .,exclude = exclude_cols)
 
 # Inspect dimensions
 dim(AN_EDGI_id)
@@ -179,18 +168,7 @@ AAN_EDGI_id <- AAN_EDGI %>%
     aan.1.health_negative_consequences_significant,
     aan.1.people_thought_larger_parts
     ) %>%
-  add_numeric(., exclude = exclude_cols) %>%
-  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
-  mutate_if(is.numeric, ~na_if(., -99)) %>%
-  mutate_if(is.numeric, ~na_if(., -77)) %>%
-  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
-  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+  add_numeric(., exclude = exclude_cols) 
 
 # Inspect dimensions
 dim(AAN_EDGI_id)
@@ -238,18 +216,7 @@ BE_EDGI_id <- BE_EDGI %>%
     be.feel_distressed_episodes_eating =	be.feel_distressed_overeating_episodes,
     everything()
     ) %>%
-  add_numeric(., exclude = exclude_cols) %>%
-  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
-  mutate_if(is.numeric, ~na_if(., -99)) %>%
-  mutate_if(is.numeric, ~na_if(., -77)) %>%
-  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
-  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+  add_numeric(., exclude = exclude_cols) 
 
 # Inspect dimensions
 dim(BE_EDGI_id)
@@ -371,18 +338,7 @@ ICB_EDGI_id <- ICB_EDGI %>%
         # icb.month_fast_periods = icb.fast_month_periods,
          icb.fast_year_periods
          ) %>%
-    add_numeric(., exclude = exclude_cols) %>%
-  mutate_if(is.numeric, ~na_if(., -88)) %>% # Recode missing values to NAs in numeric variables
-  mutate_if(is.numeric, ~na_if(., -99)) %>%
-  mutate_if(is.numeric, ~na_if(., -77)) %>%
-  mutate_if(is.factor, ~na_if(., "Seen but not answered")) %>% # Recode missing values to NAs in factor variables
-  mutate_if(is.factor, ~na_if(., "Don't know")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to say")) %>%
-  mutate_if(is.factor, ~na_if(., "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Seen but not answered")) %>% # Drop empty factor levels
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Don't know")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to answer")) %>%
-  mutate_if(is.factor, ~forcats::fct_drop(., only = "Prefer not to say"))
+    add_numeric(., exclude = exclude_cols) 
 
 # Inspect dimensions
 dim(ICB_EDGI_id)
@@ -514,8 +470,11 @@ dat_ed_EDGI <- dat_ed_EDGI %>%
   mutate(ed.BE_duration_months =
            case_when(
              !is.na(be.duration_years_numeric) &
-               !is.na(be.duration_months_numeric) ~ ((be.duration_years_numeric*365.25) + 
-             (be.duration_months_numeric*30.4167) / 30.4167),
+               !is.na(be.duration_months_numeric) ~ 
+               (
+                 (be.duration_years_numeric*365.25) + 
+             (be.duration_months_numeric*30.4167)
+             ) / 30.4167,
              
              !is.na(be.duration_years_numeric) &
                is.na(be.duration_months_numeric) ~ (be.duration_years_numeric*365.25) / 30.4167,
@@ -525,7 +484,9 @@ dat_ed_EDGI <- dat_ed_EDGI %>%
              
              TRUE ~ NA_real_
             
+            
            ))
+
 
 ##Change below 0 to NA
 ##Just temporary - all negative values should be cleaned when you select columns...
@@ -554,16 +515,19 @@ dat_ed_EDGI$ed.DSM5_AN_binary_numeric <-
        dplyr::if_else(
 #A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
     (
-       an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire
+       (an.bmi_lowest <= 18.55  &  # Lowest BMI as reported in ED100K optional questionnaire AN module
+   an.bmi_lowest > 0) & # To account for those with -666, -888, -999
 
          # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   # During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
     (
-      (an.gain_weight_afraid_fat == "Somewhat afraid" |
+      (
+        an.gain_weight_afraid_fat == "Somewhat afraid" |
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
       )  |
+        
 # ...or engagement with ICBs at low weight (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
@@ -657,8 +621,9 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
   dplyr::if_else(
 # A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
     (
-      an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire
-
+         (an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire AN module
+   an.bmi_lowest > 0) & # To account for those with -666, -888, -999
+ 
 # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   # During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
@@ -668,12 +633,12 @@ dat_ed_EDGI$ed.DSM5_AN_restricting_binary_numeric <-
       an.gain_weight_afraid_fat == "Very afraid" |
       an.gain_weight_afraid_fat == "Extremely afraid"
       )  |
+    
 # ...or engagement with ICBs at low weight [not purging] (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
  
 (icb.excessive_exercise == "Excessive exercise" | 
     icb.fasting == "Fasting" |
-    icb.weight_loss_pills == "Weight loss pills" |
-    icb.other_methods == "Other methods")
+    icb.weight_loss_pills == "Weight loss pills" )
 ) &
 
   # C. Disturbance in the way in which one’s body weight or shape is experienced... 
@@ -770,108 +735,6 @@ dat_ed_EDGI %>%
 ```
 Data extraction 16/09/22: 1,959 people are missing. Most have no BMI data. 80 people have BMI data but missing criterion B, or do not meeting/are missing criterion C, missing binge eating data, or have purged, etc.
 
-
-## DSM 5 AN restricting (BMI under 20, i.e., more lenient)
-### EDGI
-```{r DSM-5 anorexia nervosa restricting algorithm EDGI bmi under 20}
-dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric <- 
-  with(dat_ed_EDGI,
-  dplyr::if_else(
-# A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
-    (
-      an.bmi_lowest <= 20 & # Lowest BMI as reported in ED100K optional questionnaire (20 for more lenient definitions)
-
-# B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
-   
-  #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
-  (
-  (
-      an.gain_weight_afraid_fat == "Somewhat afraid" |
-      an.gain_weight_afraid_fat == "Very afraid" |
-      an.gain_weight_afraid_fat == "Extremely afraid"
-      )  |
-# ...or engagement with fasting or excessive exercise (Laura Thornton said this counts as criterion B - added 13/10/22): "During the period of time when you were at your lowest weight, did you use any of the following as a way to control yourweight or shape?"
- 
-(icb.excessive_exercise == "Excessive exercise" | 
-    icb.fasting == "Fasting" |
-    icb.weight_loss_pills == "Weight loss pills" |
-    icb.other_methods == "Other methods")
-) &
-
-  # C. Disturbance in the way in which one’s body weight or shape is experienced... 
-
-  # During the time when you were at this low weight, did you still feel fat? 
-  (
-  (an.feel_fat_time_low == "Slightly" |
-    an.feel_fat_time_low == "Somewhat" | 
-     an.feel_fat_time_low == "Very" |
-     an.feel_fat_time_low == "Extremely"
-    ) |
-    
-  #During the time when you were at this low weight did you ever experience your body or parts of your body to be larger than they actually were or than other people thought they were?
-  (
-    an.people_thought_larger_body == "Somewhat" | 
-     an.people_thought_larger_body == "Very much"
-    ) |
-  
-#...undue influence of body weight or shape on self-evaluation
- 
-   # During the time when you were at this low weight, how dependent was your self-worth on your body shape or weight?
-    (
-     an.not_at_all_dependentcompletely_dependent == "3" |
-      an.not_at_all_dependentcompletely_dependent == "4" |
-      an.not_at_all_dependentcompletely_dependent == "5" |
-      an.not_at_all_dependentcompletely_dependent == "Completely Dependent"
-  ) |
-
-#...or persistent lack of recognition of the seriousness of the current low body weight.
-  
-  # Did you ever think your low weight had negative consequences for your health?
-      (an.health_low_weightbmi_negative == "Not at all" |
-     an.health_low_weightbmi_negative == "Somewhat")
-) &
-
-   # Restricting type: During the last 3 months... 
-  
-  #...the individual has not engaged in recurrent episodes of binge eating or purging behavior (i.e., self-induced vomiting or the misuse of laxatives, diuretics, or enemas)...
-
-  # Did you experience regular episodes of binge eating while at your lowest weight?
-  (
-  ( be.short_period_ate_regard == "No" | # Never binged...
-  be.experience_regular_episodes_lowest == "No" #...has binged but not at low weight
-   ) & 
-
-# During the period of time when you were at your lowest weight, did you use any of the following as a way to control your weight or shape? .
-  (
-    (icb.a_made_yourself_vomit == "Never" | # Never engaged in self-induced vomiting...
-    icb.making_yourself_vomit == "Not Making yourself vomit") & # ...Did engage in self-induce vomiting, but not at low weight
-    
-    (icb.b_used_laxatives == "Never" | # Never used laxatives..
-      icb.laxatives == "Not Laxatives") & #...did use laxatives, but not at low weight
-      
-    (icb.c_used_diuretics == "Never" | # Never used diuretics...
-   icb.diuretics == "Not Diuretics") #...did use diuretics, but not at low weight
-   ) 
-  )
-),
-   true = 1,
-    false = 0,
-    missing = NA_real_
-)
-)
-
-  
-#Recode numeric to factor
-dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary <-
-  recode_factor(dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary_numeric,
-                "0" = "No DSM-5 AN restricting",
-                "1" = "DSM-5 AN restricting"
-                )
-
-#Summary
-freq(dat_ed_EDGI$ed.DSM5_AN_restricting_bmi_20_binary)
-```
-
 ## DSM 5 AN binge eating/purging 
 ### EDGI
 
@@ -890,7 +753,9 @@ dat_ed_EDGI$ed.DSM5_AN_binge_purge_binary_numeric <-
   dplyr::if_else(
 #A. Restriction of energy intake relative to requirements,leading to a significantly low body weight in the context of age, sex, developmental trajectory, and physical health. Significantly low weight is defined as a weight that is less than minimally normal or, for children and adolescents, less than that minimally expected.
     (
-      an.bmi_lowest <= 18.55 & #Lowest BMI as reported in ED100K optional questionnaire
+     (an.bmi_lowest <= 18.55 & # Lowest BMI as reported in ED100K optional questionnaire AN module
+    an.bmi_lowest > 0) &
+      
 # B. Intense fear of gaining weight or of becoming fat, or persistent behavior that interferes with weight gain, even though at a significantly low weight.
    
   #During the time when you were at this low weight, how afraid were you that you might gain weight or become fat?
@@ -1030,8 +895,9 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
   dplyr::if_else(
 
     # A. Recurrent episodes of binge eating. An episode of binge eating is characterized by both of the following:
-#1)Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most people would eat in a similar period of time under similar circumstances
-    be.short_period_ate_regard == "Yes" & 
+
+    # 1) Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most people would eat in a similar period of time under similar circumstances
+    (be.short_period_ate_regard == "Yes" & 
   
    # 2) A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating)
      
@@ -1040,7 +906,7 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
        be.binge_eating_stop_eating == "Somewhat" |
        be.binge_eating_stop_eating == "Very" |
        be.binge_eating_stop_eating == "Extremely"
-       ) & 
+       )) & 
   # B. The binge-eating episodes are associated with three (or more) of the following:
 # 1. Eating much more rapidly than normal.
 # 2. Eating until feeling uncomfortably full.
@@ -1056,9 +922,10 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
          be.binge_eating_distressed_make == "Extremely"
     ) & 
 
-  # D. The binge eating occurs, on average, at least once a week for 3 months.
+ # D. The binge eating occurs, on average, at least once a week for 3 months.
   (ed.BE_freq_per_week >= 0.95 & # Binge eating per week 
-      ed.BE_duration_months >= 2.95) & # Binge eating total duration 
+      (ed.BE_duration_months >= 2.95 |
+         icb.lasted_vomit_laxative_making == "Yes, 3 months DID NOT engage in ICB while bingeing") ) & # Binge eating total duration 
 
   # E. The binge eating is not associated with the recurrent use of inappropriate compensatory behavior as in bulimia nervosa... "Did you ever have periods of time that lasted three months or more when you had binge-eating episodes without regularly engaging in any of the following: making yourself vomit, laxative use, diuretic use, taking weight loss pills, excessively exercising ?"
   (
@@ -1067,6 +934,9 @@ dat_ed_EDGI$ed.DSM5_BED_binary_numeric <-
      icb.none_of_the_above.1 == "None" | # Never engaged in compensatory behaviours after bingeing
 
     #...Or never engaged in ANY behaviour to control weight or shape, so never got asked about comp behaviours for binge eating OR whether they've had periods of time of bingeing without engaging in weight loss behaviours (this is the logic in EDGI)
+      
+      # Have you ever used any of the following to control your body shape or weight?
+      
       (icb.f_fasted_or_did_not_eat == "Never" &  
       icb.d_used_diet_pills  == "Never" &
       icb.e_exercised_excessively  == "Never" &
@@ -1155,7 +1025,7 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
     #1. Eating, in a discrete period of time (e.g., within any 2-hour period), an amount of food that is definitely larger than what most individuals would eat in a similar period of time under similar circumstances.
     
     ##Have you ever had regular episodes of overeating or eating binges when you ate what most people would regard as an unusually large amount of food in a short period of time?
-    be.short_period_ate_regard == "Yes" & 
+    (be.short_period_ate_regard == "Yes" & 
 
       #2. A sense of lack of control over eating during the episode (e.g., a feeling that one cannot stop eating or control what or how much one is eating).
       
@@ -1166,7 +1036,7 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
          be.binge_eating_stop_eating == "Somewhat" |
          be.binge_eating_stop_eating == "Very" |
          be.binge_eating_stop_eating == "Extremely"
-         ) & 
+         )) & 
       
       #B. Recurrent inappropriate compensatory behaviors in order to prevent weight gain, such as self-induced vomiting; misuse of laxatives, diuretics, or other medications; fasting; or excessive exercise. 
           (
@@ -1209,7 +1079,7 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
     # D. Self-evaluation is unduly influenced by body shape and weight.
          
     #During the time when you were binge eating, how dependent was your self-worth on your body shape or weight?
-    (
+    ((
       be.not_at_all_dependentcompletely_dependent == "3" |
       be.not_at_all_dependentcompletely_dependent == "4" |
       be.not_at_all_dependentcompletely_dependent == "5" |
@@ -1222,7 +1092,7 @@ dat_ed_EDGI$ed.DSM5_BN_binary_numeric <-
          be.experience_regular_episodes_lowest == "No" |
     (is.na(be.experience_regular_episodes_lowest) &
        be.experience_regular_episodes_lowest_seen_but_not_answered != 1) # OR have not been answered the question BECAUSE they were not shown it becuase they did not pass the AN screener. Here, we do NOT want to include people who saw the question but did not answer it. This will capture those who are 0 for this variable (i.e., were a true NA for the original variable).
-         ),
+         )),
     true = 1,
     false = 0,
     missing = NA_real_)
@@ -1275,12 +1145,8 @@ final_edgi_data_ed <- dat_ed_EDGI  %>%
          ed.DSM5_AN_binary,                                   
          ed.DSM5_AN_restricting_binary_numeric,             
          ed.DSM5_AN_restricting_binary,
-         ed.DSM5_AN_restricting_bmi_20_binary_numeric,             
-         ed.DSM5_AN_restricting_bmi_20_binary,  
          ed.DSM5_AN_binge_purge_binary_numeric,               
          ed.DSM5_AN_binge_purge_binary,     
-         ed.DSM5_AN_purge_only_binary_numeric,
-         ed.DSM5_AN_binge_only_binary_numeric,
          ed.DSM5_BED_binary_numeric,                          
          ed.DSM5_BED_binary,                                    
          ed.DSM5_BN_binary_numeric,                            
@@ -1299,6 +1165,6 @@ final_edgi_data_ed %>%
 ```{r Save all datasets}
 # EDGI
 saveRDS(object = final_edgi_data_ed,
-        file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/ed_algorithms_diagnostics_edgi_clean.rds"))
+        file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/ed_algorithms_diagnostics_edgi_clean_040523.rds"))
 ```
 an.gain_weight_afraid_fat

@@ -48,7 +48,7 @@ date <- Sys.Date()
 Load data
 ```{r Load data}
 dat <- read_rds(
-  file = paste0(filepath_cleaned_data, "merged_dat.rds")
+  file = paste0(filepath_cleaned_data, "merged_dat_040523.rds")
 )
 ```
 
@@ -113,7 +113,7 @@ dat <- dat %>%
     
     atypical_anorexia_nervosa =
       case_when(mhd.atypical_an_numeric == 1 |
-                  ed.DSM5_AN_atypical_binary_numeric == 1 ~ "Atypical anorexia nervosa"),
+                  ed.DSM5_AN_atypical_binary_combined_filtered == "DSM-5 atypical AN combined and filtered" ~ "Atypical anorexia nervosa"),
                 
       atypical_binge_eating_disorder =
         case_when(mhd.atypical_bed_numeric == 1 |
@@ -163,7 +163,19 @@ dat <- dat %>%
   !is.na(pica) |
   !is.na(avoidant_restrictive_food_intake_disorder) |
   !is.na(rumination_disorder) |
-  mhd.suspected_eating_disorder_diagnosed_numeric == 1)
+  
+    # Previously we used: "Have you ever suspected that you may have an eating disorder, whether or not you were ever diagnosed?
+  # mhd.suspected_eating_disorder_diagnosed_numeric == 1
+ 
+   # Now, we are using: Have you ever received treatment for an eating disorder?
+  mhd.eating_disorder_received_treatment == 1 |
+    
+  # Have you ever been diagnosed with 'one or more of the following eating disorders by a professional, even if you don't have it currently?By professional we mean: any doctor, nurse or person with a specialist training (such as a psychologist, psychiatrist etc.) Please include disorders even if you did not need treatment for them or if you did not agree with the diagnosis: Other eating disorder
+    mhd.other_eating_disorder_numeric == 1 |
+    
+     # Have you ever been diagnosed with 'one or more of the following eating disorders by a professional, even if you don't have it currently?By professional we mean: any doctor, nurse or person with a specialist training (such as a psychologist, psychiatrist etc.) Please include disorders even if you did not need treatment for them or if you did not agree with the diagnosis: Other specified feeding or eating disorder (OSFED or EDNOS)
+   mhd.feeding_eating_disorder_numeric == 1
+  )
 ```
 
 ```{r numeric deriving self-report and algorithm-derived ED diagnosis}
@@ -208,8 +220,8 @@ dat <- dat %>%
     
     atypical_anorexia_nervosa_numeric =
       case_when(mhd.atypical_an_numeric == 1 |
-                  ed.DSM5_AN_atypical_binary_numeric == 1 ~ 1,
-                
+                  ed.DSM5_AN_atypical_binary_combined_filtered == "DSM-5 atypical AN combined and filtered" ~ 1,
+              
                 TRUE ~ 0),
                 
       atypical_binge_eating_disorder_numeric =
@@ -370,9 +382,9 @@ dat <- dat %>%
         atypical_anorexia_nervosa == "Atypical anorexia nervosa"
           ~ "BED & AAN",
        
-         purging_disorder == "Purging disorder" &
-        atypical_anorexia_nervosa == "Atypical anorexia nervosa"
-          ~ "PUR & AAN",
+      #   purging_disorder == "Purging disorder" &
+      #  atypical_anorexia_nervosa == "Atypical anorexia nervosa"
+      #    ~ "PUR & AAN",
        
         bulimia_nervosa == "Bulimia nervosa" &
         binge_eating_disorder == "Binge-eating disorder" ~ "BN & BED",
@@ -413,7 +425,7 @@ dat %>%
       
 # Checking missing data
 ```{r check missing}
-# All missing =  3,222
+# All missing = 1,406 (was 3,222)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -436,7 +448,30 @@ dat %>%
            mhd.dont_know_eds_numeric
            )
 
-# Missing for received treatment = 951
+# All missing = 1,406 (was 3,222)
+dat %>%
+  filter(is.na(mixed_eating_disorders_primary) &
+           is.na(purging_disorder) &
+           is.na(atypical_anorexia_nervosa) &
+         is.na(atypical_binge_eating_disorder) &
+         is.na(atypical_bulimia_nervosa) &
+         is.na(night_eating_syndrome) &
+         is.na(pica) &
+         is.na(avoidant_restrictive_food_intake_disorder) &
+         is.na(rumination_disorder)
+         ) %>%
+           select(
+            # Other self-report
+           mhd.other_eating_disordertext.txt,                              
+           mhd.suspected_eating_disorder_diagnosed_numeric,                 
+           mhd.eating_disorder_received_treatment_numeric,                     
+            mhd.feeding_eating_disorder_numeric,                                
+           mhd.other_eating_disorder_numeric,                              
+           mhd.none_eds_numeric,                                             
+           mhd.dont_know_eds_numeric
+           )
+
+# Missing for received treatment = 0 (was 951)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -452,7 +487,7 @@ dat %>%
   nrow()
 
 
-# Missing for received treatment and suspected eating disorder = 951
+# Missing for received treatment and suspected eating disorder = 0 (was 951)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -468,7 +503,7 @@ dat %>%
          ) %>%
   nrow()
 
-# Missing for received treatment and suspected eating disorder & text response = 951
+# Missing for received treatment and suspected eating disorder & text response = 0 (was 951)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -485,7 +520,7 @@ dat %>%
          ) %>%
   nrow()
 
-# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric = 750
+# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric = 0 (was 750)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -503,7 +538,7 @@ dat %>%
          ) %>%
   nrow()
 
-# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric & AGE = 265
+# Missing for received treatment and suspected eating disorder & text response  & mhd.feeding_eating_disorder_numeric & AGE = 0 (was 265)
 dat %>%
   filter(is.na(mixed_eating_disorders_primary) &
            is.na(purging_disorder) &
@@ -638,7 +673,7 @@ selfreport_algo_sex <- dat %>%
          ed.DSM5_BED_binary, 
          ed.DSM5_BN_binary,
         ed.DSM5_purging_disorder_binary,
-        ed.DSM5_AN_atypical_binary,
+        ed.DSM5_AN_atypical_binary_combined_filtered,
         ed.DSM5_BED_atypical_binary,
         ed.DSM5_BN_atypical_binary,
         ed.DSM5_NES_binary,
@@ -668,7 +703,7 @@ exclude_columns_from_pivoting <-
      "ed.DSM5_BED_binary", 
      "ed.DSM5_BN_binary",
       "ed.DSM5_purging_disorder_binary",
-      "ed.DSM5_AN_atypical_binary",
+      "ed.DSM5_AN_atypical_binary_combined_filtered",
       "ed.DSM5_BED_atypical_binary",
       "ed.DSM5_BN_atypical_binary",
       "ed.DSM5_NES_binary",
@@ -910,6 +945,6 @@ dat_somatic_dx_broad_longer %>%
 
 
 ```{r}
-save.image(file = paste0(filepath_cleaned_data, "tables.Rdata"))
+save.image(file = paste0(filepath_cleaned_data, "tables_040523.Rdata"))
 ```
 

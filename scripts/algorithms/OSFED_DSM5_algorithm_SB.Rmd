@@ -1095,8 +1095,6 @@ edgi_dat_id %>%
     )
 ```
 
-18/04/23 SK: 0 are missing.
-
 ## Atypical BN
 
 Definition of atypical BN:
@@ -1207,8 +1205,8 @@ edgi_dat_id$ed.DSM5_BN_atypical_binary_numeric <-
       
   # Did the binge eating and compensatory behaviours occur at the same time, on average, once a week for 1 month?
       (
-        icb.binge_eating_average_month == 1 & 
-          icb.binge_eating_average_months == 0 # did NOT occur at same time for 3 months (otherwise would be typical BN)
+        icb.binge_eating_average_month == 1 & # occured at same time once a week for 1 month...
+          icb.binge_eating_average_months == 0 # ...and did NOT occur at same time for 3 months (otherwise would be typical BN)
         ) & 
 
     # D. Self-evaluation is unduly influenced by body shape and weight.
@@ -1272,7 +1270,7 @@ edgi_dat_id %>%
          )
 ```
 
-## NES # Topher/Saakshi - please review
+## NES 
 ```{r Coerce variables needed for algorithm to numeric}
 #Duration in months of eating after evening meal
 edgi_dat_id <- edgi_dat_id %>% 
@@ -1395,9 +1393,8 @@ edgi_dat_id %>%
         ed.DSM5_NES_binary
          )
 ```
-18/04/23 SK: 0 are missing.
 
-## Purging disorder # Topher/Saakshi - please review
+## Purging disorder 
 Recurrent purging behavior to influence weight or shape (e.g., self-induced vomiting: misuse of laxatives, diuretics, or other medications) in the absence of binge eating.
 ```{r DSM-5 purging disorder EDGI}
 edgi_dat_id$ed.DSM5_purging_disorder_binary_numeric <- 
@@ -1451,7 +1448,7 @@ edgi_dat_id$ed.DSM5_purging_disorder_binary <-
 freq(edgi_dat_id$ed.DSM5_purging_disorder_binary)
 ```
 
-##Checking
+## Checking
 ```{r purging disorder check}
 edgi_dat_id %>%
   filter(
@@ -1466,9 +1463,102 @@ edgi_dat_id %>%
         ed.DSM5_purging_disorder_binary
          )
 ```
+# 4/05/23 Filtering AAN cases for ABN, ABED, and purging disorder
+```{r filtering out AAN cases with other atypical diagnoses}
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" |
+             ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "DSM-5 atypical AN combined")
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined) # 2450
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_categorical =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+             ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "Both strict and lenient",
+            
+            ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "Strict only",
+             
+            ed.DSM5_AN_atypical_binary_AAN_module ==  "DSM-5 atypical AN BMI greater than 18.55" ~ "Lenient only"
+            )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_categorical)
+
+# AAN from AAN module (i.e., with weight suppression)
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_AAN_module_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+              
+              
+              ed.DSM5_purging_disorder_binary ==  "No DSM-5 purging disorder" &
+              ed.DSM5_BN_atypical_binary == "No DSM-5 atypical BN" &
+              ed.DSM5_BED_atypical_binary == "No DSM-5 atypical BED" ~ "DSM-5 atypical AN BMI greater than 18.55 filtered",
+             
+             ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "No DSM-5 atypical AN BMI greater than 18.55 filtered"
+              )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_AAN_module_filtered)
+
+# AAN from AN module (i.e., without weight suppression)
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_AN_module_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" &
+              
+              
+              ed.DSM5_purging_disorder_binary ==  "No DSM-5 purging disorder" &
+              ed.DSM5_BN_atypical_binary == "No DSM-5 atypical BN" &
+              ed.DSM5_BED_atypical_binary == "No DSM-5 atypical BED" ~ "DSM-5 atypical AN BMI greater than 18.55 filtered",
+             
+             ed.DSM5_AN_atypical_binary_AN_module == "DSM-5 atypical AN BMI greater than 18.55" ~ "No DSM-5 atypical AN BMI greater than 18.55 filtered"
+              )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_AN_module_filtered)
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" |
+             ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "DSM-5 atypical AN combined and filtered")
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_filtered)
+
+
+# Combined
+edgi_dat_id <- edgi_dat_id %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_filtered_categorical =
+  case_when(ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" &
+             ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Both strict and lenient",
+            
+            ed.DSM5_AN_atypical_binary_AN_module_filtered == "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Strict only",
+             
+            ed.DSM5_AN_atypical_binary_AAN_module_filtered ==  "DSM-5 atypical AN BMI greater than 18.55 filtered" ~ "Lenient only"
+            )
+  )
+
+edgi_dat_id %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_filtered_categorical)
+
+```
+
+
+
+
 
 # Combining Data
-
 ```{r Put algorithm variables into a vector}
 #Retrieve algorithm variable names
 algorithm_vars <- edgi_dat_id %>% 
@@ -1567,6 +1657,6 @@ label_list
 dat %>% 
   #filter(sample == "EDGI") %>%  # select only EDGI participants
   saveRDS(
-    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean.rds")
+    file = paste0(ilovedata, "/EDGI_protocol/data/algorithms/osfed_dsm5_algorithms_edgi_clean_040523.rds")
     )
 ```
