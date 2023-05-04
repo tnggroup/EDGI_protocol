@@ -69,6 +69,8 @@ summary_table_whole_sample <-
         label = list(
           age ~ 
             "Age",
+          age_missing_info ~ 
+            "Age: missing info",
           sex ~
             "Female",
          gender ~
@@ -93,7 +95,9 @@ summary_table_whole_sample <-
         
           type = list(
             age ~ 
-              "continuous",
+              "continuous2",
+            age_missing_info ~ 
+              "categorical",
             sex ~
             "dichotomous",
             gender ~ 
@@ -111,20 +115,22 @@ summary_table_whole_sample <-
           relationship_status ~
             "categorical",          
           dem.pack_year ~ 
-            "continuous",
+            "continuous2",
           mhd.eating_disorder_received_treatment ~
             "dichotomous"
           ),
            value = list(sex = "Female",
                    dem.do_you_identify_as_transgender = "Yes",
                    mhd.eating_disorder_received_treatment = 1),
-        missing = "no",
-          statistic = list(
+        missing_text = "Not seen",
+         digits = list(all_categorical() ~ c(0, 1),
+                          all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
             all_categorical() ~ "{n} ({p}%)",
             
-            all_continuous() ~ "{mean} ({sd}); Median = {median}, IQR = ({p25}, {p75}); Min = {min}, Max = {max}"
-                )) 
+            all_continuous() ~ c("{mean} ({sd})", "{median} ({p25}, {p75})",  "{min} - {max}")))
+
 
 summary_table_whole_sample
 ```
@@ -163,7 +169,7 @@ summary_table <-
         
           type = list(
             age ~ 
-              "continuous",
+              "continuous2",
             sex ~
             "categorical",
             gender ~ 
@@ -188,14 +194,15 @@ summary_table <-
         value = list(sex = "Female",
                    dem.do_you_identify_as_transgender = "Yes",
                    mhd.eating_disorder_received_treatment = 1),
-        missing = "no",
+       missing_text = "Not seen",
 
-          statistic = list(
+          digits = list(all_categorical() ~ c(0, 1),
+                          all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
             all_categorical() ~ "{n} ({p}%)",
             
-            all_continuous() ~ "{mean} ({sd}); Median = {median}, IQR = ({p25}, {p75}); Min = {min}, Max = {max}"
-                )) 
+            all_continuous() ~ c("{mean} ({sd})", "{median} ({p25}, {p75})",  "{min} - {max}")))
 
 summary_table
 ```
@@ -210,6 +217,8 @@ summary_table_long <-
  label = list(
           age ~ 
           "Age",
+          age_missing_info ~
+            "Age: missing info",
           sex ~
             "Female",
           gender ~
@@ -229,12 +238,16 @@ summary_table_long <-
         mhd.eating_disorder_received_treatment ~
             "Received treatment",
           dem.pack_year ~
-          "Smoking: pack per year"
+          "Smoking: pack per year",
+        dem.pack_year_missing_info ~
+          "Smoking: missing info"
         ),
         
           type = list(
             age ~ 
-             "continuous",
+             "continuous2",
+            age_missing_info ~
+              "categorical",
             sex ~
             "dichotomous",
             gender ~ 
@@ -254,31 +267,34 @@ summary_table_long <-
           mhd.eating_disorder_received_treatment ~
             "dichotomous",
           dem.pack_year ~
-            "continuous"
+            "continuous2",
+          dem.pack_year_missing_info ~
+            "categorical"
           ),
        value = list(sex = "Female",
                    dem.do_you_identify_as_transgender = "Yes",
                    mhd.eating_disorder_received_treatment = 1),
-        missing = "no",
-
-          statistic = list(
+    missing_text = "Not seen",
+ digits = list(all_categorical() ~ c(0, 1),
+                          all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
             all_categorical() ~ "{n} ({p}%)",
             
-            all_continuous() ~ "{mean} ({sd}); Median = {median}, IQR = ({p25}, {p75}); Min = {min}, Max = {max}"
-                                  
-                )) 
+            all_continuous() ~ c("{mean} ({sd})", "{median} ({p25}, {p75})",  "{min} - {max}")))
+
 summary_table_long
+
 ```
 
 Add bold labels to table
 ```{r summary_table with bold labels}
-summary_table %>% 
+summary_table <- summary_table %>% 
   bold_labels() 
 ```
 
 ```{r summary_table_long with bold labels}
-summary_table_long %>% 
+summary_table_long <- summary_table_long %>% 
   bold_labels() 
 ```
 

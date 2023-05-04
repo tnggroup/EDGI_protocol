@@ -78,7 +78,25 @@ dat %>%
   freq(mhd.bed_numeric
        )
 ```
-          
+
+
+```{r}
+dat <- dat %>%
+  mutate(across(contains("numeric"),
+                ~case_when(
+                  . == -999 ~ "Prefer not to answer",
+                  . == -888 ~ "Don't know",
+                  . == -777 ~ "Seen but not answered",
+                  TRUE ~ as.character(.)
+                  )
+                )
+         )
+
+# Check
+dat %>%
+  freq(mhd.bed_numeric)
+```
+
 # First, filter out ineligible participants
 Participants must have an ED, age and sex data.
 ```{r filter out ineligible participants}
@@ -530,6 +548,7 @@ exclude_columns_from_pivoting <-
   c(
     "sex",
     "age",
+    "age_missing_info",
     "gender",
     "dem.do_you_identify_as_transgender",
     "sexuality",
@@ -538,6 +557,7 @@ exclude_columns_from_pivoting <-
     "dem.what_is_your_current_employment_status",
     "relationship_status",
     "dem.pack_year",
+    "dem.pack_year_missing_info",
     "mhd.eating_disorder_received_treatment"
   )
 
@@ -548,6 +568,7 @@ dat_demographics <- dat %>%
     mixed_eating_disorders_all,
     sex,
     age,
+    age_missing_info,
     gender,
     dem.do_you_identify_as_transgender,
     sexuality,
@@ -556,6 +577,7 @@ dat_demographics <- dat %>%
     dem.what_is_your_current_employment_status,
     relationship_status,
     dem.pack_year,
+    dem.pack_year_missing_info,
     mhd.eating_disorder_received_treatment
   )
 
@@ -900,13 +922,6 @@ dat_somatic_dx_broad_longer <- dat %>%
 dat_somatic_dx_broad_longer %>%
   head()
 ```
-
-
-
-
-
-
-
 
 
 ```{r}

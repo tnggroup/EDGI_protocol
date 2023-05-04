@@ -107,19 +107,11 @@ summary_table <-
         mhd.autism_spectrum_disorder ~
             "categorical" # do we want consistency in whether we are spelling out in full or abbreviating?
         ),
-
-          statistic = list(
+        missing = "ifany",
+          digits = list(all_categorical() ~ c(0, 1)),
+             statistic = list(
                              
-            all_categorical() ~ "{n} ({p}%)",
-            
-            all_continuous() ~ c("{mean} ({sd})",
-                                  "{median} ({p25}, {p75})",
-                                  "{min}, {max}"
-                                  )
-                ), 
-              
-              missing = "always")  %>% 
-  add_n()
+            all_categorical() ~ "{n} ({p}%)"))
 
 summary_table
 ```
@@ -162,43 +154,43 @@ summary_table_long <-
           type = list(mhd.depression_and_anxiety ~
             "categorical",
           mhd.depressive_disorders ~
-           "dichotomous",
+           "categorical",
           mhd.anxiety_disorders ~
-            "dichotomous",
+            "categorical",
           mhd.ptsd_numeric ~
-            "dichotomous",
+            "categorical",
           mhd.obsessive_compulsive_disorders ~
-            "dichotomous",
+            "categorical",
         mhd.any_personality_disorder ~
-            "dichotomous",
+            "categorical",
         mhd.bipolar_and_schizophrenia ~
             "categorical",
         mhd.psychotic_disorders ~
-            "dichotomous",
+            "categorical",
         mhd.bipolar_disorder_numeric ~
-            "dichotomous",
+            "categorical",
         mhd.autism_spectrum_disorder ~
-            "dichotomous",
+            "categorical",
         mhd.addadhd_numeric ~ 
-          "dichotomous"
+          "categorical"
         ),
-         value = list( mhd.depressive_disorders = "Depressive disorder",
-                   mhd.anxiety_disorders = "Anxiety disorder",
-                   mhd.ptsd_numeric = 1,
-                   mhd.obsessive_compulsive_disorders = "Obsessive compulsive disorder",
-                   mhd.any_personality_disorder = "Personality disorder",
-                   mhd.psychotic_disorders = "Psychotic disorder", 
-                   mhd.bipolar_disorder_numeric = 1,
-                   mhd.autism_spectrum_disorder = 1,
-                   mhd.addadhd_numeric = 1
-                   ),
-          statistic = list(
+               missing = "ifany",
+      #   value = list( mhd.depressive_disorders = "Depressive disorder",
+      #             mhd.anxiety_disorders = "Anxiety disorder",
+      #             mhd.ptsd_numeric = 1,
+      #             mhd.obsessive_compulsive_disorders = "Obsessive compulsive disorder",
+      #             mhd.any_personality_disorder = "Personality disorder",
+      #             mhd.psychotic_disorders = "Psychotic disorder", 
+      #             mhd.bipolar_disorder_numeric = 1,
+      #             mhd.autism_spectrum_disorder = 1,
+      #             mhd.addadhd_numeric = 1
+      #             ),
+          digits = list(all_categorical() ~ c(0, 1),
+                          all_dichotomous() ~ c(0, 1)),
+             statistic = list(
                              
-            all_categorical() ~ "{n} ({p}%)"
-            
-                ), 
-              
-              missing = "no") 
+            all_categorical() ~ "{n} ({p}%)"))
+
 
 summary_table_long
 ```

@@ -249,9 +249,10 @@ dat_glad_edgi <- dat_glad_edgi %>%
     mutate(
       dem.university_education_attend_school.txt =
         if_else(
-            dem.years_schoolplease_include_preschool.txt_unc > dem.how_old_are_you_now.txt_unc | # if the person has more years of education than their age 
-            dem.years_schoolplease_include_preschool.txt_unc > years_of_educ_upper_limit | # older than the limit for years of education
-            dem.years_schoolplease_include_preschool.txt_unc < years_of_educ_lower_limit, # less than the limit for years of education
+            ((dem.years_schoolplease_include_preschool.txt_unc > 0 &
+             dem.years_schoolplease_include_preschool.txt_unc > dem.how_old_are_you_now.txt_unc) | # if the person has more years of education than their age 
+            (dem.years_schoolplease_include_preschool.txt_unc > 0 & dem.years_schoolplease_include_preschool.txt_unc > years_of_educ_upper_limit) | # older than the limit for years of education
+            (dem.years_schoolplease_include_preschool.txt_unc > 0 & dem.years_schoolplease_include_preschool.txt_unc < years_of_educ_lower_limit)), # less than the limit for years of education
           true = -666,
           false = dem.years_schoolplease_include_preschool.txt_unc,
           missing = NA_real_

@@ -267,16 +267,16 @@ dat_glad_edgi <- dat_glad_edgi %>%
 #Recode outliers to -666
 ```{r Recode outliers to -666 GLAD}
 dat_glad_edgi <- dat_glad_edgi %>%
-  mutate(
-    dem.pack_year =
-      if_else(
-        dem.how_many_years_have_youdid_yousmoke.txt_unc > years_of_smoking_limit |
+  mutate(dem.pack_year =
+      case_when(
+        dem.pack_year == -777 ~ -777,
+        dem.pack_year == -999 ~ -999,
+        dem.pack_year == -888 ~ -888,
+        (dem.how_many_years_have_youdid_yousmoke.txt_unc > years_of_smoking_limit |
           dem.how_many_years_have_youdid_yousmoke.txt_unc < years_of_smoking_lower_limit |
           dem.cigarettes_smoke_day_youdid.txt_unc > cigarettes_per_day_limit |
-          dem.cigarettes_smoke_day_youdid.txt_unc < cigarettes_per_day_lower_limit,
-        true = -666,
-        false = dem.pack_year,
-        missing = NA_real_
+          dem.cigarettes_smoke_day_youdid.txt_unc < cigarettes_per_day_lower_limit) ~ -666,
+        TRUE ~ dem.pack_year
       )
   )
 ```
