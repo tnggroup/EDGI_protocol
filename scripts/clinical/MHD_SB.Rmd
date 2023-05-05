@@ -56,22 +56,6 @@ date
 
 # Read in data
 
-## GLAD data
-```{r Read in GLAD data}
-glad_dat <- read_rds(
-  file = paste0(
-    ilovedata, "/data_raw/2022-09-16/glad/mhd_glad.rds")
-  )
-
-#Check
-glad_dat %>%
-  colnames()
-
-glad_dat %>%
-  dim()
-```
-
-
 ## EDGI data #1 
 ```{r Read in EDGI data}
 edgi_dat <- read_rds(
@@ -84,7 +68,9 @@ edgi_dat %>%
   colnames()
 
 edgi_dat %>%
-  dim() 
+  dim()
+
+edgi_dat$mhd.oc
 ```
 
 Specify columns to be excluded from add_numeric function
@@ -216,6 +202,7 @@ edgi2_exclude_cols <- c(
 ```
 
 
+
 ### Select & rename relevant columns
 ```{r EDGI #2 Select & rename relevant columns}
 edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
@@ -228,7 +215,7 @@ edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
          sample,
          startDate,                                              
          endDate,
-         
+
          # Depression, anxiety, OCD and PTSD related disorders
          mhd.mdd = dem.depression,                                         
          mhd.perinatal_depression = dem.postnatalantenatal_depression,                      
@@ -241,7 +228,7 @@ edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
          mhd.panic_attacks = dem.panic_attacks,                                     
          mhd.panic_disorder = dem.panic_disorder,                                     
          mhd.ptsd = dem.ptsd,                                              
-         mhd.ocd = dem.obsessivecompulsive_disorder,                   
+         mhd.ocd = dem.obsessivecompulsive_disorder_,                   
          mhd.bdd = dem.bdd,                                                
          mhd.other_ocd = dem.other_ocd,                                          
          mhd.none_dep_anx_ocd_ptsd = dem.none_of_the_above.1,                            # renamed to differentiate from other none of the above                  
@@ -252,14 +239,14 @@ edgi2_dat_id <- edgi2_dat %>% #new dataset with ID
          mhd.schizophrenia = dem.schizophrenia,                                      
          mhd.psychosis = dem.psychosis_type_psychotic_illness,                   
          mhd.personality_disorder = dem.personality_disorder,                               
-         mhd.asd = dem.autism_spectrum_disorder,                       
+         mhd.asd = dem.autism_spectrum_disorder_,                       
          mhd.addadhd = dem.attention_deficit_hyperactivity_disorder,           
          mhd.other = dem.other.1,                                            
          mhd.othertext.txt = dem.othertext.txt.1,                                   
          mhd.none_neuro = dem.none_of_the_above.2,                                 # renamed to differentiate from other none of the above                 
          mhd.dont_know_neuro = dem.dont_know.7,                                    # renamed to differentiate from other don'tknow      
-         mhd.pnta_neuro = dem.prefer_not_to_answer.4,                              # renamed to differentiate from other PNTA  
-        
+         mhd.pnta_neuro = dem.prefer_not_to_answer.9,                              # renamed to differentiate from other PNTA  
+
          # Which personality disorder do you have?
          mhd.personality_disorder_diagnosed = dem.personality_disorder_diagnosed
          ) %>% 

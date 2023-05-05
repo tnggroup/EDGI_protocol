@@ -1496,7 +1496,6 @@ edgi_dat_id <- edgi_dat_id %>%
   mutate(ed.DSM5_AN_atypical_binary_AAN_module_filtered =
   case_when(ed.DSM5_AN_atypical_binary_AAN_module == "DSM-5 atypical AN BMI greater than 18.55" &
               
-              
               ed.DSM5_purging_disorder_binary ==  "No DSM-5 purging disorder" &
               ed.DSM5_BN_atypical_binary == "No DSM-5 atypical BN" &
               ed.DSM5_BED_atypical_binary == "No DSM-5 atypical BED" ~ "DSM-5 atypical AN BMI greater than 18.55 filtered",

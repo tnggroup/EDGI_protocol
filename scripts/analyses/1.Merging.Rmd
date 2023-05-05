@@ -462,6 +462,7 @@ mhd <- mhd %>%
   select(#-endDate,
          #  -startDate,
            -sample)
+
 ```
 
 # Somatic comorbidity
@@ -624,6 +625,20 @@ dat <- list(sex_gender_sexuality,
                 ) %>%
   reduce(full_join,
          by = "ID")
+```
+
+```{r filter AAN}
+# Filter out BN and BED cases from AAN
+dat <- dat %>%
+  mutate(ed.DSM5_AN_atypical_binary_combined_filtered =
+  case_when(ed.DSM5_AN_atypical_binary_combined_filtered == "DSM-5 atypical AN combined and filtered" &
+              
+             ed.DSM5_BN_binary == "No DSM-5 BN" &
+             ed.DSM5_BED_binary == "No DSM-5 BED" ~ "DSM-5 atypical AN combined and filtered" )
+  )
+
+dat %>%
+  freq(ed.DSM5_AN_atypical_binary_combined_filtered)
 ```
 
 # Look at the data

@@ -776,7 +776,7 @@ exclude_columns_from_pivoting <-
     "mhd.anxiety_disorders",   
     "mhd.ptsd_numeric",
     
-    "mhd.obsessive_compulsive_disorders",
+    "mhd.obsessive_compulsive_disorders_numeric",
     
     "mhd.any_personality_disorder",
     
