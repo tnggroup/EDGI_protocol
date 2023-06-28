@@ -1,6 +1,6 @@
 ---
 title: "OSFED DSM5 algorithms"
-author: "Saakshi Kakar, Shannon Bristow, Steven Bright, updated by Shannon Bristow"
+author: "Helena Davies, Saakshi Kakar, Shannon Bristow, Steven Bright"
 date: "30/08/2022"
 output: html_document
 ---
